@@ -1,0 +1,161 @@
+{
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "providers": "Providers",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Log in",
+    "getStarted": "Get Started",
+    "search": "Search for services...",
+    "searchButton": "Search",
+    "allCategories": "ALL CATEGORIES",
+    "browseAllCategories": "Browse All Categories",
+    "findPerfectService": "Find the perfect service for your needs",
+    "viewAll": "View all",
+    "bookNow": "Book Now"
+  },
+  "hero": {
+    "badge": "Trusted by 10,000+ customers in Belagavi",
+    "title": "Trusted Home Services, On Demand.",
+    "subtitle": "Book verified professionals for any home service in Belagavi. Fast, reliable, and affordable.",
+    "bookService": "Book a Service",
+    "becomeProvider": "Become a Provider",
+    "features": {
+      "fastResponse": "Fast Response",
+      "verifiedPros": "Verified Pros",
+      "securePayments": "Secure Payments",
+      "support": "24/7 Support"
+    },
+    "liveStatus": {
+      "badge": "Live status",
+      "title": "In-progress bookings",
+      "activeCount": "42 active",
+      "onTheWay": "On the way",
+      "inProgress": "In progress",
+      "confirmed": "Confirmed",
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "done": "Done"
+    }
+  },
+  "categories": {
+    "home": "Home",
+    "education": "Education",
+    "it": "IT & Software",
+    "cars": "Cars",
+    "mobiles": "Mobiles",
+    "jobs": "Jobs",
+    "furniture": "Furniture",
+    "fashion": "Fashion",
+    "pets": "Pets"
+  },
+  "trust": {
+    "bookings": "Bookings",
+    "professionals": "Verified Pros",
+    "rating": "Avg Rating",
+    "categories": "Service Categories"
+  },
+  "services": {
+    "label": "Popular Services",
+    "title": "Everything your home needs.",
+    "subtitle": "From quick fixes to full makeovers — verified professionals at your doorstep.",
+    "electrical": "Electrical",
+    "plumbing": "Plumbing",
+    "cleaning": "Cleaning",
+    "pestControl": "Pest Control",
+    "acRepair": "AC Repair",
+    "painting": "Painting",
+    "salon": "Salon at Home",
+    "carpentry": "Carpentry",
+    "from": "From",
+    "arrival": "arrival",
+    "reviewsCount": "{count} reviews"
+  },
+  "howItWorks": {
+    "label": "How It Works",
+    "title": "Three steps. That's it.",
+    "subtitle": "We stripped away everything unnecessary so you can go from need to done in minutes.",
+    "step1Title": "Choose Service",
+    "step1Desc": "Browse categories or search for the service you need.",
+    "step2Title": "Book Instantly",
+    "step2Desc": "Pick a convenient time slot and confirm in seconds.",
+    "step3Title": "Get Work Done",
+    "step3Desc": "Verified professional arrives at your door, on time."
+  },
+  "whyUs": {
+    "label": "Why Choose Us",
+    "title": "Built for trust, speed, and quality.",
+    "verifiedTitle": "Verified Professionals",
+    "verifiedDesc": "Every professional is background-checked and skill-verified before joining.",
+    "pricingTitle": "Transparent Pricing",
+    "pricingDesc": "No hidden charges. See exact costs before you book.",
+    "fastTitle": "Fast Response",
+    "fastDesc": "Average response time under 30 minutes for most services.",
+    "secureTitle": "Secure Payments",
+    "secureDesc": "Pay securely online or cash after service completion.",
+    "localTitle": "Local Support",
+    "localDesc": "Dedicated support team based right here in Belagavi.",
+    "guaranteeTitle": "Service Guarantee",
+    "guaranteeDesc": "Not satisfied? We'll redo the service or refund you."
+  },
+  "provider": {
+    "label": "For Professionals",
+    "title": "Earn With Your Skills.",
+    "subtitle": "Join thousands of professionals already growing their business on our platform.",
+    "flexWork": "Flexible Work",
+    "flexWorkDesc": "Choose your own schedule and work when it suits you.",
+    "payouts": "Weekly Payouts",
+    "payoutsDesc": "Get paid directly to your bank account every week.",
+    "customers": "More Customers",
+    "customersDesc": "Access thousands of local customers looking for your skills.",
+    "onboarding": "Easy Onboarding",
+    "onboardingDesc": "Sign up, verify, and start getting bookings in 24 hours.",
+    "cta": "Become a Service Partner"
+  },
+  "testimonials": {
+    "label": "Testimonials",
+    "title": "Loved by thousands.",
+    "subtitle": "Here's what our customers and providers say about us."
+  },
+  "local": {
+    "label": "Local Coverage",
+    "title": "Proudly Serving Belagavi",
+    "subtitle": "Available across all major areas in the city.",
+    "areas": "Areas We Serve"
+  },
+  "app": {
+    "label": "Mobile App",
+    "title": "Everything in your pocket.",
+    "subtitle": "Download the app for the fastest booking experience.",
+    "instantBooking": "Instant Booking",
+    "realTimeTracking": "Real-time Tracking",
+    "digitalPayments": "Digital Payments",
+    "serviceHistory": "Service History",
+    "playStore": "Google Play",
+    "appStore": "App Store"
+  },
+  "footer": {
+    "company": "Company",
+    "aboutUs": "About Us",
+    "careers": "Careers",
+    "blog": "Blog",
+    "contactUs": "Contact Us",
+    "servicesTitle": "Services",
+    "allServices": "All Services",
+    "homeServices": "Home Services",
+    "salonSpa": "Salon & Spa",
+    "repairs": "Repairs",
+    "providersTitle": "For Providers",
+    "registerPro": "Register as Pro",
+    "dashboard": "Provider Dashboard",
+    "support": "Support",
+    "helpCenter": "Help Center",
+    "privacy": "Privacy Policy",
+    "terms": "Terms & Conditions",
+    "cancellation": "Cancellation Policy",
+    "tagline": "Connecting homes with trusted professionals.",
+    "copyright": "All rights reserved.",
+    "madeIn": "Made with ❤️ in Belagavi"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "home": "मुखपृष्ठ", "services": "सेवा", "providers": "सेवा प्रदाता",
+    "about": "आमच्याबद्दल", "contact": "संपर्क", "login": "लॉगिन",
+    "getStarted": "सुरू करा", "search": "सेवा शोधा...",
+    "searchButton": "शोधा", "allCategories": "सर्व श्रेण्या",
+    "browseAllCategories": "सर्व श्रेण्या ब्राउझ करा",
+    "findPerfectService": "तुमच्या गरजांसाठी योग्य सेवा शोधा",
+    "viewAll": "सर्व पहा"
+  },
+  "hero": {
+    "badge": "बेळगावीत 10,000+ ग्राहकांचा विश्वास",
+    "title": "विश्वासार्ह घरगुती सेवा, मागणीनुसार.",
+    "subtitle": "बेळगावीत कोणत्याही घरगुती सेवेसाठी सत्यापित व्यावसायिक बुक करा.",
+    "bookService": "सेवा बुक करा", "becomeProvider": "सेवा प्रदाता बना"
+  },
+  "trust": { "bookings": "बुकिंग", "professionals": "सत्यापित व्यावसायिक", "rating": "सरासरी रेटिंग", "categories": "सेवा श्रेण्या" },
+  "services": {
+    "label": "लोकप्रिय सेवा", "title": "तुमच्या घराच्या प्रत्येक गरजेसाठी.",
+    "subtitle": "लहान दुरुस्तीपासून पूर्ण मेकओव्हरपर्यंत.",
+    "electrical": "इलेक्ट्रिकल", "plumbing": "प्लंबिंग", "cleaning": "स्वच्छता",
+    "pestControl": "कीटक नियंत्रण", "acRepair": "एसी रिपेअर", "painting": "पेंटिंग",
+    "salon": "सलून अॅट होम", "carpentry": "सुतारकाम", "from": "पासून", "arrival": "आगमन"
+  },
+  "howItWorks": {
+    "label": "कसे काम करते", "title": "तीन पायऱ्या. इतकेच.",
+    "subtitle": "मिनिटांत काम पूर्ण करा.",
+    "step1Title": "सेवा निवडा", "step1Desc": "श्रेण्या ब्राउझ करा.",
+    "step2Title": "लगेच बुक करा", "step2Desc": "वेळ निवडा आणि पुष्टी करा.",
+    "step3Title": "काम करून घ्या", "step3Desc": "सत्यापित व्यावसायिक वेळेवर येतो."
+  },
+  "whyUs": {
+    "label": "आम्हाला का निवडा", "title": "विश्वास, वेग आणि गुणवत्ता.",
+    "verifiedTitle": "सत्यापित व्यावसायिक", "verifiedDesc": "प्रत्येक व्यावसायिक तपासला जातो.",
+    "pricingTitle": "पारदर्शक किंमत", "pricingDesc": "कोणतेही छुपे शुल्क नाही.",
+    "fastTitle": "जलद प्रतिसाद", "fastDesc": "30 मिनिटांपेक्षा कमी.",
+    "secureTitle": "सुरक्षित पेमेंट", "secureDesc": "ऑनलाइन सुरक्षित पेमेंट.",
+    "localTitle": "स्थानिक सहाय्य", "localDesc": "बेळगावीत सहाय्य टीम.",
+    "guaranteeTitle": "सेवा हमी", "guaranteeDesc": "समाधान नाही? आम्ही परतावा देऊ."
+  },
+  "provider": {
+    "label": "व्यावसायिकांसाठी", "title": "तुमच्या कौशल्याने कमवा.",
+    "subtitle": "हजारो व्यावसायिकांसोबत सामील व्हा.",
+    "flexWork": "लवचिक काम", "flexWorkDesc": "तुमचे वेळापत्रक निवडा.",
+    "payouts": "साप्ताहिक पेमेंट", "payoutsDesc": "दर आठवड्याला पेमेंट मिळवा.",
+    "customers": "अधिक ग्राहक", "customersDesc": "हजारो ग्राहकांपर्यंत पोहोचा.",
+    "onboarding": "सोपे ऑनबोर्डिंग", "onboardingDesc": "24 तासांत सुरू करा.",
+    "cta": "सेवा भागीदार बना"
+  },
+  "testimonials": { "label": "प्रशस्तिपत्रे", "title": "हजारो लोकांचे प्रेम.", "subtitle": "ग्राहक आमच्याबद्दल काय म्हणतात." },
+  "local": { "label": "स्थानिक व्याप्ती", "title": "अभिमानाने बेळगावी सेवेत", "subtitle": "सर्व प्रमुख भागांत उपलब्ध.", "areas": "आम्ही कुठे सेवा देतो" },
+  "app": {
+    "label": "मोबाइल अॅप", "title": "सर्व काही तुमच्या खिशात.", "subtitle": "अॅप डाउनलोड करा.",
+    "instantBooking": "तात्काळ बुकिंग", "realTimeTracking": "रिअल-टाइम ट्रॅकिंग",
+    "digitalPayments": "डिजिटल पेमेंट", "serviceHistory": "सेवा इतिहास",
+    "playStore": "Google Play", "appStore": "App Store"
+  },
+  "footer": {
+    "company": "कंपनी", "aboutUs": "आमच्याबद्दल", "careers": "करिअर", "blog": "ब्लॉग",
+    "contactUs": "संपर्क करा", "servicesTitle": "सेवा", "allServices": "सर्व सेवा",
+    "homeServices": "घरगुती सेवा", "salonSpa": "सलून आणि स्पा", "repairs": "दुरुस्ती",
+    "providersTitle": "प्रदात्यांसाठी", "registerPro": "प्रो म्हणून नोंदणी करा",
+    "dashboard": "प्रदाता डॅशबोर्ड", "support": "सहाय्य", "helpCenter": "मदत केंद्र",
+    "privacy": "गोपनीयता धोरण", "terms": "अटी आणि शर्ती", "cancellation": "रद्द धोरण",
+    "tagline": "घरांना विश्वासार्ह व्यावसायिकांशी जोडणे.", "copyright": "सर्व हक्क राखीव.",
+    "madeIn": "बेळगावीत ❤️ ने बनवले"
+  }
+}
