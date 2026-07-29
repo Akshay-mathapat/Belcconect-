@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>City Connect - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Poppins:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "primary": "#2563eb",
+                "on-primary": "#ffffff",
+                "surface": "#ffffff",
+                "on-surface": "#1e293b",
+                "on-surface-variant": "#64748b",
+                "outline": "#cbd5e1",
+                "background": "#f8fafc"
+            },
+            "fontFamily": {
+                "sans": ["Inter", "sans-serif"],
+                "heading": ["Poppins", "sans-serif"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .network-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen font-sans text-on-surface antialiased flex flex-col md:flex-row">
+<!-- Left Column (45%) -->
+<div class="hidden md:flex flex-col w-[45%] bg-gradient-to-br from-[#1e40af] to-[#2563eb] relative overflow-hidden p-8 lg:p-12">
+<div class="absolute inset-0 network-pattern opacity-50"></div><div class="absolute inset-0 opacity-[0.06] pointer-events-none flex items-center justify-center">
+<svg class="w-full h-full" fill="none" viewbox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+<circle cx="400" cy="400" r="300" stroke="white" stroke-dasharray="10 10" stroke-width="1"></circle>
+<path d="M200 400L400 200L600 400L400 600Z" stroke="white" stroke-width="1"></path>
+<circle cx="400" cy="200" fill="white" r="20"></circle>
+<circle cx="600" cy="400" fill="white" r="20"></circle>
+<circle cx="400" cy="600" fill="white" r="20"></circle>
+<circle cx="200" cy="400" fill="white" r="20"></circle>
+</svg>
+</div>
+<div class="relative z-10 flex flex-col h-full">
+<!-- Logo -->
+<a class="inline-flex items-center gap-3 text-white mb-12" href="#">
+<span class="material-symbols-outlined text-3xl">location_city</span>
+<span class="font-heading font-bold text-2xl tracking-tight">City Connect</span>
+</a>
+<!-- Header Content -->
+<div class="mb-12">
+<h1 class="font-heading font-bold text-4xl lg:text-5xl text-white mb-4 leading-tight">Welcome Back 👋</h1>
+<p class="text-blue-100 text-lg leading-relaxed max-w-md">
+                    Sign in to access verified services, discover local opportunities, manage bookings, and stay connected with your city—all in one place.
+                </p>
+</div>
+<!-- Trust Cards -->
+<div class="grid grid-cols-1 gap-4 mt-auto"><!-- Verified Professionals -->
+<div class="bg-white/95 backdrop-blur-sm rounded-[16px] p-6 flex items-center gap-5 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary !font-light">verified</span>
+</div>
+<div>
+<h4 class="font-semibold text-gray-900">Verified Professionals</h4>
+<p class="text-sm text-gray-500">Identity verified, Trusted by community.</p>
+</div>
+</div>
+<!-- Service Providers -->
+<div class="bg-white/95 backdrop-blur-sm rounded-[16px] p-6 flex items-center gap-5 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>
+<div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-green-600 !font-light">work</span>
+</div>
+<div>
+<h4 class="font-semibold text-gray-900">50K+ Service Providers</h4>
+<p class="text-sm text-gray-500">Across multiple cities.</p>
+</div>
+</div>
+<!-- Emergency Assistance -->
+<div class="bg-white/95 backdrop-blur-sm rounded-[16px] p-6 flex items-center gap-5 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
+<div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-red-600 !font-light">emergency</span>
+</div>
+<div>
+<h4 class="font-semibold text-gray-900">24/7 Emergency Assistance</h4>
+<p class="text-sm text-gray-500">Fast response when you need it.</p>
+</div>
+</div>
+<!-- AI Assistant -->
+<div class="bg-white/95 backdrop-blur-sm rounded-[16px] p-6 flex items-center gap-5 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
+<div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-purple-600 !font-light">smart_toy</span>
+</div>
+<div>
+<h4 class="font-semibold text-gray-900">AI Smart Assistant</h4>
+<p class="text-sm text-gray-500">Personalized recommendations.</p>
+</div>
+</div></div><div class="mt-12 pt-8 border-t border-white/10 flex flex-wrap gap-x-6 gap-y-2 text-blue-100/80 text-sm font-medium">
+<span>4.9 Rating</span>
+<span class="opacity-30">•</span>
+<span>50K+ Providers</span>
+<span class="opacity-30">•</span>
+<span>100+ Cities</span>
+<span class="opacity-30">•</span>
+<span>1M+ Bookings</span>
+</div>
+</div>
+</div>
+<!-- Right Column (55%) -->
+<div class="w-full md:w-[55%] flex flex-col p-6 md:p-12 lg:p-16 xl:p-24 bg-surface min-h-screen overflow-y-auto md:border-l md:border-gray-100">
+<!-- Back Link & Mobile Logo -->
+<div class="flex items-center justify-between mb-12">
+<a class="inline-flex items-center text-sm font-medium text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-lg mr-1">arrow_back</span>
+                Back to Home
+            </a>
+<a class="md:hidden inline-flex items-center gap-2 text-primary" href="#">
+<span class="material-symbols-outlined text-2xl">location_city</span>
+<span class="font-heading font-bold text-xl tracking-tight">City Connect</span>
+</a>
+</div>
+<div class="w-full max-w-[480px] mx-auto flex-1 flex flex-col justify-center">
+<!-- Form Header -->
+<div class="mb-8"><h2 class="font-heading font-bold text-3xl text-on-surface mb-4">Welcome Back</h2>
+<p class="text-on-surface-variant leading-relaxed">Sign in to continue managing your bookings, discover trusted services, and stay connected with your city.</p></div>
+<!-- Login Form -->
+<form action="#" class="space-y-6" method="POST">
+<div>
+<label class="block text-sm font-medium text-on-surface mb-2" for="identifier">Email or Phone Number</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">person</span>
+</div>
+<input class="block w-full pl-12 pr-4 py-4 border border-outline rounded-[12px] bg-white text-on-surface placeholder-gray-400 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-200" id="identifier" name="identifier" placeholder="name@example.com" required="" type="text"/>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<label class="block text-sm font-medium text-on-surface" for="password">Password</label>
+<a class="text-sm font-medium text-primary hover:text-blue-700 transition-colors" href="#">Forgot Password?</a>
+</div>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">lock</span>
+</div>
+<input class="block w-full pl-12 pr-12 py-4 border border-outline rounded-[12px] bg-white text-on-surface placeholder-gray-400 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-200" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+<button class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-outline hover:text-on-surface transition-colors focus:outline-none" onclick="togglePasswordVisibility()" type="button">
+<span class="material-symbols-outlined" id="visibility-icon">visibility</span>
+</button>
+</div>
+</div>
+<div class="flex items-center">
+<input class="h-4 w-4 text-primary focus:ring-primary border-outline rounded bg-white cursor-pointer" id="remember-me" name="remember-me" type="checkbox"/>
+<label class="ml-2 block text-sm text-on-surface-variant cursor-pointer" for="remember-me">
+                        Remember me for 30 days
+                    </label>
+</div>
+<button class="w-full flex justify-center items-center py-4 px-4 rounded-[12px] shadow-md text-sm font-semibold text-white bg-primary hover:bg-blue-700 hover:shadow-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200" type="submit">
+                    Sign In
+                </button>
+<div class="relative py-2">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline"></div>
+</div>
+<div class="relative flex justify-center text-sm">
+<span class="px-3 bg-surface text-on-surface-variant">Or continue with</span>
+</div>
+</div>
+<button class="w-full flex justify-center items-center gap-2 py-4 px-4 border border-outline rounded-[12px] shadow-sm text-sm font-semibold text-on-surface bg-white hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200" type="button">
+<svg class="h-5 w-5" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.79 15.71 17.57V20.34H19.28C21.36 18.42 22.56 15.6 22.56 12.25Z" fill="#4285F4"></path>
+<path d="M12 23C14.97 23 17.46 22.02 19.28 20.34L15.71 17.57C14.73 18.23 13.47 18.63 12 18.63C9.15 18.63 6.74 16.71 5.88 14.13H2.21V16.98C4.01 20.56 7.7 23 12 23Z" fill="#34A853"></path>
+<path d="M5.88 14.13C5.66 13.47 5.54 12.76 5.54 12C5.54 11.24 5.66 10.53 5.88 9.87V7.02H2.21C1.47 8.5 1 10.2 1 12C1 13.8 1.47 15.5 2.21 16.98L5.88 14.13Z" fill="#FBBC05"></path>
+<path d="M12 5.38C13.62 5.38 15.06 5.93 16.2 7.02L19.35 3.87C17.45 2.09 14.97 1 12 1C7.7 1 4.01 3.44 2.21 7.02L5.88 9.87C6.74 7.29 9.15 5.38 12 5.38Z" fill="#EA4335"></path>
+</svg>
+                    Continue with Google
+                </button>
+</form>
+<div class="mt-8 text-center">
+<p class="text-sm text-on-surface-variant">
+                    Don't have an account? 
+                    <a class="font-semibold text-primary hover:text-blue-700 transition-colors ml-1" href="#">Create Account</a>
+</p>
+</div>
+</div>
+</div>
+<script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const visibilityIcon = document.getElementById('visibility-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                visibilityIcon.textContent = 'visibility_off';
+            } else {
+                passwordInput.type = 'password';
+                visibilityIcon.textContent = 'visibility';
+            }
+        }
+    </script>
+</body></html>
