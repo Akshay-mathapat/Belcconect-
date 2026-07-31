@@ -29,7 +29,7 @@ export default function ProviderRegisterPage() {
     // Simulate verification
     setTimeout(() => {
       setIsLoading(false);
-      window.location.href = "/provider/dashboard";
+      window.location.href = "/provider";
     }, 1500);
   };
 

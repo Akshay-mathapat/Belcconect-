@@ -2,50 +2,65 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-type ThemeType = "light" | "dark" | "system";
+export type ThemeType = "light" | "dark" | "system";
 
 type ThemeContextValue = {
   theme: ThemeType;
   setTheme: (value: ThemeType) => void;
+  mounted: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "cityconnect-theme";
 
-const getSystemTheme = () =>
-  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+const getSystemTheme = () => {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
 
 const applyThemeClass = (theme: ThemeType) => {
+  if (typeof document === "undefined") return;
   const root = document.documentElement;
   const resolved = theme === "system" ? getSystemTheme() : theme;
-  root.classList.toggle("dark", resolved === "dark");
+  if (resolved === "dark") {
+    root.classList.add("dark");
+  } else {
+    root.classList.remove("dark");
+  }
 };
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeType>("system");
+  const [theme, setThemeState] = useState<ThemeType>("system");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeType | null;
       if (stored === "light" || stored === "dark" || stored === "system") {
-        setTheme(stored);
+        setThemeState(stored);
+        applyThemeClass(stored);
+      } else {
+        applyThemeClass("system");
       }
     } catch {
-      setTheme("system");
+      applyThemeClass("system");
     }
   }, []);
 
-  useEffect(() => {
-    applyThemeClass(theme);
+  const setTheme = (newTheme: ThemeType) => {
+    setThemeState(newTheme);
+    applyThemeClass(newTheme);
     try {
-      window.localStorage.setItem(STORAGE_KEY, theme);
+      window.localStorage.setItem(STORAGE_KEY, newTheme);
     } catch {
       // ignore storage errors
     }
-  }, [theme]);
+  };
 
   useEffect(() => {
+    if (!mounted) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
       if (theme === "system") {
@@ -54,9 +69,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
     media.addEventListener?.("change", handleChange);
     return () => media.removeEventListener?.("change", handleChange);
-  }, [theme]);
+  }, [theme, mounted]);
 
-  const value = useMemo(() => ({ theme, setTheme }), [theme]);
+  const value = useMemo(() => ({ theme, setTheme, mounted }), [theme, mounted]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

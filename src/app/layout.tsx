@@ -19,24 +19,24 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "BelConnect — Trusted Home Services, On Demand",
+  title: "BelConnect — Trusted Services, On Demand",
   description:
-    "Book verified professionals for electrical, plumbing, cleaning, painting, AC repair, salon, and more in Belagavi. Fast, reliable, affordable home services marketplace.",
+    "Book verified professionals for electrical, plumbing, cleaning, painting, AC repair, salon, tutoring, and more in Belagavi. Fast, reliable, affordable services marketplace.",
   keywords: [
-    "home services",
+    "services",
     "Belagavi",
     "electrician",
     "plumber",
     "cleaning",
-    "salon at home",
+    "salon",
     "AC repair",
     "verified professionals",
     "book services online",
   ],
   openGraph: {
-    title: "BelConnect — Trusted Home Services, On Demand",
+    title: "BelConnect — Trusted Services, On Demand",
     description:
-      "Book verified professionals for any home service in Belagavi. Fast, reliable, and affordable.",
+      "Book verified professionals for any service in Belagavi. Fast, reliable, and affordable.",
     type: "website",
     locale: "en_IN",
   },

@@ -22,6 +22,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SERVICE_CATEGORIES, SERVICE_TAXONOMY } from "@/constants/site";
 import { useTranslation } from "@/lib/i18n";
 
@@ -30,7 +31,13 @@ const iconMap: Record<string, any> = {
 };
 
 export default function CategoryBar() {
+  const pathname = usePathname();
   const { t } = useTranslation();
+
+  // Suppress category bar in Provider and JobProvider dashboards
+  if (pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider")) {
+    return null;
+  }
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(SERVICE_TAXONOMY[0]?.items[0]?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);

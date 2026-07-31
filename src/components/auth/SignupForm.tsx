@@ -3,16 +3,20 @@
 import { useState } from "react";
 import { ArrowRight, Briefcase, Building2, Check, Eye, EyeOff, Lock, Mail, Phone, User, Wrench } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
 import { PasswordStrength } from "./PasswordStrength";
+import { useAuthStore, UserRole } from "@/store/useAuthStore";
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
 }
 
 export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
-  const [signupRole, setSignupRole] = useState<"user" | "provider" | "job_provider">("user");
+  const router = useRouter();
+  const { registerUser } = useAuthStore();
+  const [signupRole, setSignupRole] = useState<UserRole>("user");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -24,15 +28,47 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
+
     if (!agreedToTerms) return;
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
     setIsLoading(true);
+
     setTimeout(() => {
       setIsLoading(false);
+      const res = registerUser({
+        email,
+        name: fullName,
+        phone,
+        role: signupRole
+      });
+
+      if (!res.success) {
+        setErrorMessage(res.error || "Registration failed.");
+        return;
+      }
+
       setIsSubmitted(true);
-    }, 1200);
+
+      // Auto-redirect based on selected role after 800ms
+      setTimeout(() => {
+        if (signupRole === "provider") {
+          router.push("/provider");
+        } else if (signupRole === "job_provider") {
+          router.push("/jobprovider");
+        } else {
+          router.push("/");
+        }
+      }, 800);
+    }, 600);
   };
 
   const getRoleTitle = () => {
@@ -49,12 +85,18 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const getRoleDescription = () => {
     switch (signupRole) {
       case "provider":
-        return "Welcome! Your Service Provider account is ready. Start listing services and getting hired by local clients.";
+        return "Welcome! Your Service Provider account is ready. Redirecting to your Provider Dashboard...";
       case "job_provider":
-        return "Welcome! Your Job Provider account is ready. Post job openings and recruit verified local talent.";
+        return "Welcome! Your Job Provider account is ready. Redirecting to your Job Provider Workspace...";
       default:
-        return "Welcome! Your User account is ready. You can now start booking services and discovering local opportunities.";
+        return "Welcome! Your User account is ready. Redirecting to the BelConnect Marketplace...";
     }
+  };
+
+  const getTargetUrl = () => {
+    if (signupRole === "provider") return "/provider";
+    if (signupRole === "job_provider") return "/jobprovider";
+    return "/";
   };
 
   if (isSubmitted) {
@@ -69,14 +111,17 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         <p className="text-sm text-emerald-700 dark:text-emerald-300">
           {getRoleDescription()}
         </p>
-        <button
-          type="button"
-          onClick={onSwitchToLogin}
-          className="inline-flex items-center justify-center w-full py-3 px-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-md cursor-pointer"
+        <Link
+          href={getTargetUrl()}
+          className="inline-flex items-center justify-center w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md cursor-pointer"
         >
-          Proceed to Sign In
+          {signupRole === "provider" 
+            ? "Proceed to Provider Dashboard" 
+            : signupRole === "job_provider"
+            ? "Proceed to Job Provider Portal"
+            : "Proceed to Marketplace"}
           <ArrowRight className="w-4 h-4 ml-2" />
-        </button>
+        </Link>
       </div>
     );
   }
@@ -130,6 +175,13 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         </button>
       </div>
 
+      {errorMessage && (
+        <div className="mb-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Full Name / Company Name Input */}
         <div>
@@ -160,7 +212,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                   ? "Jane Doe (Certified Technician)"
                   : "Jane Doe"
               }
-              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
             />
           </div>
         </div>
@@ -178,7 +230,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(555) 123-4567"
-              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
             />
           </div>
         </div>
@@ -196,7 +248,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="jane@example.com"
-              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
             />
           </div>
         </div>
@@ -214,7 +266,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-11 pr-11 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              className="w-full pl-11 pr-11 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
             />
             <button
               type="button"
@@ -246,7 +298,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               className={`w-full pl-11 pr-11 py-3 bg-muted/30 border rounded-xl focus:bg-background focus:ring-2 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground ${
                 confirmPassword && confirmPassword !== password
                   ? "border-rose-500 focus:ring-rose-500/40"
-                  : "border-border focus:ring-primary/40 focus:border-primary"
+                  : "border-border focus:ring-blue-600/40 focus:border-blue-600"
               }`}
             />
             <button
@@ -273,7 +325,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             required
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="w-4 h-4 mt-0.5 rounded border-border text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+            className="w-4 h-4 mt-0.5 rounded border-border text-blue-600 focus:ring-blue-600 accent-blue-600 cursor-pointer"
           />
           <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
             I agree to the{" "}

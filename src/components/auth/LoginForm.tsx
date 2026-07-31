@@ -1,49 +1,95 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, User, Wrench, Briefcase } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
+import { useAuthStore, UserRole } from "@/store/useAuthStore";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
 }
 
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
+  const router = useRouter();
+  const { loginUser } = useAuthStore();
+  const [loginRole, setLoginRole] = useState<UserRole>("user");
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
     setIsLoading(true);
+    
     setTimeout(() => {
       setIsLoading(false);
+      const res = loginUser({ email: emailOrPhone, role: loginRole });
+
+      if (!res.success) {
+        setErrorMessage(res.error || "Login failed. Please check your credentials.");
+        return;
+      }
+
       setIsSubmitted(true);
-    }, 1200);
+      
+      // Auto-redirect based on selected role after 800ms
+      setTimeout(() => {
+        if (loginRole === "provider") {
+          router.push("/provider");
+        } else if (loginRole === "job_provider") {
+          router.push("/jobprovider");
+        } else {
+          router.push("/");
+        }
+      }, 800);
+    }, 600);
+  };
+
+  const getRedirectPath = () => {
+    if (loginRole === "provider") return "/provider";
+    if (loginRole === "job_provider") return "/jobprovider";
+    return "/";
   };
 
   if (isSubmitted) {
+    const targetUrl = getRedirectPath();
+
     return (
       <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center space-y-4">
         <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
           <Check className="w-7 h-7" />
         </div>
         <h3 className="text-xl font-bold text-emerald-900 dark:text-emerald-200">
-          Logged In Successfully!
+          {loginRole === "provider" 
+            ? "Logged In as Service Provider!" 
+            : loginRole === "job_provider" 
+            ? "Logged In as Job Provider!" 
+            : "Logged In Successfully!"}
         </h3>
         <p className="text-sm text-emerald-700 dark:text-emerald-300">
-          Welcome back! Redirecting you to the main dashboard...
+          {loginRole === "provider" 
+            ? "Welcome back! Redirecting to your Provider Dashboard..."
+            : loginRole === "job_provider"
+            ? "Welcome back! Redirecting to your Job Provider Workspace..."
+            : "Welcome back! Redirecting to the BelConnect Marketplace..."}
         </p>
         <Link
-          href="/"
-          className="inline-flex items-center justify-center w-full py-3 px-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-md"
+          href={targetUrl}
+          className="inline-flex items-center justify-center w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md"
         >
-          Go to Home
+          {loginRole === "provider" 
+            ? "Go to Provider Dashboard" 
+            : loginRole === "job_provider" 
+            ? "Go to Job Provider Portal" 
+            : "Go to Home"}
           <ArrowRight className="w-4 h-4 ml-2" />
         </Link>
       </div>
@@ -54,8 +100,56 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     <div className="w-full">
       <AuthHeader
         title="Welcome Back"
-        subtitle="Enter your email or phone number to access your account."
+        subtitle="Select your account role and enter your credentials to sign in."
       />
+
+      {/* Role Switcher Tabs */}
+      <div className="mb-6 p-1 bg-muted/70 dark:bg-zinc-800/70 rounded-xl grid grid-cols-3 gap-1 border border-border/50">
+        <button
+          type="button"
+          onClick={() => setLoginRole("user")}
+          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            loginRole === "user"
+              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <User className="w-3.5 h-3.5" />
+          Customer
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setLoginRole("provider")}
+          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            loginRole === "provider"
+              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Wrench className="w-3.5 h-3.5" />
+          Provider
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setLoginRole("job_provider")}
+          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            loginRole === "job_provider"
+              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Briefcase className="w-3.5 h-3.5" />
+          Job Provider
+        </button>
+      </div>
+
+      {errorMessage && (
+        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold">
+          ⚠️ {errorMessage}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         {/* Email or Phone Input */}
@@ -71,7 +165,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               value={emailOrPhone}
               onChange={(e) => setEmailOrPhone(e.target.value)}
               placeholder="jane@example.com or (555) 123-4567"
-              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
             />
           </div>
         </div>
@@ -101,7 +195,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-11 pr-11 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              className="w-full pl-11 pr-11 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
             />
             <button
               type="button"
@@ -122,7 +216,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-border text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+              className="w-4 h-4 rounded border-border text-blue-600 focus:ring-blue-600 accent-blue-600 cursor-pointer"
             />
             <span>Remember me on this device</span>
           </label>
@@ -139,12 +233,16 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
+          ) : loginRole === "provider" ? (
+            "Sign In to Provider Dashboard"
+          ) : loginRole === "job_provider" ? (
+            "Sign In as Job Provider"
           ) : (
             "Sign In"
           )}
         </button>
 
-        {/* Encrypted Security Badge */}
+        {/* Security Badge */}
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-0.5">
           <span>🔒</span>
           <span>Your information is securely encrypted and protected.</span>
