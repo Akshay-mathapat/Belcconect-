@@ -5,7 +5,8 @@ export type BookingStatus =
   | "Started"
   | "Completed"
   | "PaymentReceived"
-  | "ReviewSubmitted";
+  | "ReviewSubmitted"
+  | "Rejected";
 
 export interface Booking {
   id: string;

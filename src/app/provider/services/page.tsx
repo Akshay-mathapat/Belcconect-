@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
@@ -20,10 +20,15 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
+import { SERVICE_CATEGORIES } from "@/constants/site";
 
 export default function ServicesManagementPage() {
-  const { services, toggleServiceAvailability, deleteService, addService } = useProviderStore();
+  const { services, toggleServiceAvailability, deleteService, addService, fetchProviderServices } = useProviderStore();
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    fetchProviderServices();
+  }, [fetchProviderServices]);
 
   const filteredServices = services.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,7 +105,7 @@ export default function ServicesManagementPage() {
                 
                 {/* Category Badge */}
                 <span className="absolute top-3 left-3 text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white">
-                  {s.category}
+                  {SERVICE_CATEGORIES.find(c => c.id === s.category)?.name || s.category}
                 </span>
 
                 {/* Status Toggle */}

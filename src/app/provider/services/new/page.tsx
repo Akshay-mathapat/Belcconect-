@@ -71,14 +71,14 @@ export default function NewServicePage() {
     setFaqs(faqs.filter((_, i) => i !== idx));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.category || !formData.subcategory || !formData.description) {
       alert("Please fill in all required fields (Name, Category, Subcategory, and Description).");
       return;
     }
 
-    addService({
+    await addService({
       ...formData,
       thumbnail: formData.thumbnail || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=400&q=80",
       faqs,
@@ -153,7 +153,7 @@ export default function NewServicePage() {
                 >
                   <option value="" disabled>Select Service Category</option>
                   {SERVICE_CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.name}>
+                    <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
                   ))}

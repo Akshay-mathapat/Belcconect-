@@ -387,6 +387,7 @@ export default function Navigation() {
                           logout();
                           setUserMenuOpen(false);
                           router.push("/");
+                          router.refresh();
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold transition-colors cursor-pointer"
                       >
@@ -594,6 +595,7 @@ export default function Navigation() {
                         logout();
                         setMobileOpen(false);
                         router.push("/");
+                        router.refresh();
                       }}
                       className="block w-full rounded-xl border border-rose-500/30 bg-rose-500/10 py-3 text-center text-sm font-bold text-rose-500 transition-colors hover:bg-rose-500/20 cursor-pointer"
                     >

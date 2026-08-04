@@ -82,6 +82,17 @@ export default function ProviderLayout({
     };
   }, []);
 
+  // Redirect unauthorized roles
+  useEffect(() => {
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+    if (currentUser.role !== "provider") {
+      router.push("/");
+    }
+  }, [currentUser, router]);
+
   // Auto-close search on route navigation
   useEffect(() => {
     setSearchFocused(false);
@@ -101,6 +112,14 @@ export default function ProviderLayout({
     { label: "Services", href: "/provider/services", icon: Wrench },
     { label: "Profile", href: "/provider/profile", icon: User },
   ];
+
+  if (!currentUser || currentUser.role !== "provider") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-background text-foreground flex flex-col relative">
@@ -126,7 +145,7 @@ export default function ProviderLayout({
                 {SITE_NAME}
               </span>
               <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
-                Job Provider Portal
+                Service Provider Portal
               </span>
             </div>
           </Link>

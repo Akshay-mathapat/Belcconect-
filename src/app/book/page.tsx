@@ -7,31 +7,85 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 function BookingFlow() {
+  const { currentUser } = useAuthStore();
   const searchParams = useSearchParams();
   const service = searchParams.get("service") || "Service";
   const proId = searchParams.get("pro");
+  const priceParam = searchParams.get("price");
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [address, setAddress] = useState("home");
+  const [newAddressText, setNewAddressText] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [payment, setPayment] = useState("online");
 
-
-
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
 
-  const handleConfirm = () => {
+  const getProviderName = (id: string | null) => {
+    const proNameParam = searchParams.get("proName");
+    if (proNameParam) return decodeURIComponent(proNameParam);
+    switch (id) {
+      case "1": return "Ramesh Sharma";
+      case "2": return "Suresh Kumar";
+      case "3": return "Anil Desai";
+      case "4": return "Priya Patil";
+      default: return "Rohan Electrician";
+    }
+  };
+
+  const handleConfirm = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const customerId = currentUser?.id || "customer-1";
+      const customerName = currentUser?.name || "Akshay Mathapati";
+      const customerPhone = currentUser?.phone || "+91 98765 43210";
+      const customerPhoto = currentUser?.avatar || "";
+
+      // For mock providers, fallback to provider-1 Rohan. Otherwise use custom provider ID.
+      const resolvedProviderId = proId && proId !== "1" && proId !== "2" && proId !== "3" && proId !== "4" 
+        ? proId 
+        : "provider-1";
+
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          customerId,
+          providerId: resolvedProviderId,
+          providerName: getProviderName(proId),
+          serviceName: service,
+          category: service.toLowerCase(),
+          customerName,
+          customerPhone,
+          customerPhoto,
+          date,
+          time: time || "10:00 AM",
+          address: address === "home" ? "123 Main St, Tilakwadi, Belagavi, 590006" : (newAddressText || "New Address"),
+          price: priceParam ? Number(priceParam) : 299.00
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to create booking");
+      }
+
       setIsSubmitting(false);
       setStep(6);
-    }, 1500);
+    } catch (e) {
+      console.error("Booking submission error:", e);
+      alert("Booking failed. Please check your server and database connection.");
+      setIsSubmitting(false);
+    }
   };
+
 
   return (
     <div className="flex-1 flex items-center justify-center pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -96,7 +150,7 @@ function BookingFlow() {
                   </div>
                 </label>
                 {address === "new" && (
-                  <input type="text" placeholder="Full Address" className="w-full mt-3 px-4 py-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-primary focus:border-transparent text-sm" />
+                  <input type="text" value={newAddressText} onChange={(e) => setNewAddressText(e.target.value)} placeholder="Full Address" className="w-full mt-3 px-4 py-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-primary focus:border-transparent text-sm" />
                 )}
               </div>
               <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all">Continue</button>

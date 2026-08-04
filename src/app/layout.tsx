@@ -57,7 +57,7 @@ export default function RootLayout({
       className={cn("h-full antialiased", inter.variable, outfit.variable)}
     >
       <head />
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <I18nProvider>
           <ThemeProvider>
             <Navigation />

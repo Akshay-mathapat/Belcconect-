@@ -14,8 +14,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const router = useRouter();
-  const { loginUser } = useAuthStore();
-  const [loginRole, setLoginRole] = useState<UserRole>("user");
+  const { loginUser, currentUser } = useAuthStore();
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,14 +23,14 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setIsLoading(true);
     
-    setTimeout(() => {
+    try {
+      const res = await loginUser({ email: emailOrPhone, password });
       setIsLoading(false);
-      const res = loginUser({ email: emailOrPhone, role: loginRole });
 
       if (!res.success) {
         setErrorMessage(res.error || "Login failed. Please check your credentials.");
@@ -40,22 +39,26 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
       setIsSubmitted(true);
       
-      // Auto-redirect based on selected role after 800ms
+      const userRole = res.user?.role || "user";
+      // Auto-redirect based on detected role after 800ms
       setTimeout(() => {
-        if (loginRole === "provider") {
+        if (userRole === "provider") {
           router.push("/provider");
-        } else if (loginRole === "job_provider") {
+        } else if (userRole === "job_provider") {
           router.push("/jobprovider");
         } else {
           router.push("/");
         }
       }, 800);
-    }, 600);
+    } catch (err) {
+      setIsLoading(false);
+      setErrorMessage("An unexpected error occurred during login.");
+    }
   };
 
   const getRedirectPath = () => {
-    if (loginRole === "provider") return "/provider";
-    if (loginRole === "job_provider") return "/jobprovider";
+    if (currentUser?.role === "provider") return "/provider";
+    if (currentUser?.role === "job_provider") return "/jobprovider";
     return "/";
   };
 
@@ -68,16 +71,16 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           <Check className="w-7 h-7" />
         </div>
         <h3 className="text-xl font-bold text-emerald-900 dark:text-emerald-200">
-          {loginRole === "provider" 
+          {currentUser?.role === "provider" 
             ? "Logged In as Service Provider!" 
-            : loginRole === "job_provider" 
+            : currentUser?.role === "job_provider" 
             ? "Logged In as Job Provider!" 
             : "Logged In Successfully!"}
         </h3>
         <p className="text-sm text-emerald-700 dark:text-emerald-300">
-          {loginRole === "provider" 
+          {currentUser?.role === "provider" 
             ? "Welcome back! Redirecting to your Provider Dashboard..."
-            : loginRole === "job_provider"
+            : currentUser?.role === "job_provider"
             ? "Welcome back! Redirecting to your Job Provider Workspace..."
             : "Welcome back! Redirecting to the BelConnect Marketplace..."}
         </p>
@@ -85,9 +88,9 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           href={targetUrl}
           className="inline-flex items-center justify-center w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md"
         >
-          {loginRole === "provider" 
+          {currentUser?.role === "provider" 
             ? "Go to Provider Dashboard" 
-            : loginRole === "job_provider" 
+            : currentUser?.role === "job_provider" 
             ? "Go to Job Provider Portal" 
             : "Go to Home"}
           <ArrowRight className="w-4 h-4 ml-2" />
@@ -100,50 +103,8 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     <div className="w-full">
       <AuthHeader
         title="Welcome Back"
-        subtitle="Select your account role and enter your credentials to sign in."
+        subtitle="Enter your credentials to sign in to your dashboard automatically."
       />
-
-      {/* Role Switcher Tabs */}
-      <div className="mb-6 p-1 bg-muted/70 dark:bg-zinc-800/70 rounded-xl grid grid-cols-3 gap-1 border border-border/50">
-        <button
-          type="button"
-          onClick={() => setLoginRole("user")}
-          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            loginRole === "user"
-              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <User className="w-3.5 h-3.5" />
-          Customer
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setLoginRole("provider")}
-          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            loginRole === "provider"
-              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Wrench className="w-3.5 h-3.5" />
-          Provider
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setLoginRole("job_provider")}
-          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            loginRole === "job_provider"
-              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Briefcase className="w-3.5 h-3.5" />
-          Job Provider
-        </button>
-      </div>
 
       {errorMessage && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold">
@@ -233,10 +194,6 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-          ) : loginRole === "provider" ? (
-            "Sign In to Provider Dashboard"
-          ) : loginRole === "job_provider" ? (
-            "Sign In as Job Provider"
           ) : (
             "Sign In"
           )}

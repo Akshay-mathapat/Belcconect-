@@ -34,7 +34,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export default function ProviderDashboardPage() {
   const { currentUser } = useAuthStore();
-  const { profile, bookings, services, updateBookingStatus, syncWithAuthUser } = useProviderStore();
+  const { profile, bookings, services, updateBookingStatus, syncWithAuthUser, fetchProviderBookings, fetchProviderServices } = useProviderStore();
   const [showAllServices, setShowAllServices] = useState(false);
 
   useEffect(() => {
@@ -46,7 +46,9 @@ export default function ProviderDashboardPage() {
         avatar: currentUser.avatar
       });
     }
-  }, [currentUser, syncWithAuthUser]);
+    fetchProviderBookings();
+    fetchProviderServices();
+  }, [currentUser, syncWithAuthUser, fetchProviderBookings, fetchProviderServices]);
 
   const totalBookings = bookings.length;
   const pendingRequests = bookings.filter((b) => b.status === "Requested").length;
@@ -151,6 +153,7 @@ export default function ProviderDashboardPage() {
                         booking.status === "Accepted" ? "bg-sky-500/10 text-sky-600 border border-sky-500/20" :
                         booking.status === "OnTheWay" || booking.status === "Started" ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
                         booking.status === "Completed" || booking.status === "ReviewSubmitted" || booking.status === "PaymentReceived" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
+                        booking.status === "Rejected" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
                         "bg-muted text-muted-foreground border border-border"
                       }`}>
                         {booking.status}
@@ -182,13 +185,22 @@ export default function ProviderDashboardPage() {
                   <span className="text-xs font-extrabold text-foreground mr-1">₹{booking.price}</span>
 
                   {booking.status === "Requested" && (
-                    <button
-                      onClick={() => updateBookingStatus(booking.id, "Accepted")}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      <span>Accept Request</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateBookingStatus(booking.id, "Accepted")}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        <span>Accept</span>
+                      </button>
+                      <button
+                        onClick={() => updateBookingStatus(booking.id, "Rejected")}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                      >
+                        <CalendarX className="h-3.5 w-3.5" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
                   )}
 
                   {booking.status === "Accepted" && (

@@ -30,7 +30,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -42,14 +42,15 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const res = registerUser({
+    try {
+      const res = await registerUser({
         email,
+        password,
         name: fullName,
         phone,
         role: signupRole
       });
+      setIsLoading(false);
 
       if (!res.success) {
         setErrorMessage(res.error || "Registration failed.");
@@ -68,7 +69,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           router.push("/");
         }
       }, 800);
-    }, 600);
+    } catch (err) {
+      setIsLoading(false);
+      setErrorMessage("An unexpected error occurred during registration.");
+    }
   };
 
   const getRoleTitle = () => {
@@ -138,7 +142,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         <button
           type="button"
           onClick={() => setSignupRole("user")}
-          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`py-2 px-1 sm:px-2 text-[10px] sm:text-xs md:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
             signupRole === "user"
               ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
               : "text-muted-foreground hover:text-foreground"
@@ -151,20 +155,20 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         <button
           type="button"
           onClick={() => setSignupRole("provider")}
-          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`py-2 px-1 sm:px-2 text-[10px] sm:text-xs md:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
             signupRole === "provider"
               ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Wrench className="w-3.5 h-3.5" />
-          Provider
+          Service Provider
         </button>
 
         <button
           type="button"
           onClick={() => setSignupRole("job_provider")}
-          className={`py-2 px-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`py-2 px-1 sm:px-2 text-[10px] sm:text-xs md:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
             signupRole === "job_provider"
               ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
               : "text-muted-foreground hover:text-foreground"

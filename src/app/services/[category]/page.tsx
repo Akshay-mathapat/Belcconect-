@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Star, Clock, MapPin, Search, User } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { SERVICE_CATEGORIES } from "@/constants/site";
 
@@ -17,17 +17,56 @@ export default function ServicesCategoryPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("Recommended");
+  const [dbPros, setDbPros] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCategoryServices = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/services?category=${encodeURIComponent(categoryId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDbPros(data);
+        }
+      } catch (e) {
+        console.error("Failed to load category services:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCategoryServices();
+  }, [categoryId]);
 
   const mockPros = [
-    { id: 1, name: "Ramesh Sharma", rating: 4.9, reviews: 128, jobs: 450, exp: 8 },
-    { id: 2, name: "Suresh Kumar", rating: 4.7, reviews: 85, jobs: 310, exp: 5 },
-    { id: 3, name: "Anil Desai", rating: 4.8, reviews: 104, jobs: 385, exp: 12 },
-    { id: 4, name: "Priya Patil", rating: 5.0, reviews: 62, jobs: 190, exp: 4 },
+    { id: "mock-1", name: "Ramesh Sharma", rating: 4.9, reviews: 128, jobs: 450, exp: 8, serviceName: "AC Repair & Servicing", basePrice: 499, description: "Professional AC repair and maintenance.", serviceId: undefined, providerId: "1" },
+    { id: "mock-2", name: "Suresh Kumar", rating: 4.7, reviews: 85, jobs: 310, exp: 5, serviceName: "Electrician Works", basePrice: 299, description: "General electrical repairs and installations.", serviceId: undefined, providerId: "2" },
+    { id: "mock-3", name: "Anil Desai", rating: 4.8, reviews: 104, jobs: 385, exp: 12, serviceName: "Plumbing Services", basePrice: 349, description: "Leakages fixing, pipeline repairs.", serviceId: undefined, providerId: "3" },
+    { id: "mock-4", name: "Priya Patil", rating: 5.0, reviews: 62, jobs: 190, exp: 4, serviceName: "Home Cleaning", basePrice: 599, description: "Deep cleaning, dusting, and sanitation.", serviceId: undefined, providerId: "4" },
   ];
 
+  const dbFormatted = dbPros.map(srv => ({
+    id: srv.id,
+    name: srv.providerName || "Professional",
+    rating: srv.rating || 5.0,
+    reviews: srv.reviews || 0,
+    jobs: srv.jobs || 12,
+    exp: srv.exp || 3,
+    providerId: srv.providerId,
+    serviceId: srv.id,
+    serviceName: srv.name,
+    description: srv.description,
+    basePrice: srv.basePrice
+  }));
+
+  const combinedPros = [...dbFormatted, ...mockPros];
+
   // Apply sorting and filtering
-  const filteredPros = mockPros
-    .filter(pro => pro.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredPros = combinedPros
+    .filter(pro => 
+      pro.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      pro.serviceName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     .sort((a, b) => {
       if (sortBy === "Rating: High to Low") return b.rating - a.rating;
       if (sortBy === "Most Experienced") return b.exp - a.exp;
@@ -126,8 +165,13 @@ export default function ServicesCategoryPage() {
                   <div className="flex-1">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
                       <div>
-                        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-foreground flex flex-wrap items-center gap-2">
                           {pro.name}
+                          {pro.serviceId && (
+                            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-2 py-0.5 rounded-lg">
+                              {pro.serviceName}
+                            </span>
+                          )}
                           <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Verified</span>
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
@@ -139,23 +183,28 @@ export default function ServicesCategoryPage() {
                           <span>{pro.jobs} jobs done</span>
                           <span>•</span>
                           <span>{pro.exp} yrs exp</span>
+                          <span>•</span>
+                          <span className="font-semibold text-foreground">₹{pro.basePrice} onwards</span>
                         </div>
                       </div>
                     </div>
                     
                     <p className="text-sm text-muted-foreground line-clamp-2 mt-3 mb-4">
-                      Experienced professional providing top-quality {category.name.toLowerCase()} with a focus on reliability and customer satisfaction.
+                      {pro.description || `Experienced professional providing top-quality ${category.name.toLowerCase()} with a focus on reliability and customer satisfaction.`}
                     </p>
                     
                     <div className="flex items-center gap-3">
                       <Link 
-                        href={`/book?pro=${pro.id}&service=${categoryId}`}
+                        href={pro.serviceId 
+                          ? `/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&price=${pro.basePrice}&proName=${encodeURIComponent(pro.name)}`
+                          : `/book?pro=${pro.providerId}&service=${categoryId}`
+                        }
                         className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"
                       >
                         Book Now
                       </Link>
                       <Link 
-                        href={`/provider/${pro.id}`}
+                        href={`/provider/${pro.providerId}`}
                         className="inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted"
                       >
                         View Profile

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navigation from "@/components/sections/Navigation";
 import Footer from "@/components/sections/Footer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,8 +28,20 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export default function AccountPage() {
   const router = useRouter();
-  const { currentUser, updateProfile, addAddress, deleteAddress, logout } = useAuthStore();
+  const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings } = useAuthStore();
   const [activeTab, setActiveTab] = useState<"bookings" | "addresses" | "profile">("bookings");
+
+  useEffect(() => {
+    if (currentUser) {
+      // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
+      if (currentUser.id.startsWith("user-") && currentUser.id !== "customer-1") {
+        logout();
+        router.push("/login");
+        return;
+      }
+      fetchUserBookings();
+    }
+  }, [fetchUserBookings, currentUser?.id, router, logout]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
@@ -41,6 +53,13 @@ export default function AccountPage() {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressType, setAddressType] = useState("Home");
   const [addressText, setAddressText] = useState("");
+
+  // Reschedule Modal State
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [isRescheduling, setIsRescheduling] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,6 +109,73 @@ export default function AccountPage() {
     addAddress({ type: addressType, text: addressText.trim() });
     setAddressText("");
     setShowAddressModal(false);
+  };
+
+  // Handle Cancel Booking
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!confirm("Are you sure you want to cancel this booking?")) return;
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Cancelled" })
+      });
+      if (res.ok) {
+        fetchUserBookings();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to cancel booking");
+      }
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      alert("Network error. Could not cancel booking.");
+    }
+  };
+
+  // Handle Reschedule Submit
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rescheduleBookingId || !rescheduleDate || !rescheduleTime) return;
+    setIsRescheduling(true);
+    try {
+      const res = await fetch(`/api/bookings/${rescheduleBookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: rescheduleDate, time: rescheduleTime })
+      });
+      if (res.ok) {
+        fetchUserBookings();
+        setShowRescheduleModal(false);
+        setRescheduleBookingId(null);
+        setRescheduleDate("");
+        setRescheduleTime("");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to reschedule booking");
+      }
+    } catch (error) {
+      console.error("Error rescheduling booking:", error);
+      alert("Network error. Could not reschedule booking.");
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
+
+  // Handle Rebook Redirect
+  const handleRebook = (serviceName: string) => {
+    router.push(`/book?pro=1&service=${encodeURIComponent(serviceName)}`);
+  };
+
+  // Handle Rate Service Dialog
+  const handleRateService = (bookingId: string) => {
+    const rating = prompt("Rate this service from 1 to 5 stars:");
+    if (!rating) return;
+    const ratingNum = parseInt(rating, 10);
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      alert("Please enter a valid rating between 1 and 5.");
+      return;
+    }
+    alert(`Thank you! You rated Booking ${bookingId} with ${ratingNum} stars.`);
   };
 
   return (
@@ -249,7 +335,9 @@ export default function AccountPage() {
                             <div className="flex items-center gap-3 mb-2">
                               <span
                                 className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                  booking.status === "Upcoming"
+                                  booking.status === "Accepted" || booking.status === "OnTheWay" || booking.status === "Started"
+                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400"
+                                    : booking.status === "Requested" || booking.status === "Upcoming"
                                     ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                                     : booking.status === "Completed"
                                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
@@ -274,23 +362,40 @@ export default function AccountPage() {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {booking.status === "Upcoming" ? (
+                            {["Upcoming", "Requested", "Accepted", "OnTheWay", "Started"].includes(booking.status) ? (
                               <>
-                                <button className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer">
+                                <button
+                                  onClick={() => {
+                                    setRescheduleBookingId(booking.id);
+                                    setShowRescheduleModal(true);
+                                  }}
+                                  className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
+                                >
                                   Reschedule
                                 </button>
-                                <button className="px-4 py-2 rounded-xl border border-rose-500/20 text-rose-500 text-xs font-semibold hover:bg-rose-500/10 transition-colors cursor-pointer">
+                                <button
+                                  onClick={() => handleCancelBooking(booking.id)}
+                                  className="px-4 py-2 rounded-xl border border-rose-500/20 text-rose-500 text-xs font-semibold hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                >
                                   Cancel
                                 </button>
                               </>
                             ) : (
                               <>
-                                <button className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer">
+                                <button
+                                  onClick={() => handleRebook(booking.service)}
+                                  className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
+                                >
                                   Rebook
                                 </button>
-                                <button className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1 cursor-pointer">
-                                  <Star className="h-3.5 w-3.5" /> Rate Service
-                                </button>
+                                {booking.status === "Completed" && (
+                                  <button
+                                    onClick={() => handleRateService(booking.id)}
+                                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Star className="h-3.5 w-3.5" /> Rate Service
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>
@@ -564,6 +669,7 @@ export default function AccountPage() {
                           onClick={() => {
                             logout();
                             router.push("/");
+                            router.refresh();
                           }}
                           className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
                         >
@@ -579,6 +685,94 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
+
+      {/* Reschedule Modal Overlay */}
+      <AnimatePresence>
+        {showRescheduleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-card border border-border rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 text-foreground"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <h3 className="font-heading text-lg font-bold text-foreground">Reschedule Service</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRescheduleModal(false);
+                    setRescheduleBookingId(null);
+                  }}
+                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Close reschedule modal"
+                >
+                  <Trash2 className="w-4 h-4 rotate-45" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRescheduleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    New Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-background text-sm text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    New Time Slot
+                  </label>
+                  <select
+                    required
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-background text-sm text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  >
+                    <option value="">Select a time slot</option>
+                    <option value="09:00 AM">09:00 AM - 11:00 AM</option>
+                    <option value="11:00 AM">11:00 AM - 01:00 PM</option>
+                    <option value="01:00 PM">01:00 PM - 03:00 PM</option>
+                    <option value="03:00 PM">03:00 PM - 05:00 PM</option>
+                    <option value="05:00 PM">05:00 PM - 07:00 PM</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setRescheduleBookingId(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isRescheduling}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    {isRescheduling ? "Updating..." : "Confirm Reschedule"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </main>

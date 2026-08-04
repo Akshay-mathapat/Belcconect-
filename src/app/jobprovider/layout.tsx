@@ -70,6 +70,17 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
     };
   }, []);
 
+  // Redirect unauthorized roles
+  useEffect(() => {
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+    if (currentUser.role !== "job_provider") {
+      router.push("/");
+    }
+  }, [currentUser, router]);
+
   const themeOptions = [
     { value: "light" as const, icon: Sun, label: "Light" },
     { value: "dark" as const, icon: Moon, label: "Dark" },
@@ -98,6 +109,14 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
     else if (panelKey === "post-job") router.push("/jobprovider/post-job");
     else router.push("/jobprovider/dashboard");
   };
+
+  if (!currentUser || currentUser.role !== "job_provider") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-muted/10 text-foreground flex flex-col">
@@ -286,7 +305,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                         <p className="font-bold text-foreground truncate">{currentUser.name}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{currentUser.email}</p>
                         <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                          {currentUser.role === "provider" ? "Service Provider" : currentUser.role === "job_provider" ? "Employer" : "Customer Account"}
+                          Employer
                         </span>
                       </div>
 

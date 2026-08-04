@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { useAuthStore } from "./useAuthStore";
 import { 
   Booking, 
   BookingStatus, 
@@ -32,15 +33,17 @@ interface ProviderStoreState {
   
   // Actions
   toggleOnlineStatus: () => void;
-  updateBookingStatus: (id: string, status: BookingStatus) => void;
+  updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
   updateBookingNotes: (id: string, notes: string) => void;
   addBookingBeforeImage: (id: string, image: string) => void;
   addBookingAfterImage: (id: string, image: string) => void;
+  fetchProviderBookings: () => Promise<void>;
+  fetchProviderServices: () => Promise<void>;
   
-  addService: (service: Omit<ServiceItem, "id" | "bookingsCount" | "rating">) => void;
-  updateService: (id: string, service: Partial<ServiceItem>) => void;
-  deleteService: (id: string) => void;
-  toggleServiceAvailability: (id: string) => void;
+  addService: (service: Omit<ServiceItem, "id" | "bookingsCount" | "rating">) => Promise<void>;
+  updateService: (id: string, service: Partial<ServiceItem>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
+  toggleServiceAvailability: (id: string) => Promise<void>;
   
   addPortfolioProject: (project: Omit<PortfolioProject, "id">) => void;
   deletePortfolioProject: (id: string) => void;
@@ -91,7 +94,7 @@ const initialSchedule: AvailabilitySchedule[] = [
 
 export const useProviderStore = create<ProviderStoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       profile: initialProfile,
       isOnline: true,
       bookings: [],
@@ -105,9 +108,48 @@ export const useProviderStore = create<ProviderStoreState>()(
 
       toggleOnlineStatus: () => set((state) => ({ isOnline: !state.isOnline })),
 
-      updateBookingStatus: (id, status) => set((state) => ({
-        bookings: state.bookings.map((b) => b.id === id ? { ...b, status } : b)
-      })),
+      updateBookingStatus: async (id, status) => {
+        try {
+          const res = await fetch(`/api/bookings/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              set((state) => ({
+                bookings: state.bookings.map((b) => b.id === id ? data.booking : b)
+              }));
+            }
+          } else {
+            // Fallback local update if API fails
+            set((state) => ({
+              bookings: state.bookings.map((b) => b.id === id ? { ...b, status } : b)
+            }));
+          }
+        } catch (e) {
+          console.error(`Failed to update booking status for ${id}:`, e);
+          set((state) => ({
+            bookings: state.bookings.map((b) => b.id === id ? { ...b, status } : b)
+          }));
+        }
+      },
+
+      fetchProviderBookings: async () => {
+        const providerId = useAuthStore.getState().currentUser?.id || "provider-1";
+        try {
+          const res = await fetch("/api/bookings", {
+            headers: { "x-user-id": providerId }
+          });
+          if (res.ok) {
+            const dbBookings = await res.json();
+            set({ bookings: dbBookings });
+          }
+        } catch (e) {
+          console.error("Failed to load provider bookings:", e);
+        }
+      },
 
       updateBookingNotes: (id, notes) => set((state) => ({
         bookings: state.bookings.map((b) => b.id === id ? { ...b, internalNotes: notes } : b)
@@ -121,27 +163,103 @@ export const useProviderStore = create<ProviderStoreState>()(
         bookings: state.bookings.map((b) => b.id === id ? { ...b, afterImages: [...(b.afterImages || []), image] } : b)
       })),
 
-      addService: (newSrv) => set((state) => {
-        const created: ServiceItem = {
-          ...newSrv,
-          id: `SRV-${Date.now()}`,
-          bookingsCount: 0,
-          rating: 5.0
-        };
-        return { services: [created, ...state.services] };
-      }),
+      fetchProviderServices: async () => {
+        const providerId = useAuthStore.getState().currentUser?.id || "provider-1";
+        try {
+          const res = await fetch(`/api/services?providerId=${providerId}`);
+          if (res.ok) {
+            const dbServices = await res.json();
+            set({ services: dbServices });
+          }
+        } catch (e) {
+          console.error("Failed to load provider services:", e);
+        }
+      },
 
-      updateService: (id, updatedFields) => set((state) => ({
-        services: state.services.map((s) => s.id === id ? { ...s, ...updatedFields } : s)
-      })),
+      addService: async (newSrv) => {
+        const providerId = useAuthStore.getState().currentUser?.id || "provider-1";
+        try {
+          const res = await fetch("/api/services", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              providerId,
+              name: newSrv.name,
+              category: newSrv.category,
+              subcategory: newSrv.subcategory,
+              description: newSrv.description,
+              basePrice: newSrv.basePrice
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              set((state) => ({
+                services: [data.service, ...state.services]
+              }));
+            }
+          }
+        } catch (e) {
+          console.error("Failed to add service to PostgreSQL:", e);
+        }
+      },
 
-      deleteService: (id) => set((state) => ({
-        services: state.services.filter((s) => s.id !== id)
-      })),
+      updateService: async (id, updatedFields) => {
+        try {
+          const res = await fetch(`/api/services/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedFields)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              set((state) => ({
+                services: state.services.map((s) => s.id === id ? data.service : s)
+              }));
+            }
+          }
+        } catch (e) {
+          console.error("Failed to update service in PostgreSQL:", e);
+        }
+      },
 
-      toggleServiceAvailability: (id) => set((state) => ({
-        services: state.services.map((s) => s.id === id ? { ...s, isAvailable: !s.isAvailable } : s)
-      })),
+      deleteService: async (id) => {
+        try {
+          const res = await fetch(`/api/services/${id}`, {
+            method: "DELETE"
+          });
+          if (res.ok) {
+            set((state) => ({
+              services: state.services.filter((s) => s.id !== id)
+            }));
+          }
+        } catch (e) {
+          console.error("Failed to delete service in PostgreSQL:", e);
+        }
+      },
+
+      toggleServiceAvailability: async (id) => {
+        const srv = get().services.find((s) => s.id === id);
+        if (!srv) return;
+        try {
+          const res = await fetch(`/api/services/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isAvailable: !srv.isAvailable })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              set((state) => ({
+                services: state.services.map((s) => s.id === id ? data.service : s)
+              }));
+            }
+          }
+        } catch (e) {
+          console.error("Failed to toggle service availability in PostgreSQL:", e);
+        }
+      },
 
       addPortfolioProject: (proj) => set((state) => ({
         portfolio: [{ ...proj, id: `PORT-${Date.now()}` }, ...state.portfolio]

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
@@ -19,21 +19,26 @@ import {
 import { useProviderStore } from "@/store/useProviderStore";
 import { BookingStatus } from "@/types/provider";
 
-const statusFilterTabs: { label: string; value: BookingStatus | "ALL" }[] = [
+const statusFilterTabs: { label: string; value: BookingStatus | "ALL" | "Rejected" }[] = [
   { label: "All Bookings", value: "ALL" },
   { label: "Requested", value: "Requested" },
   { label: "Accepted", value: "Accepted" },
   { label: "On The Way", value: "OnTheWay" },
   { label: "Started", value: "Started" },
   { label: "Completed", value: "Completed" },
+  { label: "Rejected", value: "Rejected" },
   { label: "Payment Received", value: "PaymentReceived" },
   { label: "Review Submitted", value: "ReviewSubmitted" },
 ];
 
 export default function BookingsManagementPage() {
-  const { bookings, updateBookingStatus } = useProviderStore();
-  const [activeTab, setActiveTab] = useState<BookingStatus | "ALL">("ALL");
+  const { bookings, updateBookingStatus, fetchProviderBookings } = useProviderStore();
+  const [activeTab, setActiveTab] = useState<BookingStatus | "ALL" | "Rejected">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    fetchProviderBookings();
+  }, [fetchProviderBookings]);
 
   const filteredBookings = bookings.filter((b) => {
     const matchesTab = activeTab === "ALL" || b.status === activeTab;
@@ -53,6 +58,7 @@ export default function BookingsManagementPage() {
       case "Completed": return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
       case "PaymentReceived": return "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20";
       case "ReviewSubmitted": return "bg-[#D4A017]/10 text-[#D4A017] border-[#D4A017]/20";
+      case "Rejected" as any: return "bg-rose-500/10 text-rose-600 border-rose-500/20";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -198,12 +204,20 @@ export default function BookingsManagementPage() {
                     </Link>
 
                     {b.status === "Requested" && (
-                      <button
-                        onClick={() => updateBookingStatus(b.id, "Accepted")}
-                        className="px-4 py-2 rounded-xl bg-[#1F5F5B] hover:bg-[#164744] text-white text-xs font-bold shadow-sm transition-all"
-                      >
-                        Accept
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateBookingStatus(b.id, "Accepted")}
+                          className="px-4 py-2 rounded-xl bg-[#1F5F5B] hover:bg-[#164744] text-white text-xs font-bold shadow-sm transition-all"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => updateBookingStatus(b.id, "Rejected")}
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all"
+                        >
+                          Reject
+                        </button>
+                      </div>
                     )}
 
                     {b.status === "Accepted" && (
