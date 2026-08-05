@@ -17,7 +17,6 @@ export interface BookingItem {
   provider: string;
   date: string;
   status: "Requested" | "Accepted" | "Rejected" | "OnTheWay" | "Started" | "Completed" | "Cancelled" | "Upcoming";
-  price?: string;
 }
 
 export interface AuthUser {
@@ -282,8 +281,7 @@ export const useAuthStore = create<AuthState>()(
               service: b.serviceName,
               provider: b.providerName || (b.providerId === "provider-1" ? "Rohan Electrician" : "Verified Expert"),
               date: `${b.date} at ${b.time}`,
-              status: b.status || "Requested",
-              price: `₹${b.price}`
+              status: b.status || "Requested"
             }));
 
             set((state) => {

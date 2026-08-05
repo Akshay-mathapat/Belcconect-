@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Building2 } from "lucide-react";
 import Link from "next/link";
@@ -16,25 +16,38 @@ interface AuthLayoutProps {
 export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
   const [authMode, setAuthMode] = useState<"login" | "signup">(initialMode);
 
+  useEffect(() => {
+    // Save original styles
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlHeight = document.documentElement.style.height;
+    const originalBodyHeight = document.body.style.height;
+
+    // Force hidden overflow to prevent window scrolling
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.height = "100%";
+    document.body.style.height = "100%";
+
+    return () => {
+      // Revert original styles on unmount
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.height = originalHtmlHeight;
+      document.body.style.height = originalBodyHeight;
+    };
+  }, []);
+
   return (
-    <div className="min-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-7rem)] w-full bg-background text-foreground flex overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] lg:h-[calc(100vh-7rem)] w-full bg-background text-foreground flex overflow-hidden">
       {/* ════════════════ LEFT BRAND PANEL (STATIC) ════════════════ */}
       <LeftBrandPanel />
 
       {/* ════════════════ RIGHT AUTH PANEL (DYNAMIC) ════════════════ */}
-      <main className="w-full md:w-[55%] lg:w-[60%] min-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-7rem)] overflow-y-auto flex flex-col justify-between p-6 sm:p-10 lg:p-14 xl:p-16 relative">
+      <main className="w-full md:w-[55%] lg:w-[60%] h-full overflow-y-auto flex flex-col justify-between p-6 sm:p-10 lg:p-14 xl:p-16 relative">
         <div className="w-full max-w-md mx-auto my-auto py-4">
           {/* Mobile Only Header Logo */}
-          <div className="flex md:hidden items-center justify-between gap-3 mb-6">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <span className="text-xl font-bold font-heading text-foreground">
-                {SITE_NAME || "BelConnect"}
-              </span>
-            </div>
-
+          <div className="flex md:hidden items-center justify-end gap-3 mb-6">
             <Link
               href="/"
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"

@@ -150,7 +150,6 @@ export default function BookingsManagementPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-bold text-muted-foreground">{b.id}</span>
                       <span className="text-xs font-extrabold text-foreground">{b.customerName}</span>
-                      <span className="text-xs text-muted-foreground">({b.distance})</span>
                       <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadgeStyle(b.status)}`}>
                         {b.status}
                       </span>
@@ -170,12 +169,6 @@ export default function BookingsManagementPage() {
                         <span className="truncate">{b.address}</span>
                       </span>
                     </div>
-
-                    {b.problemDescription && (
-                      <p className="text-xs text-muted-foreground/90 bg-muted/40 p-2.5 rounded-xl border border-border/50 max-w-2xl mt-2 italic">
-                        "{b.problemDescription}"
-                      </p>
-                    )}
                   </div>
                 </div>
 

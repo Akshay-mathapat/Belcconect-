@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { 
   ArrowLeft, 
@@ -9,8 +9,6 @@ import {
   Phone, 
   MessageSquare, 
   CheckCircle2, 
-  Upload, 
-  StickyNote, 
   ShieldCheck,
   Calendar,
   AlertCircle
@@ -30,30 +28,11 @@ const timelineSteps: BookingStatus[] = [
 
 export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { bookings, updateBookingStatus, updateBookingNotes, addBookingBeforeImage, addBookingAfterImage } = useProviderStore();
+  const { bookings, updateBookingStatus } = useProviderStore();
 
   const booking = bookings.find((b) => b.id === id) || bookings[0];
 
-  const [notes, setNotes] = useState(booking.internalNotes || "");
-  const [savedNotesMessage, setSavedNotesMessage] = useState(false);
-
   const currentStepIndex = timelineSteps.indexOf(booking.status);
-
-  const handleSaveNotes = () => {
-    updateBookingNotes(booking.id, notes);
-    setSavedNotesMessage(true);
-    setTimeout(() => setSavedNotesMessage(false), 2000);
-  };
-
-  const handleBeforeUpload = () => {
-    const mockImg = "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80";
-    addBookingBeforeImage(booking.id, mockImg);
-  };
-
-  const handleAfterUpload = () => {
-    const mockImg = "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=400&q=80";
-    addBookingAfterImage(booking.id, mockImg);
-  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -90,9 +69,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <div>
                   <h1 className="font-heading text-xl font-bold text-foreground">{booking.customerName}</h1>
                   <p className="text-xs text-muted-foreground">{booking.customerPhone}</p>
-                  <span className="inline-block text-[11px] font-bold text-blue-600 mt-1">
-                    {booking.distance} from your base
-                  </span>
                 </div>
               </div>
 
@@ -121,7 +97,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <h2 className="font-heading text-lg font-bold text-blue-600">{booking.serviceName}</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="bg-muted/30 p-3.5 rounded-xl border border-border/50">
                   <span className="text-muted-foreground block text-[10px] uppercase font-bold mb-1">Scheduled Time</span>
                   <span className="font-bold text-foreground flex items-center gap-1.5">
@@ -130,12 +105,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   </span>
                 </div>
 
-                <div className="bg-muted/30 p-3.5 rounded-xl border border-border/50">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold mb-1">Agreed Service Price</span>
-                  <span className="font-bold text-foreground text-base">₹{booking.price}</span>
-                </div>
-              </div>
-
               <div className="bg-muted/30 p-4 rounded-xl border border-border/50">
                 <span className="text-muted-foreground block text-[10px] uppercase font-bold mb-1">Customer Address</span>
                 <p className="text-xs text-foreground font-medium flex items-start gap-2">
@@ -143,13 +112,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <span>{booking.address}</span>
                 </p>
               </div>
-
-              {booking.problemDescription && (
-                <div className="bg-amber-500/5 p-4 rounded-xl border border-amber-500/20">
-                  <span className="text-amber-700 dark:text-amber-400 block text-[10px] uppercase font-bold mb-1">Customer Note</span>
-                  <p className="text-xs text-foreground italic">"{booking.problemDescription}"</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -217,46 +179,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* Before & After Photo Upload Showcase */}
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="font-heading text-base font-bold text-foreground mb-4">Service Proof & Inspection Photos</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Before Images */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-foreground block">Before Service Photos</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {booking.beforeImages?.map((img, i) => (
-                    <img key={i} src={img} alt="Before" className="w-full h-24 rounded-xl object-cover border border-border" />
-                  ))}
-                  <button
-                    onClick={handleBeforeUpload}
-                    className="w-full h-24 rounded-xl border-2 border-dashed border-border hover:border-blue-600 flex flex-col items-center justify-center text-muted-foreground hover:text-blue-600 transition-colors"
-                  >
-                    <Upload className="h-5 w-5 mb-1" />
-                    <span className="text-[10px] font-bold">Add Before Photo</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* After Images */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-foreground block">After Service Photos</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {booking.afterImages?.map((img, i) => (
-                    <img key={i} src={img} alt="After" className="w-full h-24 rounded-xl object-cover border border-border" />
-                  ))}
-                  <button
-                    onClick={handleAfterUpload}
-                    className="w-full h-24 rounded-xl border-2 border-dashed border-border hover:border-emerald-500 flex flex-col items-center justify-center text-muted-foreground hover:text-emerald-600 transition-colors"
-                  >
-                    <Upload className="h-5 w-5 mb-1" />
-                    <span className="text-[10px] font-bold">Add After Photo</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
 
         </div>
 
@@ -289,33 +212,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* Internal Notes Pad */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <StickyNote className="h-4 w-4 text-[#D4A017]" />
-                Internal Provider Notes
-              </h3>
-              {savedNotesMessage && (
-                <span className="text-[10px] font-bold text-emerald-600">Saved!</span>
-              )}
-            </div>
 
-            <textarea
-              rows={4}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Write private notes about wiring parts required, wire gauges, or customer requests..."
-              className="w-full p-3 text-xs rounded-xl bg-muted/40 border border-border focus:outline-none focus:ring-2 focus:ring-blue-600/30"
-            />
-
-            <button
-              onClick={handleSaveNotes}
-              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-[#184e4b] text-white text-xs font-bold transition-colors"
-            >
-              Save Internal Note
-            </button>
-          </div>
 
         </div>
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Navigation from "@/components/sections/Navigation";
 import Footer from "@/components/sections/Footer";
 import { Search, MessageSquare, PhoneCall, Mail } from "lucide-react";
 import { useState } from "react";
@@ -17,9 +16,7 @@ export default function HelpPage() {
 
   return (
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
-      <Navigation />
-      
-      <div className="flex-1 pt-32 pb-24 px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 pt-8 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl">
           
           <div className="text-center mb-12">

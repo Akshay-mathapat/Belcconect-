@@ -18,15 +18,8 @@ export interface Booking {
   date: string;
   time: string;
   address: string;
-  distance: string;
-  price: number;
   status: BookingStatus;
-  problemDescription: string;
   uploadedImages: string[];
-  beforeImages?: string[];
-  afterImages?: string[];
-  internalNotes?: string;
-  createdAt: string;
 }
 
 export interface ServiceFAQ {

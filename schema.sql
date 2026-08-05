@@ -40,18 +40,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   provider_id VARCHAR(100) NOT NULL,
   service_name VARCHAR(255) NOT NULL,
   category VARCHAR(100) NOT NULL,
-  customer_name VARCHAR(255) NOT NULL,
-  customer_phone VARCHAR(50),
-  customer_photo TEXT,
   date VARCHAR(50) NOT NULL,
   time VARCHAR(50) NOT NULL,
-  address TEXT NOT NULL,
-  distance VARCHAR(50) DEFAULT '1.2 km',
-  price NUMERIC(10, 2) NOT NULL,
-  status VARCHAR(50) NOT NULL, -- 'Requested', 'Accepted', 'OnTheWay', 'Started', 'Completed', 'Rejected', 'Cancelled', 'PaymentReceived', 'ReviewSubmitted'
-  problem_description TEXT,
-  internal_notes TEXT,
-  before_images TEXT[], -- Array of strings (base64 or URL)
-  after_images TEXT[],  -- Array of strings (base64 or URL)
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  status VARCHAR(50) NOT NULL -- 'Requested', 'Accepted', 'OnTheWay', 'Started', 'Completed', 'Rejected', 'Cancelled', 'PaymentReceived', 'ReviewSubmitted'
 );
+

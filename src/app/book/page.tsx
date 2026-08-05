@@ -1,6 +1,5 @@
 "use client";
 
-import Navigation from "@/components/sections/Navigation";
 import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { CheckCircle2, ArrowRight } from "lucide-react";
@@ -68,8 +67,7 @@ function BookingFlow() {
           customerPhoto,
           date,
           time: time || "10:00 AM",
-          address: address === "home" ? "123 Main St, Tilakwadi, Belagavi, 590006" : (newAddressText || "New Address"),
-          price: priceParam ? Number(priceParam) : 299.00
+          address: address === "home" ? "123 Main St, Tilakwadi, Belagavi, 590006" : (newAddressText || "New Address")
         })
       });
 
@@ -88,7 +86,7 @@ function BookingFlow() {
 
 
   return (
-    <div className="flex-1 flex items-center justify-center pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex-1 flex items-center justify-center pt-8 pb-12 px-4 sm:px-6 lg:px-8">
       <motion.div
         key={step}
         initial={{ opacity: 0, y: 20 }}
@@ -255,8 +253,7 @@ function BookingFlow() {
 export default function BookPage() {
   return (
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
-      <Navigation />
-      <Suspense fallback={<div className="flex-1 flex items-center justify-center pt-24"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <Suspense fallback={<div className="flex-1 flex items-center justify-center pt-8"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
         <BookingFlow />
       </Suspense>
       <Footer />

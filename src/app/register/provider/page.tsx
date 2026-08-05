@@ -1,6 +1,5 @@
 "use client";
 
-import Navigation from "@/components/sections/Navigation";
 import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, User, Phone, Briefcase, MapPin, ShieldCheck } from "lucide-react";
@@ -35,9 +34,7 @@ export default function ProviderRegisterPage() {
 
   return (
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
-      <Navigation />
-      
-      <div className="flex-1 flex items-center justify-center pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center pt-8 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,var(--primary)/0.05),transparent_30%)]" />
         
         <motion.div

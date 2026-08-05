@@ -135,6 +135,8 @@ export default function Navigation() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [scrollDirection, setScrollDirection] = useState<"up" | "down" | null>(null);
+  const lastScrollY = useRef(0);
   const { currentUser, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
@@ -142,9 +144,23 @@ export default function Navigation() {
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 30);
+    const onScroll = () => {
+      const currentScrollY = window.scrollY;
+      setScrolled(currentScrollY > 30);
+
+      if (currentScrollY <= 30) {
+        setScrollDirection(null);
+      } else if (currentScrollY > lastScrollY.current + 5) {
+        setScrollDirection("down");
+      } else if (currentScrollY < lastScrollY.current - 5) {
+        setScrollDirection("up");
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -175,12 +191,26 @@ export default function Navigation() {
     }
   }, [searchFocused]);
 
-  // Close search on Escape
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }
+  }, [userMenuOpen]);
+
+  // Close search and user menu on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSearchFocused(false);
         searchInputRef.current?.blur();
+        setUserMenuOpen(false);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -337,7 +367,7 @@ export default function Navigation() {
 
             {/* Auth CTA or User Profile Avatar */}
             {currentUser ? (
-              <div className="relative border-l border-border pl-3">
+              <div ref={userMenuRef} className="relative border-l border-border pl-3">
                 <button
                   type="button"
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -446,9 +476,17 @@ export default function Navigation() {
       </motion.header> 
 
       {/* Category Bar — desktop only */}
-      <div className="fixed inset-x-0 top-16 z-40">
+      <motion.div
+        className="fixed inset-x-0 top-16 z-40"
+        initial={{ y: 0, opacity: 1 }}
+        animate={{
+          y: pathname === "/" ? 0 : scrollDirection === "down" ? -60 : 0,
+          opacity: pathname === "/" ? 1 : scrollDirection === "down" ? 0 : 1,
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
         <CategoryBar />
-      </div>
+      </motion.div>
 
       {/* Spacer — accounts for navbar (h-16) + category bar (h-12) */}
       <div className="h-16 lg:h-28" aria-hidden="true" />

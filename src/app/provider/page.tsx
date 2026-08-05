@@ -147,7 +147,6 @@ export default function ProviderDashboardPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-foreground text-xs">{booking.customerName}</span>
-                      <span className="text-[11px] text-muted-foreground">• {booking.distance}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
                         booking.status === "Requested" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
                         booking.status === "Accepted" ? "bg-sky-500/10 text-sky-600 border border-sky-500/20" :
@@ -182,8 +181,6 @@ export default function ProviderDashboardPage() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3 self-end md:self-center shrink-0">
-                  <span className="text-xs font-extrabold text-foreground mr-1">₹{booking.price}</span>
-
                   {booking.status === "Requested" && (
                     <div className="flex gap-2">
                       <button

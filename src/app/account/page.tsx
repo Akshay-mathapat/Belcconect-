@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Navigation from "@/components/sections/Navigation";
 import Footer from "@/components/sections/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -46,7 +45,6 @@ export default function AccountPage() {
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
   const [phone, setPhone] = useState(currentUser?.phone || "");
-  const [avatar, setAvatar] = useState(currentUser?.avatar || "");
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Address Modal State
@@ -61,8 +59,6 @@ export default function AccountPage() {
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [isRescheduling, setIsRescheduling] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Sync state if currentUser changes
   const activeUser = currentUser || {
     id: "guest",
@@ -75,29 +71,10 @@ export default function AccountPage() {
     bookings: []
   };
 
-  // Handle Profile Avatar Image Upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image size should be less than 5MB.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setAvatar(base64String);
-      updateProfile({ avatar: base64String });
-    };
-    reader.readAsDataURL(file);
-  };
-
   // Handle Save Profile
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({ name, phone, avatar });
+    updateProfile({ name, phone });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -180,58 +157,37 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
-      <Navigation />
-
-      <div className="flex-1 pt-24 pb-20">
+      <div className="flex-1 pt-8 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
-          {/* Header Banner */}
-          <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="relative group">
-                <img
-                  src={activeUser.avatar || avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                  alt={activeUser.name}
-                  className="w-20 h-20 rounded-full object-cover border-4 border-white/30 shadow-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-white text-blue-600 shadow-md hover:scale-110 transition-transform cursor-pointer"
-                  title="Upload profile picture"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold font-heading">
-                  {activeUser.name}
-                </h1>
-                <p className="text-blue-100 text-sm font-medium mt-1">
-                  {activeUser.email} &bull; {activeUser.phone || "No phone added"}
-                </p>
-                <span className="inline-block mt-2 px-3 py-0.5 rounded-full bg-white/20 text-white text-xs font-bold uppercase tracking-wider">
-                  {activeUser.role === "provider" ? "Service Provider" : activeUser.role === "job_provider" ? "Employer" : "Customer"}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("profile");
-                setTimeout(() => fileInputRef.current?.click(), 100);
-              }}
-              className="py-2.5 px-5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-sm font-semibold border border-white/20 transition-all flex items-center gap-2 cursor-pointer shrink-0"
-            >
-              <Camera className="w-4 h-4" />
-              Upload Profile Photo
-            </button>
-          </div>
-
           <div className="flex flex-col md:flex-row gap-8">
             {/* Sidebar Navigation */}
             <div className="w-full md:w-64 space-y-4 shrink-0">
+              
+              {/* Reduced Blue Profile Card */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl flex flex-col items-center text-center gap-3">
+                <div className="relative">
+                  <img
+                    src={activeUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
+                    alt={activeUser.name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-white/30 shadow-md"
+                  />
+                </div>
+                <div className="overflow-hidden w-full">
+                  <h2 className="text-lg font-bold font-heading truncate">
+                    {activeUser.name}
+                  </h2>
+                  <p className="text-blue-100 text-xs truncate mt-0.5">
+                    {activeUser.email}
+                  </p>
+                  <p className="text-blue-100 text-xs truncate">
+                    {activeUser.phone || "No phone added"}
+                  </p>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider">
+                    {activeUser.role === "provider" ? "Service Provider" : activeUser.role === "job_provider" ? "Employer" : "Customer"}
+                  </span>
+                </div>
+              </div>
               <div className="rounded-2xl border border-border bg-card p-3 shadow-sm flex flex-col gap-1">
                 <button
                   type="button"
@@ -562,45 +518,6 @@ export default function AccountPage() {
                   )}
 
                   <div className="rounded-3xl border border-border bg-card p-6 md:p-8 space-y-6 max-w-2xl shadow-sm">
-                    {/* Hidden Profile Picture Input */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-
-                    {/* Avatar Upload Preview Box */}
-                    <div className="flex items-center gap-5 border-b border-border/60 pb-6">
-                      <div className="relative group">
-                        <img
-                          src={avatar || activeUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                          alt={activeUser.name}
-                          className="w-20 h-20 rounded-full object-cover border-2 border-blue-600/40 shadow-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold cursor-pointer"
-                        >
-                          Change
-                        </button>
-                      </div>
-
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-foreground">Profile Avatar</h4>
-                        <p className="text-xs text-muted-foreground">JPG, PNG or GIF up to 5MB</p>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
-                        >
-                          <Camera className="w-3.5 h-3.5 text-blue-600" /> Choose Image File
-                        </button>
-                      </div>
-                    </div>
-
                     <form onSubmit={handleSaveProfile} className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">

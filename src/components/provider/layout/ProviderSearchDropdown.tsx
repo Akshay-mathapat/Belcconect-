@@ -141,7 +141,7 @@ export function ProviderSearchDropdown({ query, isOpen, onClose }: ProviderSearc
                     <span className="font-bold text-foreground">{b.customerName}</span>
                     <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">• {b.serviceName}</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">{b.address} • ₹{b.price}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{b.address}</p>
                 </div>
 
                 {/* Instant Booking Acceptance CTA */}

@@ -1,6 +1,5 @@
 "use client";
 
-import Navigation from "@/components/sections/Navigation";
 import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { Search, Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint, ChevronRight } from "lucide-react";
@@ -46,9 +45,7 @@ export default function ServicesPage() {
 
   return (
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
-      <Navigation />
-      
-      <div className="flex-1 pt-24 pb-20">
+      <div className="flex-1 pt-8 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
           {/* Header & Search */}

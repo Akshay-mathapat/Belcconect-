@@ -34,9 +34,6 @@ interface ProviderStoreState {
   // Actions
   toggleOnlineStatus: () => void;
   updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
-  updateBookingNotes: (id: string, notes: string) => void;
-  addBookingBeforeImage: (id: string, image: string) => void;
-  addBookingAfterImage: (id: string, image: string) => void;
   fetchProviderBookings: () => Promise<void>;
   fetchProviderServices: () => Promise<void>;
   
@@ -151,17 +148,7 @@ export const useProviderStore = create<ProviderStoreState>()(
         }
       },
 
-      updateBookingNotes: (id, notes) => set((state) => ({
-        bookings: state.bookings.map((b) => b.id === id ? { ...b, internalNotes: notes } : b)
-      })),
 
-      addBookingBeforeImage: (id, image) => set((state) => ({
-        bookings: state.bookings.map((b) => b.id === id ? { ...b, beforeImages: [...(b.beforeImages || []), image] } : b)
-      })),
-
-      addBookingAfterImage: (id, image) => set((state) => ({
-        bookings: state.bookings.map((b) => b.id === id ? { ...b, afterImages: [...(b.afterImages || []), image] } : b)
-      })),
 
       fetchProviderServices: async () => {
         const providerId = useAuthStore.getState().currentUser?.id || "provider-1";

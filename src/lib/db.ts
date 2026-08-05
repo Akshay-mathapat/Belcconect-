@@ -97,20 +97,9 @@ export async function initDB() {
         provider_name VARCHAR(255),
         service_name VARCHAR(255) NOT NULL,
         category VARCHAR(100) NOT NULL,
-        customer_name VARCHAR(255) NOT NULL,
-        customer_phone VARCHAR(50),
-        customer_photo TEXT,
         date VARCHAR(50) NOT NULL,
         time VARCHAR(50) NOT NULL,
-        address TEXT NOT NULL,
-        distance VARCHAR(50) DEFAULT '1.2 km',
-        price NUMERIC(10, 2) NOT NULL,
-        status VARCHAR(50) NOT NULL,
-        problem_description TEXT,
-        internal_notes TEXT,
-        before_images TEXT[],
-        after_images TEXT[],
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        status VARCHAR(50) NOT NULL
       )
     `);
 
