@@ -35,12 +35,11 @@ export default function ProviderLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
-  const { isOnline, toggleOnlineStatus, profile } = useProviderStore();
+  const { isOnline, toggleOnlineStatus, profile, fetchProviderBookings, fetchProviderServices } = useProviderStore();
   const { currentUser, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
@@ -53,6 +52,30 @@ export default function ProviderLayout({
 
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(useAuthStore.persist.hasHydrated());
+    const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
+    return () => unsub();
+  }, []);
+
+  // Poll bookings/reviews every 5 seconds for real-time updates
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "provider") return;
+
+    // Fetch immediately
+    fetchProviderBookings();
+    fetchProviderServices();
+
+    // Start interval
+    const interval = setInterval(() => {
+      fetchProviderBookings();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentUser, fetchProviderBookings, fetchProviderServices]);
 
   // Close search and popovers on click outside or escape key
   useEffect(() => {
@@ -84,6 +107,8 @@ export default function ProviderLayout({
 
   // Redirect unauthorized roles
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!currentUser) {
       router.push("/login");
       return;
@@ -91,7 +116,7 @@ export default function ProviderLayout({
     if (currentUser.role !== "provider") {
       router.push("/");
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, isHydrated]);
 
   // Auto-close search on route navigation
   useEffect(() => {
@@ -112,6 +137,14 @@ export default function ProviderLayout({
     { label: "Services", href: "/provider/services", icon: Wrench },
     { label: "Profile", href: "/provider/profile", icon: User },
   ];
+
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   if (!currentUser || currentUser.role !== "provider") {
     return (
@@ -288,13 +321,13 @@ export default function ProviderLayout({
 
                 {/* Settings button added directly to the right of profile icon */}
                 <Link
-                  href="/provider/settings"
+                  href="/provider/profile"
                   className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                    pathname === "/provider/settings"
+                    pathname === "/provider/profile"
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
                       : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
-                  title="Settings"
+                  title="Profile Settings"
                 >
                   <Settings className="h-4.5 w-4.5" />
                 </Link>
@@ -376,8 +409,6 @@ export default function ProviderLayout({
 
       {/* Sidebar Component */}
       <ProviderSidebar
-        collapsed={collapsed}
-        setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
@@ -385,9 +416,7 @@ export default function ProviderLayout({
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 pt-16 transition-all duration-300">
         <main
-          className={`flex-1 pt-4 sm:pt-6 pb-24 md:pb-12 px-3 sm:px-6 lg:px-8 transition-all duration-300 ${
-            collapsed ? "lg:ml-[80px]" : "lg:ml-[270px]"
-          }`}
+          className="flex-1 pt-4 sm:pt-6 pb-24 md:pb-12 px-3 sm:px-6 lg:px-8 transition-all duration-300 lg:ml-[240px]"
         >
           <div className="max-w-7xl mx-auto">
             {children}

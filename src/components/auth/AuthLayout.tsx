@@ -39,12 +39,18 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-4rem)] lg:h-[calc(100vh-7rem)] w-full bg-background text-foreground flex overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] lg:-mt-12 w-full bg-background text-foreground flex overflow-hidden">
       {/* ════════════════ LEFT BRAND PANEL (STATIC) ════════════════ */}
       <LeftBrandPanel />
 
       {/* ════════════════ RIGHT AUTH PANEL (DYNAMIC) ════════════════ */}
-      <main className="w-full md:w-[55%] lg:w-[60%] h-full overflow-y-auto flex flex-col justify-between p-6 sm:p-10 lg:p-14 xl:p-16 relative">
+      <main
+        onScroll={(e) => {
+          const scrollTop = e.currentTarget.scrollTop;
+          window.dispatchEvent(new CustomEvent("auth-scroll", { detail: { scrollTop } }));
+        }}
+        className="w-full md:w-[55%] lg:w-[60%] h-full overflow-y-auto flex flex-col justify-between p-6 sm:p-10 lg:p-14 xl:p-16 lg:pt-14 relative"
+      >
         <div className="w-full max-w-md mx-auto my-auto py-4">
           {/* Mobile Only Header Logo */}
           <div className="flex md:hidden items-center justify-end gap-3 mb-6">

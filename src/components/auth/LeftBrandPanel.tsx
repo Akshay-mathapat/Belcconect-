@@ -13,7 +13,7 @@ import { SITE_NAME } from "@/constants/site";
 export const LeftBrandPanel = memo(function LeftBrandPanel() {
   return (
     <aside
-      className="hidden md:flex md:w-[45%] lg:w-[40%] h-full bg-blue-600 dark:bg-blue-700 text-white pt-3 px-4 pb-4 sm:pt-4 sm:px-6 sm:pb-6 lg:pt-4 lg:px-8 lg:pb-8 flex-col justify-between overflow-hidden shrink-0 z-10 select-none box-border"
+      className="hidden md:flex md:w-[45%] lg:w-[40%] h-full bg-blue-600 dark:bg-blue-700 text-white pt-3 px-4 pb-4 sm:pt-4 sm:px-6 sm:pb-6 lg:pt-14 lg:px-8 lg:pb-8 flex-col justify-between overflow-hidden shrink-0 z-10 select-none box-border"
     >
       {/* Decorative Blur Spheres */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />

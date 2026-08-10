@@ -24,10 +24,16 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export default function ProviderProfilePage() {
   const { currentUser, updateProfile: updateAuthProfile } = useAuthStore();
-  const { profile, updateProfile, syncWithAuthUser } = useProviderStore();
+  const { profile, updateProfile, syncWithAuthUser, bookings } = useProviderStore();
   const [isEditing, setIsEditing] = useState(false);
   const [showSavedAlert, setShowSavedAlert] = useState(false);
   const [isKycModalOpen, setIsKycModalOpen] = useState(false);
+
+  const ratedBookings = bookings.filter((b) => b.rating !== undefined && b.rating !== null && b.rating > 0);
+  const totalReviews = ratedBookings.length;
+  const avgRating = totalReviews > 0 
+    ? (ratedBookings.reduce((sum, b) => sum + (b.rating || 0), 0) / totalReviews).toFixed(1)
+    : "0.0";
 
   useEffect(() => {
     if (currentUser) {
@@ -214,8 +220,8 @@ export default function ProviderProfilePage() {
 
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-muted-foreground pt-1">
               <span className="flex items-center gap-1 font-bold text-foreground">
-                <Star className="h-3.5 w-3.5 fill-[#D4A017] text-[#D4A017]" />
-                {profile.rating} Rating ({profile.totalReviews} Reviews)
+                <Star className={`h-3.5 w-3.5 text-[#D4A017] ${totalReviews > 0 ? "fill-[#D4A017]" : ""}`} />
+                {totalReviews > 0 ? `${avgRating} Rating` : "No ratings"} ({totalReviews} Reviews)
               </span>
               <span>• {profile.experienceYears} Years Experience</span>
               <span>• Belagavi Zone</span>

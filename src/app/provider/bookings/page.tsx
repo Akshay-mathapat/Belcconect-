@@ -23,11 +23,9 @@ const statusFilterTabs: { label: string; value: BookingStatus | "ALL" | "Rejecte
   { label: "All Bookings", value: "ALL" },
   { label: "Requested", value: "Requested" },
   { label: "Accepted", value: "Accepted" },
-  { label: "On The Way", value: "OnTheWay" },
   { label: "Started", value: "Started" },
   { label: "Completed", value: "Completed" },
   { label: "Rejected", value: "Rejected" },
-  { label: "Payment Received", value: "PaymentReceived" },
   { label: "Review Submitted", value: "ReviewSubmitted" },
 ];
 
@@ -214,15 +212,6 @@ export default function BookingsManagementPage() {
                     )}
 
                     {b.status === "Accepted" && (
-                      <button
-                        onClick={() => updateBookingStatus(b.id, "OnTheWay")}
-                        className="px-4 py-2 rounded-xl bg-[#D4A017] hover:bg-[#b88a12] text-slate-950 text-xs font-bold transition-all"
-                      >
-                        On The Way
-                      </button>
-                    )}
-
-                    {b.status === "OnTheWay" && (
                       <button
                         onClick={() => updateBookingStatus(b.id, "Started")}
                         className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all"

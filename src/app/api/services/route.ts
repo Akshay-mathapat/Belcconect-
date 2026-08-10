@@ -9,7 +9,9 @@ export async function GET(request: Request) {
     const searchQuery = searchParams.get("query");
 
     let sql = `
-      SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone 
+      SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone,
+             (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id) as bookings_count,
+             (SELECT ROUND(AVG(b.rating), 1) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL) as avg_rating
       FROM services s 
       JOIN service_providers u ON s.provider_id = u.id
       WHERE s.is_available = TRUE
@@ -51,8 +53,8 @@ export async function GET(request: Request) {
       providerName: row.provider_name,
       providerAvatar: row.provider_avatar,
       providerPhone: row.provider_phone,
-      bookingsCount: 0,
-      rating: 5.0
+      bookingsCount: Number(row.bookings_count || 0),
+      rating: row.avg_rating ? Number(row.avg_rating) : 0.0
     }));
 
     return NextResponse.json(services);
@@ -101,7 +103,7 @@ export async function POST(request: Request) {
       providerAvatar: row.provider_avatar,
       providerPhone: row.provider_phone,
       bookingsCount: 0,
-      rating: 5.0
+      rating: 0.0
     };
 
     return NextResponse.json({ success: true, service: createdService });

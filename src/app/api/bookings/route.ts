@@ -16,6 +16,8 @@ function mapRowToBooking(row: any) {
     status: row.status,
     providerName: row.provider_name || "Verified Expert",
     uploadedImages: [],
+    rating: row.rating,
+    reviewComment: row.review_comment || ""
   };
 }
 
@@ -38,6 +40,8 @@ export async function GET(request: Request) {
         b.date, 
         b.time, 
         b.status, 
+        b.rating,
+        b.review_comment,
         c.name AS customer_name,
         c.phone AS customer_phone,
         c.avatar AS customer_photo,
@@ -79,6 +83,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    let finalCategory = category || "General";
+
+    try {
+      const serviceLookup = await query(
+        "SELECT category FROM services WHERE name = $1 OR name ILIKE $2 LIMIT 1",
+        [serviceName, serviceName]
+      );
+      if (serviceLookup.rows.length > 0) {
+        finalCategory = serviceLookup.rows[0].category;
+      } else {
+        const lowerName = serviceName.toLowerCase();
+        if (lowerName.includes("electric") || lowerName.includes("fan") || lowerName.includes("wiring") || lowerName.includes("switch")) {
+          finalCategory = "electrical";
+        } else if (lowerName.includes("plumb") || lowerName.includes("leak") || lowerName.includes("pipe") || lowerName.includes("tap") || lowerName.includes("water")) {
+          finalCategory = "plumbing";
+        } else if (lowerName.includes("clean") || lowerName.includes("dust") || lowerName.includes("sofa") || lowerName.includes("sweep") || lowerName.includes("maid")) {
+          finalCategory = "cleaning";
+        } else if (lowerName.includes("ac ") || lowerName.includes("air condition") || lowerName.includes("filter")) {
+          finalCategory = "ac repair";
+        } else {
+          finalCategory = "general";
+        }
+      }
+    } catch (e) {
+      console.error("Error looking up service category:", e);
+    }
+
     const bookingId = `B-${Math.floor(1000 + Math.random() * 9000)}`;
 
     await query(
@@ -92,7 +123,7 @@ export async function POST(request: Request) {
         providerId,
         providerName || "Ramesh Sharma",
         serviceName,
-        category || "General",
+        finalCategory,
         date,
         time || "10:00 AM",
         "Requested", // initial status
@@ -110,6 +141,8 @@ export async function POST(request: Request) {
         b.date, 
         b.time, 
         b.status, 
+        b.rating,
+        b.review_comment,
         c.name AS customer_name,
         c.phone AS customer_phone,
         c.avatar AS customer_photo,

@@ -19,7 +19,8 @@ import {
   Building,
   Home as HomeIcon,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,6 +59,14 @@ export default function AccountPage() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [isRescheduling, setIsRescheduling] = useState(false);
+
+  // Rate & Review Modal State
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [rateBookingId, setRateBookingId] = useState<string | null>(null);
+  const [currentBookingIdToMarkReviewed, setCurrentBookingIdToMarkReviewed] = useState<string | null>(null);
+  const [selectedRating, setSelectedRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // Sync state if currentUser changes
   const activeUser = currentUser || {
@@ -143,16 +152,63 @@ export default function AccountPage() {
     router.push(`/book?pro=1&service=${encodeURIComponent(serviceName)}`);
   };
 
-  // Handle Rate Service Dialog
-  const handleRateService = (bookingId: string) => {
-    const rating = prompt("Rate this service from 1 to 5 stars:");
-    if (!rating) return;
-    const ratingNum = parseInt(rating, 10);
-    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-      alert("Please enter a valid rating between 1 and 5.");
-      return;
+  // Handle Rate Service Modal Open
+  const handleRateService = (bookingId: string, initialRating: number = 5, initialComment: string = "", sourceBookingId: string = "") => {
+    setRateBookingId(bookingId);
+    setSelectedRating(initialRating);
+    setReviewText(initialComment);
+    setCurrentBookingIdToMarkReviewed(sourceBookingId);
+    setShowRateModal(true);
+  };
+
+  // Handle Rate Service Submit
+  const handleRateServiceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rateBookingId) return;
+    setIsSubmittingReview(true);
+    try {
+      // 1. Submit the review to the designated reviewed booking row
+      const res = await fetch(`/api/bookings/${rateBookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          rating: selectedRating, 
+          reviewComment: reviewText.trim(),
+          status: "ReviewSubmitted" 
+        })
+      });
+
+      // 2. If editing a review from a different source booking (e.g. customer booked the same service again),
+      // also mark the source booking as reviewed so it transitions status!
+      if (currentBookingIdToMarkReviewed && currentBookingIdToMarkReviewed !== rateBookingId) {
+        await fetch(`/api/bookings/${currentBookingIdToMarkReviewed}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            rating: selectedRating, 
+            reviewComment: reviewText.trim(),
+            status: "ReviewSubmitted" 
+          })
+        });
+      }
+
+      if (res.ok) {
+        alert(`Thank you! Your review has been saved.`);
+        fetchUserBookings();
+        setShowRateModal(false);
+        setRateBookingId(null);
+        setCurrentBookingIdToMarkReviewed(null);
+        setReviewText("");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to submit review");
+      }
+    } catch (error) {
+      console.error("Error rating service:", error);
+      alert("Network error. Could not submit review.");
+    } finally {
+      setIsSubmittingReview(false);
     }
-    alert(`Thank you! You rated Booking ${bookingId} with ${ratingNum} stars.`);
   };
 
   return (
@@ -307,9 +363,17 @@ export default function AccountPage() {
                               </span>
                             </div>
                             <h3 className="text-lg font-bold text-foreground">{booking.service}</h3>
-                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
                               <User className="h-3.5 w-3.5 text-blue-600" />
-                              Provider: <span className="font-semibold text-foreground">{booking.provider}</span>
+                              Provider: <span className="font-semibold text-foreground mr-1">{booking.provider}</span>
+                              {booking.providerId && (
+                                <Link 
+                                  href={`/provider-profile/${booking.providerId}`}
+                                  className="text-[10px] text-blue-600 hover:text-blue-700 font-bold hover:underline bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                                >
+                                  View Profile
+                                </Link>
+                              )}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
                               <Clock className="h-3.5 w-3.5 text-blue-600" />
@@ -344,13 +408,43 @@ export default function AccountPage() {
                                 >
                                   Rebook
                                 </button>
-                                {booking.status === "Completed" && (
-                                  <button
-                                    onClick={() => handleRateService(booking.id)}
-                                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Star className="h-3.5 w-3.5" /> Rate Service
-                                  </button>
+                                {(booking.status === "Completed" || booking.status === "ReviewSubmitted") && (
+                                  (() => {
+                                    // 1. If this specific booking has already been reviewed
+                                    if (booking.status === "ReviewSubmitted") {
+                                      return (
+                                        <button
+                                          onClick={() => handleRateService(booking.id, booking.rating || 5, booking.reviewComment || "", booking.id)}
+                                          className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Star className="h-3.5 w-3.5" /> Edit Review
+                                        </button>
+                                      );
+                                    }
+                                    // 2. If it is Completed, check if they previously reviewed the same service
+                                    const previouslyReviewed = activeUser.bookings?.find(
+                                      (b) => b.service === booking.service && b.status === "ReviewSubmitted"
+                                    );
+                                    if (previouslyReviewed) {
+                                      return (
+                                        <button
+                                          onClick={() => handleRateService(previouslyReviewed.id, previouslyReviewed.rating || 5, previouslyReviewed.reviewComment || "", booking.id)}
+                                          className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Star className="h-3.5 w-3.5" /> Edit Review
+                                        </button>
+                                      );
+                                    }
+                                    // 3. Otherwise, show "Rate Service"
+                                    return (
+                                      <button
+                                        onClick={() => handleRateService(booking.id, 5, "", booking.id)}
+                                        className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Star className="h-3.5 w-3.5" /> Rate Service
+                                      </button>
+                                    );
+                                  })()
                                 )}
                               </>
                             )}
@@ -683,6 +777,102 @@ export default function AccountPage() {
                     className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {isRescheduling ? "Updating..." : "Confirm Reschedule"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Rate & Review Modal */}
+      <AnimatePresence>
+        {showRateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-card w-full max-w-md rounded-2xl border border-border p-6 shadow-2xl relative overflow-hidden text-xs"
+            >
+              <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+                <h3 className="font-heading text-sm font-bold text-foreground">
+                  Rate & Review Service
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRateModal(false);
+                    setRateBookingId(null);
+                  }}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRateServiceSubmit} className="space-y-5">
+                {/* Star Picker */}
+                <div className="space-y-1.5 text-center">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Your Rating
+                  </label>
+                  <div className="flex items-center justify-center gap-2 py-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setSelectedRating(star)}
+                        className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                      >
+                        <Star
+                          className={`h-7 w-7 ${
+                            star <= selectedRating
+                              ? "fill-[#D4A017] text-[#D4A017]"
+                              : "text-muted-foreground/30"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Review Textarea */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Write a Review (Optional)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    placeholder="Tell us about your experience with this service provider..."
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-background text-xs text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRateModal(false);
+                      setRateBookingId(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    {isSubmittingReview ? "Submitting..." : "Submit Review"}
                   </button>
                 </div>
               </form>

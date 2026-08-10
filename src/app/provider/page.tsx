@@ -52,8 +52,8 @@ export default function ProviderDashboardPage() {
 
   const totalBookings = bookings.length;
   const pendingRequests = bookings.filter((b) => b.status === "Requested").length;
-  const acceptedJobs = bookings.filter((b) => b.status === "Accepted" || b.status === "Started" || b.status === "OnTheWay").length;
-  const completedServices = bookings.filter((b) => b.status === "Completed" || b.status === "ReviewSubmitted" || b.status === "PaymentReceived").length;
+  const acceptedJobs = bookings.filter((b) => b.status === "Accepted" || b.status === "Started").length;
+  const completedServices = bookings.filter((b) => b.status === "Completed" || b.status === "ReviewSubmitted").length;
   const todayJobs = bookings.filter((b) => b.date === "Today");
 
   const displayedServices = showAllServices ? services : services.slice(0, 2);
@@ -131,9 +131,9 @@ export default function ProviderDashboardPage() {
           </Link>
         </div>
 
-        {bookings.length > 0 ? (
+        {bookings.filter((b) => b.status === "Requested").length > 0 ? (
           <div className="space-y-3">
-            {bookings.slice(0, 4).map((booking) => (
+            {bookings.filter((b) => b.status === "Requested").slice(0, 4).map((booking) => (
               <div
                 key={booking.id}
                 className="rounded-xl border border-border/80 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card hover:bg-muted/30 transition-all shadow-xs"
@@ -150,8 +150,8 @@ export default function ProviderDashboardPage() {
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
                         booking.status === "Requested" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
                         booking.status === "Accepted" ? "bg-sky-500/10 text-sky-600 border border-sky-500/20" :
-                        booking.status === "OnTheWay" || booking.status === "Started" ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
-                        booking.status === "Completed" || booking.status === "ReviewSubmitted" || booking.status === "PaymentReceived" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
+                        booking.status === "Started" ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
+                        booking.status === "Completed" || booking.status === "ReviewSubmitted" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
                         booking.status === "Rejected" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
                         "bg-muted text-muted-foreground border border-border"
                       }`}>
@@ -210,7 +210,7 @@ export default function ProviderDashboardPage() {
                     </button>
                   )}
 
-                  {(booking.status === "Started" || booking.status === "OnTheWay") && (
+                  {booking.status === "Started" && (
                     <button
                       onClick={() => updateBookingStatus(booking.id, "Completed")}
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
@@ -287,7 +287,7 @@ export default function ProviderDashboardPage() {
                       <div>
                         <h4 className="text-xs sm:text-sm font-bold text-foreground">{srv.name}</h4>
                         <p className="text-[11px] text-muted-foreground">
-                          {srv.category} • Base Rate: ₹{srv.basePrice} • 4.9 ★ (120)
+                          {srv.category} • Base Rate: ₹{srv.basePrice} • {srv.rating > 0 ? `${srv.rating} ★` : "No ratings"} ({srv.bookingsCount} bookings)
                         </p>
                       </div>
                     </div>

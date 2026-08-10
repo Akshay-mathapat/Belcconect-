@@ -29,15 +29,14 @@ interface ProviderSearchDropdownProps {
 
 const DASHBOARD_PAGES = [
   { label: "Bookings & Job Requests", href: "/provider/bookings", desc: "View & manage service booking requests", keywords: ["bookings", "jobs", "requests", "orders", "accepted", "completed"], icon: CalendarDays },
+  { label: "Add New Service", href: "/provider/services/new", desc: "Create a new service offering", keywords: ["services", "add service", "new service", "create"], icon: Wrench },
   { label: "My Services", href: "/provider/services", desc: "Manage published service offerings", keywords: ["services", "my services", "listings", "create service", "rates"], icon: Wrench },
   { label: "Calendar Schedule", href: "/provider/calendar", desc: "View schedule & appointment calendar", keywords: ["calendar", "schedule", "appointments"], icon: CalendarDays },
   { label: "Working Availability", href: "/provider/availability", desc: "Set working hours & available slots", keywords: ["availability", "hours", "shifts", "slots"], icon: Clock },
   { label: "Customer Messages", href: "/provider/messages", desc: "Chat with booking customers", keywords: ["messages", "chat", "inbox", "customers"], icon: MessageSquare },
   { label: "Customer Reviews", href: "/provider/reviews", desc: "Check customer feedback & ratings", keywords: ["reviews", "ratings", "feedback", "stars"], icon: Star },
   { label: "Payouts & Payments", href: "/provider/payments", desc: "Earnings & payout transactions", keywords: ["payments", "payouts", "earnings", "wallet", "transactions"], icon: Wallet },
-  { label: "Analytics & Performance", href: "/provider/analytics", desc: "Booking conversion & job statistics", keywords: ["analytics", "insights", "metrics", "stats"], icon: BarChart3 },
   { label: "Profile Account", href: "/provider/profile", desc: "Manage provider account profile", keywords: ["profile", "bio", "account"], icon: User },
-  { label: "Provider Settings", href: "/provider/settings", desc: "Account preferences & configuration", keywords: ["settings", "preferences", "configuration"], icon: Settings },
 ];
 
 export function ProviderSearchDropdown({ query, isOpen, onClose }: ProviderSearchDropdownProps) {

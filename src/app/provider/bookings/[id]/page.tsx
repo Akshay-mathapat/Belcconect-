@@ -19,10 +19,8 @@ import { BookingStatus } from "@/types/provider";
 const timelineSteps: BookingStatus[] = [
   "Requested",
   "Accepted",
-  "OnTheWay",
   "Started",
   "Completed",
-  "PaymentReceived",
   "ReviewSubmitted"
 ];
 
@@ -138,7 +136,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
                     <div>
                       <h4 className={`text-xs font-bold ${isCurrent ? "text-blue-600 text-sm font-extrabold" : "text-foreground"}`}>
-                        {step}
+                        {step === "ReviewSubmitted" ? "Review Submitted" : step}
                       </h4>
                       <p className="text-[11px] text-muted-foreground">
                         {isPassed ? "Completed stage" : "Pending action"}
@@ -149,16 +147,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       <div className="flex items-center gap-2">
                         {step === "Accepted" && (
                           <button
-                            onClick={() => updateBookingStatus(booking.id, "OnTheWay")}
-                            className="px-3 py-1.5 rounded-lg bg-[#D4A017] text-slate-950 text-xs font-bold"
-                          >
-                            Mark On The Way
-                          </button>
-                        )}
-                        {step === "OnTheWay" && (
-                          <button
                             onClick={() => updateBookingStatus(booking.id, "Started")}
-                            className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold"
+                            className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold cursor-pointer"
                           >
                             Start Service
                           </button>
@@ -166,7 +156,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                         {step === "Started" && (
                           <button
                             onClick={() => updateBookingStatus(booking.id, "Completed")}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold cursor-pointer"
                           >
                             Complete Service
                           </button>
@@ -202,10 +192,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               <span className="text-[10px] text-muted-foreground mt-1">Google Maps API Ready</span>
 
               <a
-                href={`https://maps.google.com/?q=${encodeURIComponent(booking.address)}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.address)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-[#174946] transition-colors"
+                className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-colors"
               >
                 Open in Google Maps
               </a>

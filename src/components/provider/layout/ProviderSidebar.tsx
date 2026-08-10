@@ -12,46 +12,46 @@ import {
   MessageSquare, 
   Star, 
   Wallet, 
-  BarChart3, 
-  Bell, 
   User, 
-  Settings, 
-  ChevronLeft, 
-  ChevronRight,
   ShieldCheck,
-  Power,
-  X
+  X,
+  Plus
 } from "lucide-react";
 import { useEffect } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
 interface ProviderSidebarProps {
-  collapsed: boolean;
-  setCollapsed: (v: boolean) => void;
+  collapsed?: boolean;
+  setCollapsed?: (v: boolean) => void;
   mobileOpen?: boolean;
   setMobileOpen?: (v: boolean) => void;
 }
 
-const navItems = [
+interface NavItem {
+  label: string;
+  href: string;
+  icon: any;
+  badge?: string;
+}
+
+const navItems: NavItem[] = [
   { label: "Dashboard", href: "/provider", icon: LayoutDashboard },
-  { label: "Bookings", href: "/provider/bookings", icon: CalendarDays, badge: "2 New" },
+  { label: "Bookings", href: "/provider/bookings", icon: CalendarDays },
+  { label: "Add New Service", href: "/provider/services/new", icon: Plus },
   { label: "My Services", href: "/provider/services", icon: Wrench },
   { label: "Calendar", href: "/provider/calendar", icon: Calendar },
   { label: "Availability", href: "/provider/availability", icon: Clock },
-  { label: "Messages", href: "/provider/messages", icon: MessageSquare, badge: "1" },
+  { label: "Messages", href: "/provider/messages", icon: MessageSquare },
   { label: "Reviews", href: "/provider/reviews", icon: Star },
   { label: "Payments", href: "/provider/payments", icon: Wallet },
-  { label: "Analytics", href: "/provider/analytics", icon: BarChart3 },
-  { label: "Notifications", href: "/provider/notifications", icon: Bell },
   { label: "Profile", href: "/provider/profile", icon: User },
-  { label: "Settings", href: "/provider/settings", icon: Settings },
 ];
 
-export function ProviderSidebar({ collapsed, setCollapsed, mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
+export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
   const pathname = usePathname();
   const { currentUser } = useAuthStore();
-  const { isOnline, toggleOnlineStatus, profile, syncWithAuthUser } = useProviderStore();
+  const { profile, syncWithAuthUser } = useProviderStore();
 
   useEffect(() => {
     if (currentUser) {
@@ -71,51 +71,21 @@ export function ProviderSidebar({ collapsed, setCollapsed, mobileOpen = false, s
   return (
     <>
       {/* Desktop Sidebar (visible on lg screens) */}
-      <motion.aside
-        animate={{ width: collapsed ? 80 : 270 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden lg:flex fixed left-0 top-16 bottom-0 z-40 bg-card border-r border-border flex-col justify-between shadow-lg h-[calc(100vh-4rem)]"
+      <aside
+        className="hidden lg:flex fixed left-0 top-16 bottom-0 z-40 bg-card border-r border-border flex-col justify-between shadow-lg h-[calc(100vh-4rem)] w-[240px]"
       >
         <div>
-          {/* Online / Offline Status Switch & Collapse Toggle in ONE Row */}
-          <div className="p-3 border-b border-border/40 flex items-center gap-2">
-            <button
-              onClick={toggleOnlineStatus}
-              className={`flex-1 py-2 px-3 rounded-xl border flex items-center transition-all ${
-                collapsed ? "justify-center" : "justify-between"
-              } ${
-                isOnline 
-                  ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
-                  : "bg-muted border-border text-muted-foreground"
-              }`}
-              title={isOnline ? "Online & Ready" : "Offline"}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? "bg-blue-600 animate-pulse" : "bg-gray-400"}`} />
-                {!collapsed && (
-                  <span className="text-xs font-bold truncate">
-                    {isOnline ? "Online & Ready" : "Offline"}
-                  </span>
-                )}
-              </div>
-              {!collapsed && (
-                <Power className="h-3.5 w-3.5 opacity-70 shrink-0" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-8 h-8 shrink-0 rounded-lg border border-border bg-muted/40 text-foreground/70 hover:text-foreground flex items-center justify-center transition-colors"
-              title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </button>
-          </div>
+          {/* Spacing on top instead of toggle header */}
+          <div className="h-4" />
 
           {/* Navigation Items */}
-          <nav className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)] custom-scrollbar">
+          <nav className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/provider" && pathname.startsWith(item.href));
+              const isActive = item.href === "/provider" 
+                ? pathname === "/provider" 
+                : item.href === "/provider/services"
+                  ? pathname === "/provider/services" || (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
+                  : pathname.startsWith(item.href);
               const Icon = item.icon;
 
               return (
@@ -127,17 +97,14 @@ export function ProviderSidebar({ collapsed, setCollapsed, mobileOpen = false, s
                       ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
-                  title={collapsed ? item.label : undefined}
                 >
                   <Icon className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${
                     isActive ? "text-white" : "text-foreground/70"
                   }`} />
 
-                  {!collapsed && (
-                    <span className="truncate">{item.label}</span>
-                  )}
+                  <span className="truncate">{item.label}</span>
 
-                  {!collapsed && item.badge && (
+                  {item.badge && (
                     <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isActive 
                         ? "bg-white/20 text-white" 
@@ -160,18 +127,16 @@ export function ProviderSidebar({ collapsed, setCollapsed, mobileOpen = false, s
               alt={profile.name}
               className="w-9 h-9 rounded-full object-cover border border-blue-600/30 shrink-0"
             />
-            {!collapsed && (
-              <div className="overflow-hidden">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>
-                  <ShieldCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                </div>
-                <span className="text-[10px] text-muted-foreground block truncate">Verified Pro</span>
+            <div className="overflow-hidden">
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>
+                <ShieldCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               </div>
-            )}
+              <span className="text-[10px] text-muted-foreground block truncate">Verified Pro</span>
+            </div>
           </Link>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Mobile Drawer (visible on < lg when mobileOpen is true) */}
       <AnimatePresence>
@@ -216,28 +181,16 @@ export function ProviderSidebar({ collapsed, setCollapsed, mobileOpen = false, s
                   </button>
                 </div>
 
-                <div className="p-3 border-b border-border/40">
-                  <button
-                    onClick={toggleOnlineStatus}
-                    className={`w-full py-2.5 px-3 rounded-xl border flex items-center justify-between transition-all ${
-                      isOnline 
-                        ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
-                        : "bg-muted border-border text-muted-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? "bg-blue-600 animate-pulse" : "bg-gray-400"}`} />
-                      <span className="text-xs font-bold">
-                        {isOnline ? "Online & Ready" : "Offline"}
-                      </span>
-                    </div>
-                    <Power className="h-3.5 w-3.5 opacity-70" />
-                  </button>
-                </div>
+                {/* Spacing instead of toggle */}
+                <div className="h-2" />
 
-                <nav className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-210px)] custom-scrollbar">
+                <nav className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar">
                   {navItems.map((item) => {
-                    const isActive = pathname === item.href || (item.href !== "/provider" && pathname.startsWith(item.href));
+                    const isActive = item.href === "/provider" 
+                      ? pathname === "/provider" 
+                      : item.href === "/provider/services"
+                        ? pathname === "/provider/services" || (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
+                        : pathname.startsWith(item.href);
                     const Icon = item.icon;
 
                     return (

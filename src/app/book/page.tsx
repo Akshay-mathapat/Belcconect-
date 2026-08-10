@@ -15,9 +15,13 @@ function BookingFlow() {
   const proId = searchParams.get("pro");
   const priceParam = searchParams.get("price");
 
+  const savedAddresses = currentUser?.addresses || [];
+
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [address, setAddress] = useState("home");
+  const [address, setAddress] = useState(() => {
+    return savedAddresses.length > 0 ? savedAddresses[0].id : "new";
+  });
   const [newAddressText, setNewAddressText] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -51,6 +55,10 @@ function BookingFlow() {
         ? proId 
         : "provider-1";
 
+      const finalAddress = address === "new" 
+        ? (newAddressText || "New Address") 
+        : (savedAddresses.find(a => a.id === address)?.text || "New Address");
+
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: {
@@ -67,7 +75,7 @@ function BookingFlow() {
           customerPhoto,
           date,
           time: time || "10:00 AM",
-          address: address === "home" ? "123 Main St, Tilakwadi, Belagavi, 590006" : (newAddressText || "New Address")
+          address: finalAddress
         })
       });
 
@@ -129,15 +137,27 @@ function BookingFlow() {
             <>
               <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">Service Address</h1>
               <div className="space-y-3 mb-8">
-                <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${address === "home" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="block font-semibold text-foreground mb-1">Home</span>
-                      <span className="text-sm text-muted-foreground">123 Main St, Tilakwadi, Belagavi</span>
+                {savedAddresses.map((addr) => (
+                  <label 
+                    key={addr.id} 
+                    className={`block border rounded-xl p-4 cursor-pointer transition-all ${address === addr.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="block font-semibold text-foreground mb-1 capitalize">{addr.type}</span>
+                        <span className="text-sm text-muted-foreground">{addr.text}</span>
+                      </div>
+                      <input 
+                        type="radio" 
+                        name="address" 
+                        checked={address === addr.id} 
+                        onChange={() => setAddress(addr.id)} 
+                        className="text-primary focus:ring-primary" 
+                      />
                     </div>
-                    <input type="radio" name="address" checked={address === "home"} onChange={() => setAddress("home")} className="text-primary focus:ring-primary" />
-                  </div>
-                </label>
+                  </label>
+                ))}
+
                 <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${address === "new" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
                   <div className="flex items-center justify-between">
                     <div>

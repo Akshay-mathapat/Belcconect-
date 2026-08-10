@@ -147,8 +147,7 @@ export default function Navigation() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onScroll = () => {
-      const currentScrollY = window.scrollY;
+    const handleScrollValue = (currentScrollY: number) => {
       setScrolled(currentScrollY > 30);
 
       if (currentScrollY <= 30) {
@@ -161,9 +160,25 @@ export default function Navigation() {
 
       lastScrollY.current = currentScrollY;
     };
+
+    const onScroll = () => {
+      handleScrollValue(window.scrollY);
+    };
+
+    const onAuthScroll = (e: Event) => {
+      const customEvt = e as CustomEvent<{ scrollTop: number }>;
+      if (customEvt.detail && typeof customEvt.detail.scrollTop === "number") {
+        handleScrollValue(customEvt.detail.scrollTop);
+      }
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("auth-scroll", onAuthScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("auth-scroll", onAuthScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -176,6 +191,9 @@ export default function Navigation() {
     setMobileOpen(false);
     setSearchFocused(false);
     setSearchQuery("");
+    setScrollDirection(null);
+    setScrolled(false);
+    lastScrollY.current = 0;
   }, [pathname]);
 
   // Close search on outside click
@@ -473,11 +491,11 @@ export default function Navigation() {
             </button>
           </div>
         </nav>
-      </motion.header> 
+      </motion.header>
 
       {/* Category Bar — desktop only */}
       <motion.div
-        className="fixed inset-x-0 top-16 z-40"
+        className={`fixed inset-x-0 top-16 z-40 ${scrollDirection === "down" && pathname !== "/" ? "pointer-events-none" : ""}`}
         initial={{ y: 0, opacity: 1 }}
         animate={{
           y: pathname === "/" ? 0 : scrollDirection === "down" ? -60 : 0,

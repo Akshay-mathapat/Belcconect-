@@ -61,7 +61,7 @@ const initialProfile: ProviderProfile = {
   title: "Professional Service Specialist",
   bio: "Certified service professional in Belagavi. Update your bio and experience details in profile settings.",
   photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-  rating: 5.0,
+  rating: 0.0,
   totalReviews: 0,
   experienceYears: 1,
   languages: ["English", "Kannada"],

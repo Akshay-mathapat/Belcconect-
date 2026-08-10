@@ -20,6 +20,8 @@ export interface Booking {
   address: string;
   status: BookingStatus;
   uploadedImages: string[];
+  rating?: number;
+  reviewComment?: string;
 }
 
 export interface ServiceFAQ {

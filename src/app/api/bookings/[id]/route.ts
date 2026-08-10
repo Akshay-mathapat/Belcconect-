@@ -16,6 +16,8 @@ function mapRowToBooking(row: any) {
     status: row.status,
     providerName: row.provider_name || "Verified Expert",
     uploadedImages: [],
+    rating: row.rating,
+    reviewComment: row.review_comment || ""
   };
 }
 
@@ -26,7 +28,7 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { status, date, time } = body;
+    const { status, date, time, rating, reviewComment } = body;
 
     // Check if booking exists
     const checkRes = await query("SELECT * FROM bookings WHERE id = $1", [id]);
@@ -54,6 +56,16 @@ export async function PATCH(
       queryParams.push(time);
     }
 
+    if (rating !== undefined) {
+      updateFields.push(`rating = $${paramIndex++}`);
+      queryParams.push(rating);
+    }
+
+    if (reviewComment !== undefined) {
+      updateFields.push(`review_comment = $${paramIndex++}`);
+      queryParams.push(reviewComment);
+    }
+
     if (updateFields.length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
@@ -78,6 +90,8 @@ export async function PATCH(
         b.date, 
         b.time, 
         b.status, 
+        b.rating,
+        b.review_comment,
         c.name AS customer_name,
         c.phone AS customer_phone,
         c.avatar AS customer_photo,

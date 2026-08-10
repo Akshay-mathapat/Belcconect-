@@ -99,8 +99,17 @@ export async function initDB() {
         category VARCHAR(100) NOT NULL,
         date VARCHAR(50) NOT NULL,
         time VARCHAR(50) NOT NULL,
-        status VARCHAR(50) NOT NULL
+        status VARCHAR(50) NOT NULL,
+        rating INTEGER
       )
+    `);
+
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS rating INTEGER
+    `);
+
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS review_comment TEXT
     `);
 
     const defaultHash = hashPassword("password123");

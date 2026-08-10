@@ -15,8 +15,11 @@ export interface BookingItem {
   id: string;
   service: string;
   provider: string;
+  providerId?: string;
   date: string;
-  status: "Requested" | "Accepted" | "Rejected" | "OnTheWay" | "Started" | "Completed" | "Cancelled" | "Upcoming";
+  status: "Requested" | "Accepted" | "Rejected" | "OnTheWay" | "Started" | "Completed" | "Cancelled" | "Upcoming" | "ReviewSubmitted";
+  rating?: number;
+  reviewComment?: string;
 }
 
 export interface AuthUser {
@@ -275,13 +278,15 @@ export const useAuthStore = create<AuthState>()(
           });
           if (res.ok) {
             const dbBookings = await res.json();
-            // Map DB bookings schema to fit customer layout (BookingItem)
             const mappedBookings: BookingItem[] = dbBookings.map((b: any) => ({
               id: b.id,
               service: b.serviceName,
               provider: b.providerName || (b.providerId === "provider-1" ? "Rohan Electrician" : "Verified Expert"),
+              providerId: b.providerId,
               date: `${b.date} at ${b.time}`,
-              status: b.status || "Requested"
+              status: b.status || "Requested",
+              rating: b.rating,
+              reviewComment: b.reviewComment
             }));
 
             set((state) => {

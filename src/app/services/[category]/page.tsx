@@ -47,9 +47,9 @@ export default function ServicesCategoryPage() {
   const dbFormatted = dbPros.map(srv => ({
     id: srv.id,
     name: srv.providerName || "Professional",
-    rating: srv.rating || 5.0,
-    reviews: srv.reviews || 0,
-    jobs: srv.jobs || 12,
+    rating: srv.rating !== undefined ? Number(srv.rating) : 0.0,
+    reviews: srv.bookingsCount || 0,
+    jobs: srv.bookingsCount || 0,
     exp: srv.exp || 3,
     providerId: srv.providerId,
     serviceId: srv.id,
@@ -173,8 +173,8 @@ export default function ServicesCategoryPage() {
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1 text-amber-500 font-medium">
-                            <Star className="h-3.5 w-3.5 fill-amber-500" />
-                            {pro.rating} ({pro.reviews})
+                            <Star className={`h-3.5 w-3.5 text-amber-500 ${pro.rating > 0 ? "fill-amber-500" : ""}`} />
+                            {pro.rating > 0 ? pro.rating : "No ratings"} ({pro.reviews})
                           </span>
                           <span>•</span>
                           <span>{pro.jobs} jobs done</span>
@@ -201,7 +201,7 @@ export default function ServicesCategoryPage() {
                         Book Now
                       </Link>
                       <Link 
-                        href={`/provider/${pro.providerId}`}
+                        href={`/provider-profile/${pro.providerId}`}
                         className="inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted"
                       >
                         View Profile
