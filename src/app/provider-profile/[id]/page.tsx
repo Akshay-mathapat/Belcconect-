@@ -35,7 +35,6 @@ interface ProviderData {
     name: string;
     category: string;
     description: string;
-    base_price: number;
   }>;
   reviews: Array<{
     customer_name: string;
@@ -148,12 +147,7 @@ export default function ProviderProfilePage() {
                 <h1 className="text-xl font-heading font-extrabold text-foreground mt-3">{provider.name}</h1>
                 <p className="text-xs text-muted-foreground mt-1">Belagavi Service Partner</p>
 
-                {/* Rating Banner */}
-                <div className="flex items-center gap-1.5 mt-4 bg-muted/50 px-3 py-1.5 rounded-xl border border-border">
-                  <Star className="h-4 w-4 fill-[#D4A017] text-[#D4A017]" />
-                  <span className="text-xs font-bold text-foreground">{avgRating}</span>
-                  <span className="text-[10px] text-muted-foreground">({totalReviews} Reviews)</span>
-                </div>
+
 
                 {/* Divider */}
                 <div className="w-full border-t border-border my-6" />
@@ -192,16 +186,6 @@ export default function ProviderProfilePage() {
                 </div>
               </div>
 
-              {/* Bio Card */}
-              <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-                <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <Award className="h-4 w-4 text-blue-600" />
-                  Biography
-                </h3>
-                <p className="text-xs text-foreground/80 leading-relaxed font-medium">
-                  {provider.bio}
-                </p>
-              </div>
             </div>
 
             {/* Right Column: Offerings & Reviews */}
@@ -211,7 +195,7 @@ export default function ProviderProfilePage() {
               <div className="space-y-4">
                 <div className="border-b border-border pb-2">
                   <h2 className="font-heading text-lg font-bold text-foreground">Services Offered</h2>
-                  <p className="text-xs text-muted-foreground">Direct pricing models backed by professional execution</p>
+                  <p className="text-xs text-muted-foreground">Mutual pricing models backed by professional execution</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -223,11 +207,11 @@ export default function ProviderProfilePage() {
                             <span className="text-[10px] font-bold text-[#1F5F5B] bg-[#1F5F5B]/10 px-2 py-0.5 rounded-full capitalize">
                               {srv.category}
                             </span>
-                            <span className="text-sm font-extrabold text-foreground">₹{srv.base_price}</span>
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
                           </div>
                           <h4 className="text-sm font-bold text-foreground">{srv.name}</h4>
                           <p className="text-xs text-muted-foreground mt-2 leading-relaxed font-medium line-clamp-3">
-                            {srv.description || "Professional service delivered at standard upfront pricing."}
+                            {srv.description || "Professional service delivered on a direct mutual pricing model."}
                           </p>
                         </div>
 
@@ -244,57 +228,6 @@ export default function ProviderProfilePage() {
                   ) : (
                     <div className="col-span-2 py-8 text-center border border-dashed border-border rounded-2xl bg-card">
                       <p className="text-xs text-muted-foreground">No active services listed currently.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Reviews Section */}
-              <div className="space-y-4">
-                <div className="border-b border-border pb-2">
-                  <h2 className="font-heading text-lg font-bold text-foreground">Customer Reviews</h2>
-                  <p className="text-xs text-muted-foreground">Verifiable rating history left by recent customers</p>
-                </div>
-
-                <div className="space-y-4">
-                  {reviews.length > 0 ? (
-                    reviews.map((rev, index) => (
-                      <div key={index} className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <img 
-                              src={rev.customer_photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                              alt={rev.customer_name}
-                              className="w-9 h-9 rounded-full object-cover border border-border"
-                            />
-                            <div>
-                              <h5 className="text-xs font-bold text-foreground">{rev.customer_name}</h5>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-0.5">
-                                  {Array.from({ length: rev.rating }).map((_, i) => (
-                                    <Star key={i} className="h-3 w-3 fill-[#D4A017] text-[#D4A017]" />
-                                  ))}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground">• {rev.date}</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                            {rev.service_name}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-foreground/80 leading-relaxed font-medium pl-1">
-                          "{rev.comment}"
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-10 text-center border border-dashed border-border rounded-2xl bg-card">
-                      <Star className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                      <h4 className="text-xs font-bold text-foreground">No Reviews Posted</h4>
-                      <p className="text-[10px] text-muted-foreground max-w-xs mx-auto mt-1">This provider hasn't received reviews for completed bookings yet.</p>
                     </div>
                   )}
                 </div>

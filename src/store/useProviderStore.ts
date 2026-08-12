@@ -174,8 +174,7 @@ export const useProviderStore = create<ProviderStoreState>()(
               name: newSrv.name,
               category: newSrv.category,
               subcategory: newSrv.subcategory,
-              description: newSrv.description,
-              basePrice: newSrv.basePrice
+              description: newSrv.description
             })
           });
           if (res.ok) {

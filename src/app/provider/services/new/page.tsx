@@ -22,7 +22,6 @@ export default function NewServicePage() {
     category: "",
     subcategory: "",
     description: "",
-    basePrice: 0,
     discountPercentage: 0,
     durationMinutes: 60,
     experienceYears: 1,

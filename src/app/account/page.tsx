@@ -26,6 +26,53 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 
+function getBookingTimestamp(booking: { date: string; time?: string }) {
+  try {
+    let dateStr = booking.date;
+    if (dateStr === "Today") {
+      const d = new Date();
+      dateStr = d.toISOString().split("T")[0];
+    } else if (dateStr === "Tomorrow") {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      dateStr = d.toISOString().split("T")[0];
+    } else if (dateStr === "Yesterday") {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      dateStr = d.toISOString().split("T")[0];
+    }
+
+    if (!dateStr.includes("-")) {
+      const parsed = Date.parse(booking.date + " " + (booking.time || ""));
+      if (!isNaN(parsed)) return parsed;
+      return 0;
+    }
+
+    let timeStr = booking.time || "12:00 AM";
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    let hours = 0;
+    let minutes = 0;
+    if (match) {
+      hours = parseInt(match[1], 10);
+      minutes = parseInt(match[2], 10);
+      const ampm = match[3].toUpperCase();
+      if (ampm === "PM" && hours < 12) hours += 12;
+      if (ampm === "AM" && hours === 12) hours = 0;
+    } else {
+      const parts = timeStr.split(":");
+      if (parts.length >= 2) {
+        hours = parseInt(parts[0], 10);
+        minutes = parseInt(parts[1], 10);
+      }
+    }
+
+    const [year, month, day] = dateStr.split("-").map((x) => parseInt(x, 10));
+    return new Date(year, month - 1, day, hours, minutes).getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
 export default function AccountPage() {
   const router = useRouter();
   const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings } = useAuthStore();
@@ -40,6 +87,12 @@ export default function AccountPage() {
         return;
       }
       fetchUserBookings();
+
+      const intervalId = setInterval(() => {
+        fetchUserBookings();
+      }, 3000);
+
+      return () => clearInterval(intervalId);
     }
   }, [fetchUserBookings, currentUser?.id, router, logout]);
 
@@ -336,7 +389,14 @@ export default function AccountPage() {
                     </motion.div>
                   ) : (
                     <div className="space-y-4">
-                      {activeUser.bookings.map((booking) => (
+                      {[...activeUser.bookings]
+                        .sort((a, b) => {
+                          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                          if (timeA !== timeB) return timeB - timeA;
+                          return b.id.localeCompare(a.id);
+                        })
+                        .map((booking) => (
                         <motion.div
                           key={booking.id}
                           initial={{ opacity: 0, y: 10 }}

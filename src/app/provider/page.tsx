@@ -32,6 +32,53 @@ import { useEffect, useState } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
+function getBookingTimestamp(booking: { date: string; time?: string }) {
+  try {
+    let dateStr = booking.date;
+    if (dateStr === "Today") {
+      const d = new Date();
+      dateStr = d.toISOString().split("T")[0];
+    } else if (dateStr === "Tomorrow") {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      dateStr = d.toISOString().split("T")[0];
+    } else if (dateStr === "Yesterday") {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      dateStr = d.toISOString().split("T")[0];
+    }
+
+    if (!dateStr.includes("-")) {
+      const parsed = Date.parse(booking.date + " " + (booking.time || ""));
+      if (!isNaN(parsed)) return parsed;
+      return 0;
+    }
+
+    let timeStr = booking.time || "12:00 AM";
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    let hours = 0;
+    let minutes = 0;
+    if (match) {
+      hours = parseInt(match[1], 10);
+      minutes = parseInt(match[2], 10);
+      const ampm = match[3].toUpperCase();
+      if (ampm === "PM" && hours < 12) hours += 12;
+      if (ampm === "AM" && hours === 12) hours = 0;
+    } else {
+      const parts = timeStr.split(":");
+      if (parts.length >= 2) {
+        hours = parseInt(parts[0], 10);
+        minutes = parseInt(parts[1], 10);
+      }
+    }
+
+    const [year, month, day] = dateStr.split("-").map((x) => parseInt(x, 10));
+    return new Date(year, month - 1, day, hours, minutes).getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
 export default function ProviderDashboardPage() {
   const { currentUser } = useAuthStore();
   const { profile, bookings, services, updateBookingStatus, syncWithAuthUser, fetchProviderBookings, fetchProviderServices } = useProviderStore();
@@ -48,6 +95,12 @@ export default function ProviderDashboardPage() {
     }
     fetchProviderBookings();
     fetchProviderServices();
+
+    const intervalId = setInterval(() => {
+      fetchProviderBookings();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
   }, [currentUser, syncWithAuthUser, fetchProviderBookings, fetchProviderServices]);
 
   const totalBookings = bookings.length;
@@ -133,7 +186,16 @@ export default function ProviderDashboardPage() {
 
         {bookings.filter((b) => b.status === "Requested").length > 0 ? (
           <div className="space-y-3">
-            {bookings.filter((b) => b.status === "Requested").slice(0, 4).map((booking) => (
+            {[...bookings]
+              .filter((b) => b.status === "Requested")
+              .sort((a, b) => {
+                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                if (timeA !== timeB) return timeB - timeA;
+                return b.id.localeCompare(a.id);
+              })
+              .slice(0, 4)
+              .map((booking) => (
               <div
                 key={booking.id}
                 className="rounded-xl border border-border/80 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card hover:bg-muted/30 transition-all shadow-xs"
@@ -287,7 +349,7 @@ export default function ProviderDashboardPage() {
                       <div>
                         <h4 className="text-xs sm:text-sm font-bold text-foreground">{srv.name}</h4>
                         <p className="text-[11px] text-muted-foreground">
-                          {srv.category} • Base Rate: ₹{srv.basePrice} • {srv.rating > 0 ? `${srv.rating} ★` : "No ratings"} ({srv.bookingsCount} bookings)
+                          {srv.category} • Mutual Pricing • {srv.rating > 0 ? `${srv.rating} ★` : "No ratings"} ({srv.bookingsCount} bookings)
                         </p>
                       </div>
                     </div>

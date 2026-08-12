@@ -38,10 +38,10 @@ export default function ServicesCategoryPage() {
   }, [categoryId]);
 
   const mockPros = [
-    { id: "mock-1", name: "Ramesh Sharma", rating: 4.9, reviews: 128, jobs: 450, exp: 8, serviceName: "AC Repair & Servicing", basePrice: 499, description: "Professional AC repair and maintenance.", serviceId: undefined, providerId: "1" },
-    { id: "mock-2", name: "Suresh Kumar", rating: 4.7, reviews: 85, jobs: 310, exp: 5, serviceName: "Electrician Works", basePrice: 299, description: "General electrical repairs and installations.", serviceId: undefined, providerId: "2" },
-    { id: "mock-3", name: "Anil Desai", rating: 4.8, reviews: 104, jobs: 385, exp: 12, serviceName: "Plumbing Services", basePrice: 349, description: "Leakages fixing, pipeline repairs.", serviceId: undefined, providerId: "3" },
-    { id: "mock-4", name: "Priya Patil", rating: 5.0, reviews: 62, jobs: 190, exp: 4, serviceName: "Home Cleaning", basePrice: 599, description: "Deep cleaning, dusting, and sanitation.", serviceId: undefined, providerId: "4" },
+    { id: "mock-1", name: "Ramesh Sharma", rating: 4.9, reviews: 128, jobs: 450, exp: 8, serviceName: "AC Repair & Servicing", description: "Professional AC repair and maintenance.", serviceId: undefined, providerId: "1" },
+    { id: "mock-2", name: "Suresh Kumar", rating: 4.7, reviews: 85, jobs: 310, exp: 5, serviceName: "Electrician Works", description: "General electrical repairs and installations.", serviceId: undefined, providerId: "2" },
+    { id: "mock-3", name: "Anil Desai", rating: 4.8, reviews: 104, jobs: 385, exp: 12, serviceName: "Plumbing Services", description: "Leakages fixing, pipeline repairs.", serviceId: undefined, providerId: "3" },
+    { id: "mock-4", name: "Priya Patil", rating: 5.0, reviews: 62, jobs: 190, exp: 4, serviceName: "Home Cleaning", description: "Deep cleaning, dusting, and sanitation.", serviceId: undefined, providerId: "4" },
   ];
 
   const dbFormatted = dbPros.map(srv => ({
@@ -54,8 +54,7 @@ export default function ServicesCategoryPage() {
     providerId: srv.providerId,
     serviceId: srv.id,
     serviceName: srv.name,
-    description: srv.description,
-    basePrice: srv.basePrice
+    description: srv.description
   }));
 
   const combinedPros = [...dbFormatted, ...mockPros];
@@ -180,8 +179,7 @@ export default function ServicesCategoryPage() {
                           <span>{pro.jobs} jobs done</span>
                           <span>•</span>
                           <span>{pro.exp} yrs exp</span>
-                          <span>•</span>
-                          <span className="font-semibold text-foreground">₹{pro.basePrice} onwards</span>
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
                         </div>
                       </div>
                     </div>
@@ -193,7 +191,7 @@ export default function ServicesCategoryPage() {
                     <div className="flex items-center gap-3">
                       <Link 
                         href={pro.serviceId 
-                          ? `/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&price=${pro.basePrice}&proName=${encodeURIComponent(pro.name)}`
+                          ? `/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&proName=${encodeURIComponent(pro.name)}`
                           : `/book?pro=${pro.providerId}&service=${categoryId}`
                         }
                         className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"

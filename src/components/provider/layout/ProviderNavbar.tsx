@@ -235,7 +235,7 @@ export function ProviderNavbar({ collapsed }: ProviderNavbarProps) {
                       >
                         <div>
                           <h5 className="font-bold text-foreground">{s.name}</h5>
-                          <span className="text-[11px] text-muted-foreground">{s.category} • ₹{s.basePrice}</span>
+                          <span className="text-[11px] text-muted-foreground">{s.category} • Mutual Pricing</span>
                         </div>
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                           Active

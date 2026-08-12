@@ -82,7 +82,6 @@ export async function initDB() {
         category VARCHAR(100) NOT NULL,
         subcategory VARCHAR(100),
         description TEXT,
-        base_price NUMERIC(10, 2) NOT NULL,
         is_available BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -110,6 +109,14 @@ export async function initDB() {
 
     await client.query(`
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS review_comment TEXT
+    `);
+
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `);
+
+    await client.query(`
+      ALTER TABLE services DROP COLUMN IF EXISTS base_price
     `);
 
     const defaultHash = hashPassword("password123");
@@ -167,10 +174,10 @@ export async function initDB() {
 
     // Seed initial services for provider-1 (Rohan Electrician)
     await client.query(`
-      INSERT INTO services (id, provider_id, name, category, description, base_price, is_available)
+      INSERT INTO services (id, provider_id, name, category, description, is_available)
       VALUES
-        ('srv-1', 'provider-1', 'Fan Repair & Installation', 'electrical', 'Complete fan repair and new ceiling fan installation.', 299.00, true),
-        ('srv-2', 'provider-1', 'House Wiring Checkup', 'electrical', 'Full inspection of home electrical points and safety audit.', 599.00, true)
+        ('srv-1', 'provider-1', 'Fan Repair & Installation', 'electrical', 'Complete fan repair and new ceiling fan installation.', true),
+        ('srv-2', 'provider-1', 'House Wiring Checkup', 'electrical', 'Full inspection of home electrical points and safety audit.', true)
       ON CONFLICT (id) DO NOTHING
     `);
 

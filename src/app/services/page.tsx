@@ -128,11 +128,11 @@ export default function ServicesPage() {
                         
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
                           <div>
-                            <span className="text-xs text-muted-foreground block font-medium">Starting from</span>
-                            <span className="text-lg font-extrabold text-foreground">₹{srv.basePrice}</span>
+                            <span className="text-xs text-muted-foreground block font-medium">Pricing Model</span>
+                            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
                           </div>
                           <Link 
-                            href={`/book?pro=${srv.providerId}&service=${encodeURIComponent(srv.name)}&price=${srv.basePrice}&proName=${encodeURIComponent(srv.providerName || "")}`}
+                            href={`/book?pro=${srv.providerId}&service=${encodeURIComponent(srv.name)}&proName=${encodeURIComponent(srv.providerName || "")}`}
                             className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground font-semibold px-4 py-2 text-sm hover:bg-primary/95 shadow-sm transition-colors"
                           >
                             Book Now

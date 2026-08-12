@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   PlusCircle, 
   Search, 
@@ -17,7 +17,10 @@ import {
   Eye, 
   Power,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  X,
+  Handshake,
+  Award
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { SERVICE_CATEGORIES } from "@/constants/site";
@@ -25,6 +28,7 @@ import { SERVICE_CATEGORIES } from "@/constants/site";
 export default function ServicesManagementPage() {
   const { services, toggleServiceAvailability, deleteService, addService, fetchProviderServices } = useProviderStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPreviewService, setSelectedPreviewService] = useState<any | null>(null);
 
   useEffect(() => {
     fetchProviderServices();
@@ -115,10 +119,6 @@ export default function ServicesManagementPage() {
                     <Star className={`h-3.5 w-3.5 text-[#D4A017] ${s.rating > 0 ? "fill-[#D4A017]" : ""}`} />
                     <span>{s.rating > 0 ? s.rating : "No ratings"} ({s.bookingsCount} bookings)</span>
                   </span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    {s.durationMinutes} mins
-                  </span>
                 </div>
 
                 <h3 className="font-heading text-base font-bold text-foreground line-clamp-1">
@@ -160,19 +160,139 @@ export default function ServicesManagementPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Link
-                  href={`/services`}
-                  target="_blank"
-                  className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground flex items-center gap-1"
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreviewService(s)}
+                  className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground flex items-center gap-1 cursor-pointer"
                 >
                   <Eye className="h-3.5 w-3.5" />
                   <span>Preview</span>
-                </Link>
+                </button>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
+
+      {/* Service Preview Modal Dialog */}
+      <AnimatePresence>
+        {selectedPreviewService && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl space-y-4 overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
+                    <Wrench className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-sm font-bold text-foreground">Service Preview</h3>
+                    <span className="text-[9px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-full capitalize border border-blue-500/20">
+                      {SERVICE_CATEGORIES.find(c => c.id === selectedPreviewService.category)?.name || selectedPreviewService.category}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreviewService(null)}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Service details content */}
+              <div className="space-y-3.5 text-xs">
+                
+                {/* Title and stats */}
+                <div className="space-y-1">
+                  <h4 className="font-heading text-base font-bold text-foreground leading-tight">
+                    {selectedPreviewService.name}
+                  </h4>
+                  
+                  <div className="flex items-center gap-2 font-medium">
+                    <span className="text-[#1F5F5B] flex items-center gap-1 text-[11px]">
+                      <Star className="h-3 w-3 fill-[#D4A017] text-[#D4A017]" />
+                      <span>{selectedPreviewService.rating > 0 ? selectedPreviewService.rating : "No ratings"} ({selectedPreviewService.bookingsCount} bookings)</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Badge */}
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="text-muted-foreground font-bold">Service Status:</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide border ${
+                    selectedPreviewService.isAvailable 
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+                      : "bg-muted border-border text-muted-foreground"
+                  }`}>
+                    {selectedPreviewService.isAvailable ? "Active & Visible" : "Disabled / Offline"}
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border" />
+
+                {/* Description */}
+                <div className="space-y-1">
+                  <h5 className="font-bold text-foreground uppercase tracking-wider text-[9px] text-muted-foreground">
+                    Service Description
+                  </h5>
+                  <p className="text-foreground leading-relaxed bg-muted/30 p-2.5 rounded-lg border border-border/50 text-[11px] font-medium max-h-[80px] overflow-y-auto whitespace-pre-line scrollbar-thin">
+                    {selectedPreviewService.description || "No description provided for this service offering."}
+                  </p>
+                </div>
+
+                {/* Pricing block */}
+                <div className="space-y-1">
+                  <h5 className="font-bold text-foreground uppercase tracking-wider text-[9px] text-muted-foreground">
+                    Pricing Model
+                  </h5>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex gap-2.5">
+                    <Handshake className="h-4.5 w-4.5 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-blue-600 dark:text-blue-400 text-[11px]">Direct Mutual Pricing Model</p>
+                      <p className="text-muted-foreground text-[10px] leading-relaxed mt-0.5 font-medium">
+                        Pricing is decided directly between the customer and provider based on scoping.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Agreement terms */}
+                {selectedPreviewService.terms && (
+                  <div className="space-y-1">
+                    <h5 className="font-bold text-foreground uppercase tracking-wider text-[9px] text-muted-foreground">
+                      Service Agreement Terms
+                    </h5>
+                    <p className="text-muted-foreground text-[10px] font-medium leading-normal line-clamp-2">
+                      {selectedPreviewService.terms}
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Close action */}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreviewService(null)}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                >
+                  Close Preview
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

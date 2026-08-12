@@ -47,7 +47,6 @@ export async function GET(request: Request) {
       category: row.category,
       subcategory: row.subcategory || "",
       description: row.description || "",
-      basePrice: Number(row.base_price),
       isAvailable: row.is_available,
       providerId: row.provider_id,
       providerName: row.provider_name,
@@ -67,17 +66,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { providerId, name, category, subcategory, description, basePrice } = body;
+    const { providerId, name, category, subcategory, description } = body;
 
-    if (!providerId || !name || !category || basePrice === undefined) {
+    if (!providerId || !name || !category) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const serviceId = `SRV-${Date.now()}`;
     await query(
-      `INSERT INTO services (id, provider_id, name, category, subcategory, description, base_price, is_available) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [serviceId, providerId, name, category, subcategory || null, description || null, basePrice, true]
+      `INSERT INTO services (id, provider_id, name, category, subcategory, description, is_available) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [serviceId, providerId, name, category, subcategory || null, description || null, true]
     );
 
     // Fetch the newly created service with joined provider details
@@ -96,7 +95,6 @@ export async function POST(request: Request) {
       category: row.category,
       subcategory: row.subcategory || "",
       description: row.description || "",
-      basePrice: Number(row.base_price),
       isAvailable: row.is_available,
       providerId: row.provider_id,
       providerName: row.provider_name,

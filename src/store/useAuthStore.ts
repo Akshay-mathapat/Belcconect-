@@ -20,6 +20,7 @@ export interface BookingItem {
   status: "Requested" | "Accepted" | "Rejected" | "OnTheWay" | "Started" | "Completed" | "Cancelled" | "Upcoming" | "ReviewSubmitted";
   rating?: number;
   reviewComment?: string;
+  createdAt?: string;
 }
 
 export interface AuthUser {
@@ -251,7 +252,8 @@ export const useAuthStore = create<AuthState>()(
 
         const newBooking: BookingItem = {
           ...booking,
-          id: `B-${Math.floor(1000 + Math.random() * 9000)}`
+          id: `B-${Math.floor(1000 + Math.random() * 9000)}`,
+          createdAt: new Date().toISOString()
         };
 
         const updatedBookings = [newBooking, ...(current.bookings || [])];
@@ -286,7 +288,8 @@ export const useAuthStore = create<AuthState>()(
               date: `${b.date} at ${b.time}`,
               status: b.status || "Requested",
               rating: b.rating,
-              reviewComment: b.reviewComment
+              reviewComment: b.reviewComment,
+              createdAt: b.createdAt
             }));
 
             set((state) => {

@@ -26,11 +26,10 @@ CREATE TABLE IF NOT EXISTS services (
   provider_id VARCHAR(100) NOT NULL,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(100) NOT NULL,
-  subcategory VARCHAR(100),
-  description TEXT,
-  base_price NUMERIC(10, 2) NOT NULL,
-  is_available BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  subcategory:   VARCHAR(100),
+  description:   TEXT,
+  is_available:  BOOLEAN DEFAULT TRUE,
+  created_at:    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. Bookings Table

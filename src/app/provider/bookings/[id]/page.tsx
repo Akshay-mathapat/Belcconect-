@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import Link from "next/link";
 import { 
   ArrowLeft, 
@@ -26,7 +26,17 @@ const timelineSteps: BookingStatus[] = [
 
 export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { bookings, updateBookingStatus } = useProviderStore();
+  const { bookings, updateBookingStatus, fetchProviderBookings } = useProviderStore();
+
+  useEffect(() => {
+    fetchProviderBookings();
+
+    const intervalId = setInterval(() => {
+      fetchProviderBookings();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchProviderBookings]);
 
   const booking = bookings.find((b) => b.id === id) || bookings[0];
 

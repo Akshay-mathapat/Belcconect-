@@ -9,7 +9,7 @@ import { useState, Suspense } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 function BookingFlow() {
-  const { currentUser } = useAuthStore();
+  const { currentUser, addAddress } = useAuthStore();
   const searchParams = useSearchParams();
   const service = searchParams.get("service") || "Service";
   const proId = searchParams.get("pro");
@@ -81,6 +81,14 @@ function BookingFlow() {
 
       if (!res.ok) {
         throw new Error("Failed to create booking");
+      }
+
+      if (address === "new" && newAddressText.trim()) {
+        try {
+          await addAddress({ type: "Other", text: newAddressText.trim() });
+        } catch (addrErr) {
+          console.error("Failed to auto-save new address to profile:", addrErr);
+        }
       }
 
       setIsSubmitting(false);

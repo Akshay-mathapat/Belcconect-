@@ -22,6 +22,7 @@ export interface Booking {
   uploadedImages: string[];
   rating?: number;
   reviewComment?: string;
+  createdAt?: string;
 }
 
 export interface ServiceFAQ {
@@ -35,7 +36,6 @@ export interface ServiceItem {
   category: string;
   subcategory: string;
   description: string;
-  basePrice: number;
   discountPercentage: number;
   durationMinutes: number;
   experienceYears: number;

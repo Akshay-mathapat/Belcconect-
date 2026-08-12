@@ -17,7 +17,8 @@ function mapRowToBooking(row: any) {
     providerName: row.provider_name || "Verified Expert",
     uploadedImages: [],
     rating: row.rating,
-    reviewComment: row.review_comment || ""
+    reviewComment: row.review_comment || "",
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
   };
 }
 
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
         b.status, 
         b.rating,
         b.review_comment,
+        b.created_at,
         c.name AS customer_name,
         c.phone AS customer_phone,
         c.avatar AS customer_photo,
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
       WHERE b.customer_id = $1 OR b.provider_id = $2
-      ORDER BY b.id DESC`,
+      ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
       [userId, userId]
     );
 

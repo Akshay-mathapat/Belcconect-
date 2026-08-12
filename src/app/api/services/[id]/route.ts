@@ -8,7 +8,7 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { name, category, subcategory, description, basePrice, isAvailable } = body;
+    const { name, category, subcategory, description, isAvailable } = body;
 
     // Check if service exists
     const checkRes = await query("SELECT * FROM services WHERE id = $1", [id]);
@@ -35,10 +35,6 @@ export async function PATCH(
     if (description !== undefined) {
       updateFields.push(`description = $${paramIndex++}`);
       queryParams.push(description);
-    }
-    if (basePrice !== undefined) {
-      updateFields.push(`base_price = $${paramIndex++}`);
-      queryParams.push(basePrice);
     }
     if (isAvailable !== undefined) {
       updateFields.push(`is_available = $${paramIndex++}`);
@@ -76,7 +72,6 @@ export async function PATCH(
       category: row.category,
       subcategory: row.subcategory || "",
       description: row.description || "",
-      basePrice: Number(row.base_price),
       isAvailable: row.is_available,
       providerId: row.provider_id,
       providerName: row.provider_name,

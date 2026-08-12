@@ -57,10 +57,10 @@ const mockReviews: { [id: string]: any[] } = {
 };
 
 const mockServices: { [id: string]: any[] } = {
-  "1": [{ id: "mock-srv-1", name: "AC Gas Refill", base_price: 499, description: "AC gas refilling and leak pressure testing.", category: "ac repair" }],
-  "2": [{ id: "mock-srv-2", name: "Electrician Works", base_price: 299, description: "Home wiring upgrades, switches replacements, fuse boxes.", category: "electrical" }],
-  "3": [{ id: "mock-srv-3", name: "Plumbing Services", base_price: 349, description: "Complete pipe repairs, leak blockages clearance, and taps installation.", category: "plumbing" }],
-  "4": [{ id: "mock-srv-4", name: "Home Cleaning", base_price: 599, description: "Dusting, floor scrubbing, vacuuming, and complete house sanitation.", category: "cleaning" }]
+  "1": [{ id: "mock-srv-1", name: "AC Gas Refill", description: "AC gas refilling and leak pressure testing.", category: "ac repair" }],
+  "2": [{ id: "mock-srv-2", name: "Electrician Works", description: "Home wiring upgrades, switches replacements, fuse boxes.", category: "electrical" }],
+  "3": [{ id: "mock-srv-3", name: "Plumbing Services", description: "Complete pipe repairs, leak blockages clearance, and taps installation.", category: "plumbing" }],
+  "4": [{ id: "mock-srv-4", name: "Home Cleaning", description: "Dusting, floor scrubbing, vacuuming, and complete house sanitation.", category: "cleaning" }]
 };
 
 export async function GET(
@@ -98,7 +98,7 @@ export async function GET(
             bio: "Experienced electrician providing top quality wiring repair, switchboard installations, and home safety inspections."
           },
           services: [
-            { id: "srv-default", name: "Emergency Electrical Repairs", base_price: 350, description: "Instant diagnosis and repair of shorts, socket sparks, and appliance faults.", category: "electrical" }
+            { id: "srv-default", name: "Emergency Electrical Repairs", description: "Instant diagnosis and repair of shorts, socket sparks, and appliance faults.", category: "electrical" }
           ],
           reviews: []
         });
@@ -108,7 +108,7 @@ export async function GET(
 
     const provider = providerRes.rows[0];
     const servicesRes = await query(
-      "SELECT id, name, category, description, base_price FROM services WHERE provider_id = $1",
+      "SELECT id, name, category, description FROM services WHERE provider_id = $1",
       [id]
     );
     const reviewsRes = await query(
