@@ -7,12 +7,14 @@ import { useRouter } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
+import { useTranslation } from "@/lib/i18n";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
 }
 
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { loginUser, currentUser } = useAuthStore();
   const [emailOrPhone, setEmailOrPhone] = useState("");
@@ -102,8 +104,8 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   return (
     <div className="w-full">
       <AuthHeader
-        title="Welcome Back"
-        subtitle="Enter your credentials to sign in to your dashboard automatically."
+        title={t("auth.welcomeBack")}
+        subtitle={t("auth.welcomeBackDesc")}
       />
 
       {errorMessage && (
@@ -116,7 +118,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         {/* Email or Phone Input */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
-            Email Address or Phone
+            {t("auth.emailOrPhone")}
           </label>
           <div className="relative">
             <Mail className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -125,8 +127,9 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               required
               value={emailOrPhone}
               onChange={(e) => setEmailOrPhone(e.target.value)}
-              placeholder="jane@example.com or (555) 123-4567"
+              placeholder={t("auth.emailPlaceholder")}
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -135,7 +138,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-sm font-medium text-foreground">
-              Password
+              {t("auth.password")}
             </label>
             <a
               href="#"
@@ -145,7 +148,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               }}
               className="text-xs text-blue-600 hover:underline font-semibold"
             >
-              Forgot Password?
+              {t("auth.forgotPassword")}
             </a>
           </div>
           <div className="relative">
@@ -157,12 +160,14 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="w-full pl-11 pr-11 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              suppressHydrationWarning
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
               aria-label={showPassword ? "Hide password" : "Show password"}
+              suppressHydrationWarning
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -178,8 +183,9 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
               className="w-4 h-4 rounded border-border text-blue-600 focus:ring-blue-600 accent-blue-600 cursor-pointer"
+              suppressHydrationWarning
             />
-            <span>Remember me on this device</span>
+            <span>{t("auth.rememberMe")}</span>
           </label>
         </div>
 
@@ -188,6 +194,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           type="submit"
           disabled={isLoading}
           className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          suppressHydrationWarning
         >
           {isLoading ? (
             <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -195,14 +202,14 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           ) : (
-            "Sign In"
+            t("auth.signInButton")
           )}
         </button>
 
         {/* Security Badge */}
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-0.5">
           <span>🔒</span>
-          <span>Your information is securely encrypted and protected.</span>
+          <span>{t("auth.securityNote")}</span>
         </div>
 
         {/* Or continue with Divider */}
@@ -212,7 +219,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-3 text-muted-foreground font-medium">
-              Or continue with
+              {t("auth.orContinueWith")}
             </span>
           </div>
         </div>
@@ -223,13 +230,14 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
       {/* Switch to Signup Link */}
       <div className="mt-6 text-center text-sm text-muted-foreground">
-        Don't have an account?{" "}
+        {t("auth.noAccount")}{" "}
         <button
           type="button"
           onClick={onSwitchToSignup}
           className="text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1 hover:underline cursor-pointer transition-colors"
+          suppressHydrationWarning
         >
-          Create Account →
+          {t("auth.createAccountLink")}
         </button>
       </div>
     </div>

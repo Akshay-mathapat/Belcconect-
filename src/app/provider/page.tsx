@@ -19,9 +19,6 @@ import {
   MapPin,
   Phone,
   ArrowRight,
-  HelpCircle,
-  CreditCard,
-  ShieldCheck,
   PackageCheck,
   Droplets,
   Zap,
@@ -31,6 +28,7 @@ import {
 import { useEffect, useState } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslation } from "@/lib/i18n";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -82,6 +80,7 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 export default function ProviderDashboardPage() {
   const { currentUser } = useAuthStore();
   const { profile, bookings, services, updateBookingStatus, syncWithAuthUser, fetchProviderBookings, fetchProviderServices } = useProviderStore();
+  const { t } = useTranslation();
   const [showAllServices, setShowAllServices] = useState(false);
 
   useEffect(() => {
@@ -100,7 +99,22 @@ export default function ProviderDashboardPage() {
       fetchProviderBookings();
     }, 3000);
 
-    return () => clearInterval(intervalId);
+    let syncChannel: BroadcastChannel | null = null;
+    try {
+      syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
+      syncChannel.onmessage = (event) => {
+        if (event.data?.type === "REFRESH_BOOKINGS") {
+          fetchProviderBookings();
+        }
+      };
+    } catch (e) {}
+
+    return () => {
+      clearInterval(intervalId);
+      if (syncChannel) {
+        try { syncChannel.close(); } catch (e) {}
+      }
+    };
   }, [currentUser, syncWithAuthUser, fetchProviderBookings, fetchProviderServices]);
 
   const totalBookings = bookings.length;
@@ -114,7 +128,7 @@ export default function ProviderDashboardPage() {
   return (
     <div className="space-y-6">
       
-      {/* ── 1. Good Morning Welcome Banner (Matching Image 2) ────────────────── */}
+      {/* ── 1. Good Morning Welcome Banner ────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -125,17 +139,17 @@ export default function ProviderDashboardPage() {
         <div className="relative z-10 space-y-4">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-blue-200 bg-white/10 px-3 py-1 rounded-full border border-white/20">
-              VERIFIED EXPERT
+              {t("serviceProvider.verifiedExpert")}
             </span>
-            <span className="text-xs text-blue-100 font-medium">| Belagavi Zone</span>
+            <span className="text-xs text-blue-100 font-medium">| {t("serviceProvider.belagaviZone")}</span>
           </div>
 
           <div>
             <h1 className="font-heading text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Good Morning, {profile.name.split(" ")[0]} 👋
+              {t("serviceProvider.goodMorning")}, {profile.name.split(" ")[0]} 👋
             </h1>
             <p className="mt-1.5 text-xs sm:text-sm text-blue-100 max-w-xl leading-relaxed">
-              You have <span className="font-bold text-white underline">{services.length} active services</span> and <span className="font-bold text-white underline">{pendingRequests} pending booking requests</span>.
+              {t("serviceProvider.activeServicesCount").replace("{count}", services.length.toString())} <span className="font-bold text-white underline">{services.length}</span> & {t("serviceProvider.pendingRequestsCount").replace("{count}", pendingRequests.toString())}.
             </p>
           </div>
 
@@ -146,21 +160,21 @@ export default function ProviderDashboardPage() {
               className="inline-flex items-center gap-2 bg-white text-blue-900 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all hover:scale-105"
             >
               <PlusCircle className="h-4 w-4 text-blue-700" />
-              <span>Add New Service</span>
+              <span>{t("serviceProvider.addNewService")}</span>
             </Link>
 
             <Link
               href="/provider/bookings"
               className="inline-flex items-center gap-2 bg-blue-600/30 hover:bg-blue-600/50 text-white px-4 py-2.5 rounded-xl font-semibold text-xs border border-white/20 backdrop-blur-sm transition-all"
             >
-              <span>View Bookings</span>
+              <span>{t("serviceProvider.viewBookings")}</span>
               <ArrowUpRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
       </motion.div>
 
-      {/* ── 2. Recent Bookings (Dashed Border Empty Box matching Image 2) ────── */}
+      {/* ── 2. Recent Bookings ────── */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -171,15 +185,15 @@ export default function ProviderDashboardPage() {
           <div>
             <h3 className="font-heading text-base font-bold text-foreground flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-blue-600" />
-              <span>Recent Bookings</span>
+              <span>{t("serviceProvider.recentBookings")}</span>
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Fast service booking status updates and job progress completion</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("serviceProvider.recentBookingsDesc")}</p>
           </div>
           <Link 
             href="/provider/bookings" 
             className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 rounded-xl border border-blue-500/20 transition-all cursor-pointer"
           >
-            <span>View All Bookings ({bookings.length})</span>
+            <span>{t("serviceProvider.viewAllBookings").replace("{count}", bookings.length.toString())}</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -217,7 +231,11 @@ export default function ProviderDashboardPage() {
                         booking.status === "Rejected" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
                         "bg-muted text-muted-foreground border border-border"
                       }`}>
-                        {booking.status}
+                        {booking.status === "Requested" ? t("serviceProvider.requested") :
+                         booking.status === "Accepted" ? t("serviceProvider.accepted") :
+                         booking.status === "Started" ? t("serviceProvider.started") :
+                         booking.status === "Completed" || booking.status === "ReviewSubmitted" ? t("serviceProvider.completed") :
+                         booking.status}
                       </span>
                     </div>
 
@@ -250,14 +268,14 @@ export default function ProviderDashboardPage() {
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
                       >
                         <CheckCircle className="h-3.5 w-3.5" />
-                        <span>Accept</span>
+                        <span>{t("serviceProvider.accept")}</span>
                       </button>
                       <button
                         onClick={() => updateBookingStatus(booking.id, "Rejected")}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
                       >
                         <CalendarX className="h-3.5 w-3.5" />
-                        <span>Reject</span>
+                        <span>{t("serviceProvider.reject")}</span>
                       </button>
                     </div>
                   )}
@@ -268,7 +286,7 @@ export default function ProviderDashboardPage() {
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
                     >
                       <PlayCircle className="h-3.5 w-3.5" />
-                      <span>Start Job</span>
+                      <span>{t("serviceProvider.startJob")}</span>
                     </button>
                   )}
 
@@ -278,14 +296,14 @@ export default function ProviderDashboardPage() {
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>Complete Service</span>
+                      <span>{t("serviceProvider.completeService")}</span>
                     </button>
                   )}
 
                   {(booking.status === "Completed" || booking.status === "ReviewSubmitted") && (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 font-bold text-xs border border-emerald-500/20">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      Completed
+                      {t("serviceProvider.completed")}
                     </span>
                   )}
                 </div>
@@ -293,21 +311,21 @@ export default function ProviderDashboardPage() {
             ))}
           </div>
         ) : (
-          /* Dashed Border Container matching Image 2 */
+          /* Dashed Border Container */
           <div className="py-10 px-6 text-center rounded-2xl border-2 border-dashed border-border/80 bg-muted/10">
             <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center mx-auto mb-3 shadow-xs">
               <Inbox className="h-7 w-7 text-blue-600" />
             </div>
-            <h4 className="text-sm font-bold text-foreground mb-1">No Recent Bookings</h4>
+            <h4 className="text-sm font-bold text-foreground mb-1">{t("serviceProvider.noRecentBookings")}</h4>
             <p className="text-xs text-muted-foreground max-w-md mx-auto mb-4 leading-relaxed">
-              Once customers in Belagavi book your services, incoming booking requests will appear here with instant completion controls.
+              {t("serviceProvider.noRecentBookingsDesc")}
             </p>
             <Link
               href="/provider/services/new"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all hover:scale-105"
             >
               <PlusCircle className="h-4 w-4" />
-              <span>Create New Service</span>
+              <span>{t("serviceProvider.createNewService")}</span>
             </Link>
           </div>
         )}
@@ -321,14 +339,14 @@ export default function ProviderDashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="font-heading text-base font-bold text-foreground">Your Published Services</h3>
-                <p className="text-xs text-muted-foreground">Active service offerings listed on BelConnect</p>
+                <h3 className="font-heading text-base font-bold text-foreground">{t("serviceProvider.yourPublishedServices")}</h3>
+                <p className="text-xs text-muted-foreground">{t("serviceProvider.publishedServicesDesc")}</p>
               </div>
               <Link
                 href="/provider/services/new"
                 className="text-xs font-bold text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 px-3.5 py-1.5 rounded-xl border border-blue-500/20 transition-colors"
               >
-                + Create Service
+                {t("serviceProvider.createService")}
               </Link>
             </div>
 
@@ -354,7 +372,7 @@ export default function ProviderDashboardPage() {
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 uppercase tracking-wide">
-                      ACTIVE
+                      {t("serviceProvider.active")}
                     </span>
                   </div>
                 ))}
@@ -362,14 +380,14 @@ export default function ProviderDashboardPage() {
             ) : (
               <div className="py-8 text-center rounded-xl border border-dashed border-border bg-muted/10">
                 <Wrench className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                <h4 className="text-xs font-bold text-foreground mb-1">No Services Added Yet</h4>
-                <p className="text-[11px] text-muted-foreground mb-3 max-w-sm mx-auto">Create your first service offering to start receiving customer bookings in Belagavi.</p>
+                <h4 className="text-xs font-bold text-foreground mb-1">{t("serviceProvider.noServicesAdded")}</h4>
+                <p className="text-[11px] text-muted-foreground mb-3 max-w-sm mx-auto">{t("serviceProvider.noServicesAddedDesc")}</p>
                 <Link
                   href="/provider/services/new"
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all"
                 >
                   <PlusCircle className="h-3.5 w-3.5" />
-                  Add Your First Service
+                  {t("serviceProvider.addFirstService")}
                 </Link>
               </div>
             )}
@@ -380,18 +398,20 @@ export default function ProviderDashboardPage() {
               onClick={() => setShowAllServices(!showAllServices)}
               className="mt-4 text-xs font-bold text-muted-foreground hover:text-foreground text-center w-full py-1.5 transition-colors"
             >
-              {showAllServices ? "↑ Show less services" : `+ Show ${services.length - 2} more services`}
+              {showAllServices 
+                ? t("serviceProvider.showLessServices") 
+                : t("serviceProvider.showMoreServices").replace("{count}", (services.length - 2).toString())}
             </button>
           )}
         </div>
 
-        {/* Today's Schedule Widget (Matching Image 2) */}
+        {/* Today's Schedule Widget */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
-              <h3 className="font-heading text-base font-bold text-foreground">Today's Schedule</h3>
+              <h3 className="font-heading text-base font-bold text-foreground">{t("serviceProvider.todaysSchedule")}</h3>
               <span className="text-xs font-bold text-blue-600 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
-                {todayJobs.length} Jobs
+                {todayJobs.length} {t("serviceProvider.jobs")}
               </span>
             </div>
 
@@ -414,73 +434,37 @@ export default function ProviderDashboardPage() {
                 ))}
               </div>
             ) : (
-              /* Empty Schedule Matching Image 2 */
+              /* Empty Schedule */
               <div className="py-6 text-center space-y-2">
                 <div className="w-14 h-14 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mx-auto mb-2 relative">
                   <CalendarX className="h-7 w-7 text-blue-600" />
                   <CheckCircle2 className="h-4 w-4 text-blue-600 absolute bottom-0 right-0 bg-card rounded-full" />
                 </div>
-                <h4 className="text-xs font-bold text-foreground">Clear Runway for Today</h4>
+                <h4 className="text-xs font-bold text-foreground">{t("serviceProvider.clearRunway")}</h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                  No jobs scheduled for this morning. This might be a good time to update your portfolio or reach out to past clients.
+                  {t("serviceProvider.clearRunwayDesc")}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Bottom 2 Stat Boxes matching Image 2 */}
+          {/* Bottom 2 Stat Boxes */}
           <div className="grid grid-cols-2 gap-3 pt-4">
             <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
               <div className="font-heading text-lg font-extrabold text-blue-600">14</div>
-              <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">PROFILE VIEWS</span>
+              <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">{t("serviceProvider.profileViews")}</span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
               <div className="font-heading text-lg font-extrabold text-blue-600">98%</div>
-              <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">RESPONSE RATE</span>
+              <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">{t("serviceProvider.responseRate")}</span>
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* ── 4. Bottom 3 Quick Action / Help Cards Row (NEW FROM IMAGE 2!) ─────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        {/* Card 1: Need Help? */}
-        <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-3.5 hover:border-blue-500/30 transition-all">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-            <HelpCircle className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">Need Help?</h4>
-            <p className="text-[11px] text-muted-foreground">Visit our Help Center for tutorials and platform guides.</p>
-          </div>
-        </div>
 
-        {/* Card 2: Next Payout */}
-        <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-3.5 hover:border-blue-500/30 transition-all">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
-            <CreditCard className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">Next Payout</h4>
-            <p className="text-[11px] text-muted-foreground">Scheduled for Monday, Oct 14th (₹1,240.00)</p>
-          </div>
-        </div>
-
-        {/* Card 3: Safety Check */}
-        <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-3.5 hover:border-blue-500/30 transition-all">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">Safety Check</h4>
-            <p className="text-[11px] text-muted-foreground">Your credentials are up to date and verified.</p>
-          </div>
-        </div>
-
-      </div>
 
     </div>
   );

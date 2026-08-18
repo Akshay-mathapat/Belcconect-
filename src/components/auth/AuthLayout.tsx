@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Building2 } from "lucide-react";
 import Link from "next/link";
 import { SITE_NAME } from "@/constants/site";
+import { useTranslation } from "@/lib/i18n";
 import { LeftBrandPanel } from "./LeftBrandPanel";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
@@ -14,6 +15,7 @@ interface AuthLayoutProps {
 }
 
 export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
+  const { t } = useTranslation();
   const [authMode, setAuthMode] = useState<"login" | "signup">(initialMode);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Home
+              {t("auth.backToHome")}
             </Link>
           </div>
 
@@ -69,7 +71,7 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
             className="hidden md:inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 font-medium group"
           >
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            Back to Home
+            {t("auth.backToHome")}
           </Link>
 
           {/* Smooth Framer Motion Transition Container */}

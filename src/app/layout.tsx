@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { I18nProvider } from "@/lib/i18n";
 import Navigation from "@/components/sections/Navigation";
+import { CallProvider } from "@/components/calls/CallProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,8 +61,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <I18nProvider>
           <ThemeProvider>
-            <Navigation />
-            {children}
+            <CallProvider>
+              <Navigation />
+              {children}
+            </CallProvider>
           </ThemeProvider>
         </I18nProvider>
       </body>

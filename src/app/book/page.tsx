@@ -8,6 +8,8 @@ import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 
+import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
+
 function BookingFlow() {
   const { currentUser, addAddress } = useAuthStore();
   const searchParams = useSearchParams();
@@ -33,13 +35,7 @@ function BookingFlow() {
   const getProviderName = (id: string | null) => {
     const proNameParam = searchParams.get("proName");
     if (proNameParam) return decodeURIComponent(proNameParam);
-    switch (id) {
-      case "1": return "Ramesh Sharma";
-      case "2": return "Suresh Kumar";
-      case "3": return "Anil Desai";
-      case "4": return "Priya Patil";
-      default: return "Rohan Electrician";
-    }
+    return "Service Professional";
   };
 
   const handleConfirm = async () => {
@@ -50,10 +46,7 @@ function BookingFlow() {
       const customerPhone = currentUser?.phone || "+91 98765 43210";
       const customerPhoto = currentUser?.avatar || "";
 
-      // For mock providers, fallback to provider-1 Rohan. Otherwise use custom provider ID.
-      const resolvedProviderId = proId && proId !== "1" && proId !== "2" && proId !== "3" && proId !== "4" 
-        ? proId 
-        : "provider-1";
+      const resolvedProviderId = proId || "provider-1";
 
       const finalAddress = address === "new" 
         ? (newAddressText || "New Address") 
@@ -74,7 +67,7 @@ function BookingFlow() {
           customerPhone,
           customerPhoto,
           date,
-          time: time || "10:00 AM",
+          time: time || "10:00 AM – 11:00 AM",
           address: finalAddress
         })
       });
@@ -82,6 +75,12 @@ function BookingFlow() {
       if (!res.ok) {
         throw new Error("Failed to create booking");
       }
+
+      try {
+        const syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
+        syncChannel.postMessage({ type: "REFRESH_BOOKINGS" });
+        syncChannel.close();
+      } catch (e) {}
 
       if (address === "new" && newAddressText.trim()) {
         try {
@@ -107,13 +106,13 @@ function BookingFlow() {
         key={step}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-lg"
+        className="w-full max-w-[620px]"
       >
-        <div className="rounded-[2rem] border border-border bg-card p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+        <div className="rounded-[2rem] border border-border bg-card p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary/50 to-primary" />
           
           {step < 6 && (
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-6">
               {step > 1 ? (
                 <button onClick={prevStep} className="text-sm font-medium text-muted-foreground hover:text-foreground">Back</button>
               ) : <div></div>}
@@ -129,11 +128,11 @@ function BookingFlow() {
                 <div className="rounded-xl bg-muted/50 p-4 border border-border">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-muted-foreground">Service</span>
-                    <span className="text-sm font-semibold text-foreground capitalize">{service}</span>
+                    <span className="text-sm font-semibold text-foreground capitalize" suppressHydrationWarning>{service}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-muted-foreground">Professional ID</span>
-                    <span className="text-sm font-semibold text-foreground">{proId || "Auto-assign"}</span>
+                    <span className="text-sm font-semibold text-foreground" suppressHydrationWarning>{proId || "Auto-assign"}</span>
                   </div>
                 </div>
               </div>
@@ -185,14 +184,17 @@ function BookingFlow() {
 
           {step === 3 && (
             <>
-              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">Date</h1>
-              <div className="space-y-5 mb-8">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Select Date</label>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-4 py-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-primary focus:border-transparent text-sm" />
-                </div>
+              <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground mb-4">Date & Time Slot</h1>
+              <div className="mb-6">
+                <TimeSlotPicker
+                  selectedDate={date}
+                  onDateChange={(d) => setDate(d)}
+                  selectedTime={time}
+                  onTimeChange={(t) => setTime(t)}
+                  providerId={proId}
+                />
               </div>
-              <button onClick={nextStep} disabled={!date} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all disabled:opacity-50">Continue</button>
+              <button onClick={nextStep} disabled={!date || !time} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all disabled:opacity-50">Continue</button>
             </>
           )}
 
@@ -208,6 +210,10 @@ function BookingFlow() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Date</span>
                     <span className="text-sm font-semibold text-foreground">{date}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Time Slot</span>
+                    <span className="text-sm font-semibold text-foreground">{time || "10:00 AM – 11:00 AM"}</span>
                   </div>
                 </div>
               </div>

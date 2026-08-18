@@ -89,6 +89,28 @@ const initialSchedule: AvailabilitySchedule[] = [
   { day: "Sunday", isWorking: false, startTime: "10:00", endTime: "16:00", breakStart: "13:00", breakEnd: "14:00" }
 ];
 
+const initialConversations: ChatConversation[] = [
+  {
+    bookingId: "B-1001",
+    customerName: "Akshay Mathapati",
+    customerPhoto: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    customerPhone: "+91 98765 43210",
+    lastMessage: "Hi Rohan, are you available today for the fan installation?",
+    lastMessageTime: "10:15 AM",
+    unreadCount: 0,
+    messages: [
+      {
+        id: "msg-1",
+        bookingId: "B-1001",
+        sender: "customer",
+        text: "Hi Rohan, are you available today for the fan installation?",
+        timestamp: "10:15 AM",
+        isRead: true
+      }
+    ]
+  }
+];
+
 export const useProviderStore = create<ProviderStoreState>()(
   persist(
     (set, get) => ({
@@ -100,7 +122,7 @@ export const useProviderStore = create<ProviderStoreState>()(
       reviews: [],
       transactions: [],
       notifications: [],
-      conversations: [],
+      conversations: initialConversations,
       schedule: initialSchedule,
 
       toggleOnlineStatus: () => set((state) => ({ isOnline: !state.isOnline })),

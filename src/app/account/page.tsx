@@ -25,6 +25,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
+import CallButton from "@/components/calls/CallButton";
+import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -200,9 +202,46 @@ export default function AccountPage() {
     }
   };
 
-  // Handle Rebook Redirect
-  const handleRebook = (serviceName: string) => {
-    router.push(`/book?pro=1&service=${encodeURIComponent(serviceName)}`);
+  // Handle Rebook - Creates new booking row in database for Provider Dashboard
+  const handleRebook = async (booking: any) => {
+    try {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "Service");
+      const providerId = typeof booking === "object" && booking.providerId ? booking.providerId : "provider-1";
+      const providerName = typeof booking === "object" && booking.providerName ? booking.providerName : "Verified Expert";
+      const category = typeof booking === "object" && booking.category ? booking.category : "General";
+
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: activeUser?.id || "customer-1",
+          providerId,
+          providerName,
+          serviceName,
+          category,
+          date: todayStr,
+          time: "10:00 AM"
+        })
+      });
+
+      if (res.ok) {
+        try {
+          const syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
+          syncChannel.postMessage({ type: "REFRESH_BOOKINGS" });
+          syncChannel.close();
+        } catch (e) {}
+
+        alert(`Service "${serviceName}" has been rebooked successfully! It is now sent to the service provider dashboard.`);
+        fetchUserBookings();
+      } else {
+        router.push(`/book?pro=1&service=${encodeURIComponent(serviceName)}`);
+      }
+    } catch (err) {
+      console.error("Error rebooking service:", err);
+      const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "");
+      router.push(`/book?pro=1&service=${encodeURIComponent(serviceName)}`);
+    }
   };
 
   // Handle Rate Service Modal Open
@@ -442,6 +481,11 @@ export default function AccountPage() {
                           </div>
 
                           <div className="flex items-center gap-2">
+                            <CallButton
+                              bookingId={booking.id}
+                              bookingStatus={booking.status}
+                              title="Call Provider"
+                            />
                             {["Upcoming", "Requested", "Accepted", "OnTheWay", "Started"].includes(booking.status) ? (
                               <>
                                 <button
@@ -787,40 +831,15 @@ export default function AccountPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleRescheduleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    New Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={rescheduleDate}
-                    onChange={(e) => setRescheduleDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-xl bg-background text-sm text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                  />
-                </div>
+              <form onSubmit={handleRescheduleSubmit} className="space-y-5">
+                <TimeSlotPicker
+                  selectedDate={rescheduleDate}
+                  onDateChange={(d) => setRescheduleDate(d)}
+                  selectedTime={rescheduleTime}
+                  onTimeChange={(t) => setRescheduleTime(t)}
+                />
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    New Time Slot
-                  </label>
-                  <select
-                    required
-                    value={rescheduleTime}
-                    onChange={(e) => setRescheduleTime(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-xl bg-background text-sm text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                  >
-                    <option value="">Select a time slot</option>
-                    <option value="09:00 AM">09:00 AM - 11:00 AM</option>
-                    <option value="11:00 AM">11:00 AM - 01:00 PM</option>
-                    <option value="01:00 PM">01:00 PM - 03:00 PM</option>
-                    <option value="03:00 PM">03:00 PM - 05:00 PM</option>
-                    <option value="05:00 PM">05:00 PM - 07:00 PM</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                   <button
                     type="button"
                     onClick={() => {
@@ -833,7 +852,7 @@ export default function AccountPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={isRescheduling}
+                    disabled={isRescheduling || !rescheduleDate || !rescheduleTime}
                     className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {isRescheduling ? "Updating..." : "Confirm Reschedule"}

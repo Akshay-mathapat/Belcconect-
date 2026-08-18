@@ -9,8 +9,11 @@ import {
   Store,
 } from "lucide-react";
 import { SITE_NAME } from "@/constants/site";
+import { useTranslation } from "@/lib/i18n";
 
 export const LeftBrandPanel = memo(function LeftBrandPanel() {
+  const { t } = useTranslation();
+
   return (
     <aside
       className="hidden md:flex md:w-[45%] lg:w-[40%] h-full bg-blue-600 dark:bg-blue-700 text-white pt-3 px-4 pb-4 sm:pt-4 sm:px-6 sm:pb-6 lg:pt-14 lg:px-8 lg:pb-8 flex-col justify-between overflow-hidden shrink-0 z-10 select-none box-border"
@@ -24,10 +27,10 @@ export const LeftBrandPanel = memo(function LeftBrandPanel() {
       <div className="relative z-10 flex-1 flex flex-col justify-start min-h-0 py-2">
         <div className="mb-2.5">
           <h1 className="text-xl sm:text-2xl xl:text-2xl font-extrabold tracking-tight text-white mb-1 leading-tight font-heading">
-            Join {SITE_NAME || "BelConnect"}
+            {t("auth.joinBrand")}
           </h1>
           <p className="text-blue-100 text-[11px] sm:text-xs leading-relaxed max-w-lg">
-            Create your account and access trusted local services, job opportunities, businesses, emergency assistance, and AI-powered recommendations — all from one platform.
+            {t("auth.joinBrandDesc")}
           </p>
         </div>
 
@@ -40,10 +43,10 @@ export const LeftBrandPanel = memo(function LeftBrandPanel() {
             </div>
             <div>
               <h3 className="font-bold text-[11px] sm:text-xs text-zinc-900 dark:text-white leading-snug">
-                Book Trusted Services
+                {t("auth.trustedServices")}
               </h3>
               <p className="text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-tight">
-                Find verified electricians, plumbers, technicians, tutors, and more.
+                {t("auth.trustedServicesSub")}
               </p>
             </div>
           </div>
@@ -55,10 +58,10 @@ export const LeftBrandPanel = memo(function LeftBrandPanel() {
             </div>
             <div>
               <h3 className="font-bold text-[11px] sm:text-xs text-zinc-900 dark:text-white leading-snug">
-                Discover Local Jobs
+                {t("auth.discoverJobs")}
               </h3>
               <p className="text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-tight">
-                Search opportunities posted by businesses in your city.
+                {t("auth.discoverJobsSub")}
               </p>
             </div>
           </div>
@@ -70,10 +73,10 @@ export const LeftBrandPanel = memo(function LeftBrandPanel() {
             </div>
             <div>
               <h3 className="font-bold text-[11px] sm:text-xs text-zinc-900 dark:text-white leading-snug">
-                Explore Businesses
+                {t("auth.exploreBusinesses")}
               </h3>
               <p className="text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-tight">
-                Find nearby restaurants, shops, startups, healthcare, and local services.
+                {t("auth.exploreBusinessesSub")}
               </p>
             </div>
           </div>
@@ -82,19 +85,19 @@ export const LeftBrandPanel = memo(function LeftBrandPanel() {
           <div className="relative z-10 pt-3 border-t border-white/20 grid grid-cols-4 gap-1 text-white text-left shrink-0 mt-3">
             <div>
               <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">4.9★</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">Rating</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.rating")}</div>
             </div>
             <div>
               <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">50K+</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">Providers</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.professionals")}</div>
             </div>
             <div>
               <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">100+</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">Cities</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.categories")}</div>
             </div>
             <div>
               <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">1M+</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">Bookings</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.bookings")}</div>
             </div>
           </div>
         </div>

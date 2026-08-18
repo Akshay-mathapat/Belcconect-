@@ -30,6 +30,7 @@ export interface AuthUser {
   phone?: string;
   role: UserRole;
   avatar?: string;
+  token?: string;
   addresses?: SavedAddress[];
   bookings?: BookingItem[];
 }
@@ -124,7 +125,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user = data.user;
+            const user = { ...data.user, token: data.token };
             set((state) => ({
               usersList: [...state.usersList, user],
               currentUser: user
@@ -151,7 +152,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user = data.user;
+            const user = { ...data.user, token: data.token };
             set((state) => {
               const list = state.usersList.map((u) => u.id === user.id ? user : u);
               return { currentUser: user, usersList: list };

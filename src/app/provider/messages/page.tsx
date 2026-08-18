@@ -11,6 +11,7 @@ import {
   ChevronLeft
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
+import CallButton from "@/components/calls/CallButton";
 
 export default function MessagesPage() {
   const { conversations, sendMessage } = useProviderStore();
@@ -115,18 +116,15 @@ export default function MessagesPage() {
                 <h3 className="text-xs font-bold text-foreground truncate">{activeConv.customerName}</h3>
                 <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="truncate">Active • {activeConv.customerPhone}</span>
+                  <span className="truncate">Active In-App Call Session</span>
                 </span>
               </div>
             </div>
 
-            <a
-              href={`tel:${activeConv.customerPhone}`}
-              className="p-2 rounded-xl border border-border hover:bg-muted text-foreground shrink-0"
-              title="Call"
-            >
-              <Phone className="h-4 w-4" />
-            </a>
+            <CallButton
+              bookingId={activeConv.bookingId}
+              title="Call Customer In-App"
+            />
           </div>
 
           {/* Messages Stream */}

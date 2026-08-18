@@ -106,6 +106,7 @@ export default function CategoryBar() {
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                   : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:shadow-primary/25"
               }`}
+              suppressHydrationWarning
             >
               <LayoutGrid className="h-4 w-4" />
               {t("nav.allCategories")}
@@ -157,6 +158,7 @@ export default function CategoryBar() {
                                       ? "bg-primary/10 text-primary font-semibold shadow-sm"
                                       : "text-foreground hover:bg-muted hover:text-foreground"
                                   }`}
+                                  suppressHydrationWarning
                                 >
                                   <span>{group.name}</span>
                                   <ChevronRight className={`h-4 w-4 transition-all duration-150 ${activeGroup === group.id ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`} />
@@ -230,6 +232,7 @@ export default function CategoryBar() {
                 onClick={() => scroll("left")}
                 className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-4 bg-gradient-to-r from-card/95 via-card/80 to-transparent"
                 aria-label="Scroll left"
+                suppressHydrationWarning
               >
                 <ChevronLeft className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
               </button>
@@ -241,6 +244,7 @@ export default function CategoryBar() {
                 onClick={() => scroll("right")}
                 className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-4 bg-gradient-to-l from-card/95 via-card/80 to-transparent"
                 aria-label="Scroll right"
+                suppressHydrationWarning
               >
                 <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
               </button>

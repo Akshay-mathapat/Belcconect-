@@ -8,12 +8,14 @@ import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
 import { PasswordStrength } from "./PasswordStrength";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
+import { useTranslation } from "@/lib/i18n";
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
 }
 
 export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { registerUser } = useAuthStore();
   const [signupRole, setSignupRole] = useState<UserRole>("user");
@@ -36,7 +38,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
     if (!agreedToTerms) return;
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+      setErrorMessage(t("auth.passwordsDoNotMatch"));
       return;
     }
 
@@ -133,8 +135,8 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   return (
     <div className="w-full">
       <AuthHeader
-        title="Create Account"
-        subtitle="Join thousands of users simplifying city life with one unified platform."
+        title={t("auth.createAccountTitle")}
+        subtitle={t("auth.createAccountSub")}
       />
 
       {/* 3 Role Switcher Buttons on Top */}
@@ -147,9 +149,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
               : "text-muted-foreground hover:text-foreground"
           }`}
+          suppressHydrationWarning
         >
           <User className="w-3.5 h-3.5" />
-          User
+          {t("auth.createGroupUser")}
         </button>
 
         <button
@@ -160,9 +163,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
               : "text-muted-foreground hover:text-foreground"
           }`}
+          suppressHydrationWarning
         >
           <Wrench className="w-3.5 h-3.5" />
-          Service Provider
+          {t("auth.createGroupProvider")}
         </button>
 
         <button
@@ -173,9 +177,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
               : "text-muted-foreground hover:text-foreground"
           }`}
+          suppressHydrationWarning
         >
           <Briefcase className="w-3.5 h-3.5" />
-          Job Provider
+          {t("auth.createGroupEmployer")}
         </button>
       </div>
 
@@ -191,10 +196,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
             {signupRole === "job_provider"
-              ? "Full Name / Company Name"
+              ? t("auth.fullNameCompany")
               : signupRole === "provider"
-              ? "Full Name / Business Name"
-              : "Full Name"}
+              ? t("auth.fullNameBusiness")
+              : t("auth.fullName")}
           </label>
           <div className="relative">
             {signupRole === "job_provider" ? (
@@ -217,6 +222,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                   : "Jane Doe"
               }
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -224,7 +230,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         {/* Phone Number */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
-            Phone Number
+            {t("auth.phoneNumber")}
           </label>
           <div className="relative">
             <Phone className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -235,6 +241,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(555) 123-4567"
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -242,7 +249,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         {/* Email Address */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
-            Email Address
+            {t("auth.emailAddress")}
           </label>
           <div className="relative">
             <Mail className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -253,6 +260,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="jane@example.com"
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -260,7 +268,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         {/* Password */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
-            Password
+            {t("auth.password")}
           </label>
           <div className="relative">
             <Lock className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -271,12 +279,14 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="w-full pl-11 pr-11 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
+              suppressHydrationWarning
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
               aria-label={showPassword ? "Hide password" : "Show password"}
+              suppressHydrationWarning
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -289,7 +299,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         {/* Confirm Password */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
-            Confirm Password
+            {t("auth.confirmPassword")}
           </label>
           <div className="relative">
             <Lock className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -304,19 +314,21 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                   ? "border-rose-500 focus:ring-rose-500/40"
                   : "border-border focus:ring-blue-600/40 focus:border-blue-600"
               }`}
+              suppressHydrationWarning
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
               aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              suppressHydrationWarning
             >
               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
           {confirmPassword && confirmPassword !== password && (
             <p className="text-xs text-rose-500 mt-1 font-medium">
-              Passwords do not match
+              {t("auth.passwordsDoNotMatch")}
             </p>
           )}
         </div>
@@ -330,15 +342,16 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
             className="w-4 h-4 mt-0.5 rounded border-border text-blue-600 focus:ring-blue-600 accent-blue-600 cursor-pointer"
+            suppressHydrationWarning
           />
           <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
-            I agree to the{" "}
+            {t("auth.termsAgreement")}{" "}
             <Link href="/terms" className="text-blue-600 hover:underline font-semibold">
-              Terms & Conditions
+              {t("auth.terms")}
             </Link>{" "}
-            and{" "}
+            {t("auth.and")}{" "}
             <Link href="/privacy" className="text-blue-600 hover:underline font-semibold">
-              Privacy Policy
+              {t("auth.privacy")}
             </Link>
             .
           </label>
@@ -349,6 +362,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           type="submit"
           disabled={isLoading || !agreedToTerms}
           className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          suppressHydrationWarning
         >
           {isLoading ? (
             <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -356,18 +370,18 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           ) : signupRole === "job_provider" ? (
-            "Create Employer Account"
+            t("auth.createEmployerButton")
           ) : signupRole === "provider" ? (
-            "Create Provider Account"
+            t("auth.createProviderButton")
           ) : (
-            "Create User Account"
+            t("auth.createAccountButton")
           )}
         </button>
 
         {/* Encrypted Security Badge */}
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-0.5">
           <span>🔒</span>
-          <span>Your information is securely encrypted and protected.</span>
+          <span>{t("auth.securityNote")}</span>
         </div>
 
         {/* Or continue with Divider */}
@@ -377,7 +391,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-3 text-muted-foreground font-medium">
-              Or continue with
+              {t("auth.orContinueWith")}
             </span>
           </div>
         </div>
@@ -388,13 +402,14 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
       {/* Switch to Login Link */}
       <div className="mt-6 text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        {t("auth.alreadyHaveAccount")}{" "}
         <button
           type="button"
           onClick={onSwitchToLogin}
           className="text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1 hover:underline cursor-pointer transition-colors"
+          suppressHydrationWarning
         >
-          Sign In →
+          {t("auth.signInLink")}
         </button>
       </div>
     </div>

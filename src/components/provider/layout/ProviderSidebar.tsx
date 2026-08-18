@@ -20,6 +20,7 @@ import {
 import { useEffect } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslation } from "@/lib/i18n";
 
 interface ProviderSidebarProps {
   collapsed?: boolean;
@@ -29,29 +30,30 @@ interface ProviderSidebarProps {
 }
 
 interface NavItem {
-  label: string;
+  key: string;
   href: string;
   icon: any;
   badge?: string;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/provider", icon: LayoutDashboard },
-  { label: "Bookings", href: "/provider/bookings", icon: CalendarDays },
-  { label: "Add New Service", href: "/provider/services/new", icon: Plus },
-  { label: "My Services", href: "/provider/services", icon: Wrench },
-  { label: "Calendar", href: "/provider/calendar", icon: Calendar },
-  { label: "Availability", href: "/provider/availability", icon: Clock },
-  { label: "Messages", href: "/provider/messages", icon: MessageSquare },
-  { label: "Reviews", href: "/provider/reviews", icon: Star },
-  { label: "Payments", href: "/provider/payments", icon: Wallet },
-  { label: "Profile", href: "/provider/profile", icon: User },
+  { key: "dashboard", href: "/provider", icon: LayoutDashboard },
+  { key: "bookings", href: "/provider/bookings", icon: CalendarDays },
+  { key: "addNewService", href: "/provider/services/new", icon: Plus },
+  { key: "myServices", href: "/provider/services", icon: Wrench },
+  { key: "calendar", href: "/provider/calendar", icon: Calendar },
+  { key: "availability", href: "/provider/availability", icon: Clock },
+  { key: "messages", href: "/provider/messages", icon: MessageSquare },
+  { key: "reviews", href: "/provider/reviews", icon: Star },
+  { key: "payments", href: "/provider/payments", icon: Wallet },
+  { key: "profile", href: "/provider/profile", icon: User },
 ];
 
 export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
   const pathname = usePathname();
   const { currentUser } = useAuthStore();
   const { profile, syncWithAuthUser } = useProviderStore();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (currentUser) {
@@ -87,6 +89,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                   ? pathname === "/provider/services" || (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
                   : pathname.startsWith(item.href);
               const Icon = item.icon;
+              const label = t(`serviceProvider.${item.key}`);
 
               return (
                 <Link
@@ -102,7 +105,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                     isActive ? "text-white" : "text-foreground/70"
                   }`} />
 
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate">{label}</span>
 
                   {item.badge && (
                     <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -132,7 +135,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                 <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>
                 <ShieldCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               </div>
-              <span className="text-[10px] text-muted-foreground block truncate">Verified Pro</span>
+              <span className="text-[10px] text-muted-foreground block truncate">{t("serviceProvider.verifiedPro")}</span>
             </div>
           </Link>
         </div>
@@ -168,7 +171,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                         BelConnect
                       </span>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
-                        Job Provider Portal
+                        {t("serviceProvider.portalTitle")}
                       </span>
                     </div>
                   </Link>
@@ -192,6 +195,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                         ? pathname === "/provider/services" || (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
                         : pathname.startsWith(item.href);
                     const Icon = item.icon;
+                    const label = t(`serviceProvider.${item.key}`);
 
                     return (
                       <Link
@@ -205,7 +209,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                         }`}
                       >
                         <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-foreground/70"}`} />
-                        <span className="truncate flex-1">{item.label}</span>
+                        <span className="truncate flex-1">{label}</span>
                         {item.badge && (
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
@@ -231,7 +235,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                       <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>
                       <ShieldCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                     </div>
-                    <span className="text-[10px] text-muted-foreground block truncate">Verified Pro</span>
+                    <span className="text-[10px] text-muted-foreground block truncate">{t("serviceProvider.verifiedPro")}</span>
                   </div>
                 </Link>
               </div>

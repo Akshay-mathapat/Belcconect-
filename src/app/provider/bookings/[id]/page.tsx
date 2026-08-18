@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { BookingStatus } from "@/types/provider";
+import CallButton from "@/components/calls/CallButton";
 
 const timelineSteps: BookingStatus[] = [
   "Requested",
@@ -76,18 +77,19 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 />
                 <div>
                   <h1 className="font-heading text-xl font-bold text-foreground">{booking.customerName}</h1>
-                  <p className="text-xs text-muted-foreground">{booking.customerPhone}</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Private In-App Calling Enabled
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-auto">
-                <a
-                  href={`tel:${booking.customerPhone}`}
-                  className="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                >
-                  <Phone className="h-4 w-4" />
-                  <span>Call</span>
-                </a>
+                <CallButton
+                  bookingId={booking.id}
+                  bookingStatus={booking.status}
+                  size="md"
+                  title="Call Customer In-App"
+                />
                 <Link
                   href="/provider/messages"
                   className="px-3 py-2 rounded-xl bg-blue-600/10 text-blue-600 dark:text-teal-400 hover:bg-blue-600/20 text-xs font-bold flex items-center gap-1.5 transition-colors"

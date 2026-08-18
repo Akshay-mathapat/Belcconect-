@@ -163,26 +163,6 @@ export default function ProviderProfilePage() {
                       <span className="font-bold text-foreground">{provider.experience} Years</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
-                      <Phone className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phone</span>
-                      <span className="font-semibold text-foreground">{provider.phone}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
-                      <Mail className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Email</span>
-                      <span className="font-semibold text-foreground truncate max-w-[180px] block">{provider.email}</span>
-                    </div>
-                  </div>
                 </div>
               </div>
 

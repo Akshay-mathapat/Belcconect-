@@ -42,11 +42,24 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
 
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
+  const themeRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (searchRef.current && !searchRef.current.contains(target)) {
         setSearchFocused(false);
+      }
+      if (langRef.current && !langRef.current.contains(target)) {
+        setLangOpen(false);
+      }
+      if (themeRef.current && !themeRef.current.contains(target)) {
+        setThemeOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setUserMenuOpen(false);
       }
     }
 
@@ -194,9 +207,17 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
           <div className="hidden lg:flex items-center gap-3 flex-shrink-0 ml-auto">
             <div className="flex items-center gap-1">
               {/* Language Switcher */}
-              <div className="relative">
+              <div ref={langRef} className="relative">
                 <button
-                  onClick={() => { setLangOpen(!langOpen); setThemeOpen(false); }}
+                  onClick={() => {
+                    const next = !langOpen;
+                    setLangOpen(next);
+                    if (next) {
+                      setThemeOpen(false);
+                      setUserMenuOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex h-9 items-center justify-center rounded-full px-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors focus:outline-none"
                 >
                   <span className="font-semibold">Lang</span>
@@ -227,9 +248,17 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
               </div>
 
               {/* Theme Switcher */}
-              <div className="relative">
+              <div ref={themeRef} className="relative">
                 <button
-                  onClick={() => { setThemeOpen(!themeOpen); setLangOpen(false); }}
+                  onClick={() => {
+                    const next = !themeOpen;
+                    setThemeOpen(next);
+                    if (next) {
+                      setLangOpen(false);
+                      setUserMenuOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none"
                 >
                   {theme === "dark" ? <Moon className="h-4 w-4 text-[#D4A017]" /> : theme === "light" ? <Sun className="h-4 w-4 text-[#D4A017]" /> : <Monitor className="h-4 w-4" />}
@@ -263,10 +292,18 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
 
             {/* Profile & Settings */}
             {currentUser && (
-              <div className="relative border-l border-border pl-3 flex items-center gap-2">
+              <div ref={userMenuRef} className="relative border-l border-border pl-3 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  onClick={() => {
+                    const next = !userMenuOpen;
+                    setUserMenuOpen(next);
+                    if (next) {
+                      setLangOpen(false);
+                      setThemeOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex items-center gap-2.5 p-1 rounded-full hover:bg-muted transition-colors focus:outline-none cursor-pointer"
                 >
                   <img

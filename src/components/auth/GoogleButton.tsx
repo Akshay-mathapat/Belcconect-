@@ -1,13 +1,17 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslation } from "@/lib/i18n";
 
 export const GoogleButton = memo(function GoogleButton() {
+  const { t } = useTranslation();
+
   return (
     <button
       type="button"
       onClick={() => alert("Google SSO Login initialized")}
       className="w-full py-3 px-4 bg-card border border-border hover:bg-muted/40 text-foreground font-medium text-sm rounded-xl shadow-sm transition-colors flex items-center justify-center gap-3 cursor-pointer"
+      suppressHydrationWarning
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path
@@ -27,7 +31,7 @@ export const GoogleButton = memo(function GoogleButton() {
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
         />
       </svg>
-      Continue with Google
+      {t("auth.continueWithGoogle")}
     </button>
   );
 });

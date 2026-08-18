@@ -144,6 +144,8 @@ export default function Navigation() {
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
+  const themeRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -186,48 +188,52 @@ export default function Navigation() {
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  // Close mobile menu on route change
+  // Close mobile menu and dropdowns on route change
   useEffect(() => {
     setMobileOpen(false);
     setSearchFocused(false);
     setSearchQuery("");
+    setLangOpen(false);
+    setThemeOpen(false);
+    setUserMenuOpen(false);
     setScrollDirection(null);
-    setScrolled(false);
     lastScrollY.current = 0;
   }, [pathname]);
 
-  // Close search on outside click
+  // Close all dropdowns on click outside (mousedown & touchstart)
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (searchRef.current && !searchRef.current.contains(target)) {
         setSearchFocused(false);
       }
-    };
-    if (searchFocused) {
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
-    }
-  }, [searchFocused]);
-
-  // Close user menu on outside click
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      if (langRef.current && !langRef.current.contains(target)) {
+        setLangOpen(false);
+      }
+      if (themeRef.current && !themeRef.current.contains(target)) {
+        setThemeOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
         setUserMenuOpen(false);
       }
     };
-    if (userMenuOpen) {
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
-    }
-  }, [userMenuOpen]);
 
-  // Close search and user menu on Escape
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  // Close all dropdowns on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSearchFocused(false);
         searchInputRef.current?.blur();
+        setLangOpen(false);
+        setThemeOpen(false);
         setUserMenuOpen(false);
       }
     };
@@ -286,6 +292,7 @@ export default function Navigation() {
                 placeholder="Search..."
                 aria-label="Search"
                 id="navbar-search-input"
+                suppressHydrationWarning
               />
               {/* Search button */}
               <button
@@ -296,6 +303,7 @@ export default function Navigation() {
                   }
                 }}
                 className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all"
+                suppressHydrationWarning
               >
                 <Search className="h-3.5 w-3.5" />
                 Search
@@ -314,14 +322,23 @@ export default function Navigation() {
           <div className="hidden lg:flex items-center gap-3 flex-shrink-0 ml-auto">
             <div className="flex items-center gap-1">
               {/* Language Switcher */}
-              <div className="relative">
+              <div ref={langRef} className="relative">
                 <button
-                  onClick={() => { setLangOpen(!langOpen); setThemeOpen(false); }}
+                  onClick={() => {
+                    const next = !langOpen;
+                    setLangOpen(next);
+                    if (next) {
+                      setThemeOpen(false);
+                      setUserMenuOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex h-9 items-center justify-center rounded-full px-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5F5B]"
                   aria-label="Toggle language"
                   aria-expanded={langOpen}
+                  suppressHydrationWarning
                 >
-                  <span className="font-semibold">Lang</span>
+                  <span className="font-semibold">{LOCALES.find((l) => l.code === locale)?.nativeLabel || "English"}</span>
                 </button>
                 <AnimatePresence>
                   {langOpen && (
@@ -330,7 +347,7 @@ export default function Navigation() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-36 rounded-xl border border-border bg-card p-1 shadow-lg overflow-hidden"
+                      className="absolute right-0 mt-2 w-36 rounded-xl border border-border bg-card p-1 shadow-lg overflow-hidden z-50"
                     >
                       {LOCALES.map((opt) => (
                         <button
@@ -338,6 +355,7 @@ export default function Navigation() {
                           onClick={() => { setLocale(opt.code); setLangOpen(false); }}
                           className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5F5B] ${locale === opt.code ? "bg-[#1F5F5B]/10 text-[#1F5F5B] font-medium" : "text-foreground hover:bg-muted"
                             }`}
+                          suppressHydrationWarning
                         >
                           {opt.nativeLabel}
                         </button>
@@ -348,12 +366,21 @@ export default function Navigation() {
               </div>
 
               {/* Theme Switcher */}
-              <div className="relative">
+              <div ref={themeRef} className="relative">
                 <button
-                  onClick={() => { setThemeOpen(!themeOpen); setLangOpen(false); }}
+                  onClick={() => {
+                    const next = !themeOpen;
+                    setThemeOpen(next);
+                    if (next) {
+                      setLangOpen(false);
+                      setUserMenuOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   aria-label="Toggle theme"
                   aria-expanded={themeOpen}
+                  suppressHydrationWarning
                 >
                   {theme === "dark" ? <Moon className="h-4 w-4 text-[#D4A017]" /> : theme === "light" ? <Sun className="h-4 w-4 text-[#D4A017]" /> : <Monitor className="h-4 w-4" />}
                 </button>
@@ -364,7 +391,7 @@ export default function Navigation() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-36 rounded-xl border border-border bg-card p-1 shadow-lg overflow-hidden"
+                      className="absolute right-0 mt-2 w-36 rounded-xl border border-border bg-card p-1 shadow-lg overflow-hidden z-50"
                     >
                       {themeOptions.map((opt) => (
                         <button
@@ -372,6 +399,7 @@ export default function Navigation() {
                           onClick={() => { setTheme(opt.value); setThemeOpen(false); }}
                           className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${theme === opt.value ? "bg-blue-600/10 text-blue-600 font-medium" : "text-foreground hover:bg-muted"
                             }`}
+                          suppressHydrationWarning
                         >
                           <opt.icon className="h-4 w-4" />
                           {opt.label}
@@ -388,8 +416,17 @@ export default function Navigation() {
               <div ref={userMenuRef} className="relative border-l border-border pl-3">
                 <button
                   type="button"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  onClick={() => {
+                    const next = !userMenuOpen;
+                    setUserMenuOpen(next);
+                    if (next) {
+                      setLangOpen(false);
+                      setThemeOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex items-center gap-2.5 p-1 rounded-full hover:bg-muted transition-colors focus:outline-none cursor-pointer"
+                  suppressHydrationWarning
                 >
                   <img
                     src={currentUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
@@ -438,6 +475,7 @@ export default function Navigation() {
                           router.refresh();
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold transition-colors cursor-pointer"
+                        suppressHydrationWarning
                       >
                         <LogOut className="h-4 w-4" />
                         <span>Sign Out</span>
@@ -452,14 +490,14 @@ export default function Navigation() {
                   href="/login"
                   className="text-sm font-semibold text-foreground hover:text-blue-600 transition-colors focus:outline-none rounded-md px-3 py-1.5"
                 >
-                  Sign In
+                  {t("nav.signIn")}
                 </Link>
 
                 <Link
                   href="/register"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-blue-700 transition-all"
                 >
-                  Get Started
+                  {t("nav.getStarted")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -478,6 +516,7 @@ export default function Navigation() {
               }}
               className="flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5F5B]"
               aria-label="Search"
+              suppressHydrationWarning
             >
               <Search className="h-5 w-5" />
             </button>
@@ -486,6 +525,7 @@ export default function Navigation() {
               className="flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5F5B]"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
+              suppressHydrationWarning
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -665,14 +705,14 @@ export default function Navigation() {
                       onClick={() => setMobileOpen(false)}
                       className="block w-full rounded-xl border border-border bg-card py-3 text-center text-sm font-semibold text-foreground transition-colors hover:bg-muted"
                     >
-                      Sign In
+                      {t("nav.signIn")}
                     </Link>
                     <Link
                       href="/register"
                       onClick={() => setMobileOpen(false)}
                       className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 flex items-center justify-center gap-2"
                     >
-                      Get Started
+                      {t("nav.getStarted")}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </>

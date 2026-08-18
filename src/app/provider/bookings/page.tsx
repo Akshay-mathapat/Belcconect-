@@ -18,16 +18,8 @@ import {
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { BookingStatus } from "@/types/provider";
-
-const statusFilterTabs: { label: string; value: BookingStatus | "ALL" | "Rejected" }[] = [
-  { label: "All Bookings", value: "ALL" },
-  { label: "Requested", value: "Requested" },
-  { label: "Accepted", value: "Accepted" },
-  { label: "Started", value: "Started" },
-  { label: "Completed", value: "Completed" },
-  { label: "Rejected", value: "Rejected" },
-  { label: "Review Submitted", value: "ReviewSubmitted" },
-];
+import { useTranslation } from "@/lib/i18n";
+import CallButton from "@/components/calls/CallButton";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -80,6 +72,17 @@ export default function BookingsManagementPage() {
   const { bookings, updateBookingStatus, fetchProviderBookings } = useProviderStore();
   const [activeTab, setActiveTab] = useState<BookingStatus | "ALL" | "Rejected">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const { t } = useTranslation();
+
+  const statusFilterTabs: { key: string; label: string; value: BookingStatus | "ALL" | "Rejected" }[] = [
+    { key: "allBookings", label: "All Bookings", value: "ALL" },
+    { key: "requested", label: "Requested", value: "Requested" },
+    { key: "accepted", label: "Accepted", value: "Accepted" },
+    { key: "started", label: "Started", value: "Started" },
+    { key: "completed", label: "Completed", value: "Completed" },
+    { key: "reject", label: "Rejected", value: "Rejected" },
+    { key: "reviewSubmitted", label: "Review Submitted", value: "ReviewSubmitted" },
+  ];
 
   useEffect(() => {
     fetchProviderBookings();
@@ -88,7 +91,22 @@ export default function BookingsManagementPage() {
       fetchProviderBookings();
     }, 3000);
 
-    return () => clearInterval(intervalId);
+    let syncChannel: BroadcastChannel | null = null;
+    try {
+      syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
+      syncChannel.onmessage = (event) => {
+        if (event.data?.type === "REFRESH_BOOKINGS") {
+          fetchProviderBookings();
+        }
+      };
+    } catch (e) {}
+
+    return () => {
+      clearInterval(intervalId);
+      if (syncChannel) {
+        try { syncChannel.close(); } catch (e) {}
+      }
+    };
   }, [fetchProviderBookings]);
 
   const filteredBookings = bookings.filter((b) => {
@@ -126,10 +144,10 @@ export default function BookingsManagementPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            Booking Management
+            {t("serviceProvider.bookingManagement")}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage incoming requests, active jobs, and service completion lifecycle.
+            {t("serviceProvider.bookingManagementDesc")}
           </p>
         </div>
 
@@ -140,7 +158,7 @@ export default function BookingsManagementPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter by customer or service..."
+            placeholder={t("serviceProvider.filterCustomerService")}
             className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-blue-600/30"
           />
         </div>
@@ -165,7 +183,7 @@ export default function BookingsManagementPage() {
                   : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              <span>{tab.label}</span>
+              <span>{t(`serviceProvider.${tab.key}`)}</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
                 isActive ? "bg-white/20 text-white" : "bg-muted text-foreground/70"
               }`}>
@@ -181,8 +199,8 @@ export default function BookingsManagementPage() {
         {filteredBookings.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border p-12 text-center bg-card">
             <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
-            <h3 className="text-sm font-bold text-foreground mb-1">No Bookings Found</h3>
-            <p className="text-xs text-muted-foreground">There are no bookings matching the selected status or search term.</p>
+            <h3 className="text-sm font-bold text-foreground mb-1">{t("serviceProvider.noBookingsFound")}</h3>
+            <p className="text-xs text-muted-foreground">{t("serviceProvider.noBookingsFoundDesc")}</p>
           </div>
         ) : (
           filteredBookings.map((b) => (
@@ -231,18 +249,16 @@ export default function BookingsManagementPage() {
                 {/* Right: Pricing & Actions */}
                 <div className="flex flex-col sm:flex-row lg:flex-col items-end justify-between gap-3 border-t lg:border-t-0 pt-4 lg:pt-0 border-border">
                   <div className="text-right">
-                    <span className="text-xs text-muted-foreground block">Pricing</span>
-                    <span className="font-heading text-sm font-bold text-emerald-600 dark:text-emerald-400">Mutually Agreed</span>
+                    <span className="text-xs text-muted-foreground block">{t("serviceProvider.pricing")}</span>
+                    <span className="font-heading text-sm font-bold text-emerald-600 dark:text-emerald-400">{t("serviceProvider.mutuallyAgreed")}</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <a
-                      href={`tel:${b.customerPhone}`}
-                      className="p-2 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground"
+                    <CallButton
+                      bookingId={b.id}
+                      bookingStatus={b.status}
                       title="Call Customer"
-                    >
-                      <Phone className="h-4 w-4" />
-                    </a>
+                    />
 
                     <Link
                       href="/provider/messages"
@@ -258,13 +274,13 @@ export default function BookingsManagementPage() {
                           onClick={() => updateBookingStatus(b.id, "Accepted")}
                           className="px-4 py-2 rounded-xl bg-[#1F5F5B] hover:bg-[#164744] text-white text-xs font-bold shadow-sm transition-all"
                         >
-                          Accept
+                          {t("serviceProvider.accept")}
                         </button>
                         <button
                           onClick={() => updateBookingStatus(b.id, "Rejected")}
                           className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all"
                         >
-                          Reject
+                          {t("serviceProvider.reject")}
                         </button>
                       </div>
                     )}
@@ -274,7 +290,7 @@ export default function BookingsManagementPage() {
                         onClick={() => updateBookingStatus(b.id, "Started")}
                         className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all"
                       >
-                        Start Service
+                        {t("serviceProvider.startJob")}
                       </button>
                     )}
 
@@ -283,7 +299,7 @@ export default function BookingsManagementPage() {
                         onClick={() => updateBookingStatus(b.id, "Completed")}
                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all"
                       >
-                        Complete Job
+                        {t("serviceProvider.completeService")}
                       </button>
                     )}
 
@@ -291,7 +307,7 @@ export default function BookingsManagementPage() {
                       href={`/provider/bookings/${b.id}`}
                       className="px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-bold flex items-center gap-1 transition-colors"
                     >
-                      <span>Details</span>
+                      <span>{t("serviceProvider.details")}</span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>

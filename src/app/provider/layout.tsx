@@ -52,6 +52,9 @@ export default function ProviderLayout({
 
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
+  const themeRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -80,8 +83,18 @@ export default function ProviderLayout({
   // Close search and popovers on click outside or escape key
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (searchRef.current && !searchRef.current.contains(target)) {
         setSearchFocused(false);
+      }
+      if (langRef.current && !langRef.current.contains(target)) {
+        setLangOpen(false);
+      }
+      if (themeRef.current && !themeRef.current.contains(target)) {
+        setThemeOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setUserMenuOpen(false);
       }
     }
 
@@ -131,11 +144,11 @@ export default function ProviderLayout({
   ];
 
   const mobileBottomNav = [
-    { label: "Dashboard", href: "/provider", icon: LayoutDashboard },
-    { label: "Bookings", href: "/provider/bookings", icon: CalendarDays },
-    { label: "Messages", href: "/provider/messages", icon: MessageSquare },
-    { label: "Services", href: "/provider/services", icon: Wrench },
-    { label: "Profile", href: "/provider/profile", icon: User },
+    { key: "dashboard", href: "/provider", icon: LayoutDashboard },
+    { key: "bookings", href: "/provider/bookings", icon: CalendarDays },
+    { key: "messages", href: "/provider/messages", icon: MessageSquare },
+    { key: "myServices", href: "/provider/services", icon: Wrench },
+    { key: "profile", href: "/provider/profile", icon: User },
   ];
 
   if (!isHydrated) {
@@ -178,7 +191,7 @@ export default function ProviderLayout({
                 {SITE_NAME}
               </span>
               <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
-                Service Provider Portal
+                {t("serviceProvider.portalTitle")}
               </span>
             </div>
           </Link>
@@ -201,7 +214,7 @@ export default function ProviderLayout({
                 }}
                 onFocus={() => setSearchFocused(true)}
                 className="w-full bg-transparent pl-10 pr-24 py-2.5 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none"
-                placeholder="Search bookings, my services, dashboard pages..."
+                placeholder={t("serviceProvider.searchPlaceholder")}
                 aria-label="Search"
                 id="provider-navbar-search-input"
               />
@@ -216,7 +229,7 @@ export default function ProviderLayout({
                 className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all"
               >
                 <Search className="h-3.5 w-3.5" />
-                Search
+                {t("nav.searchButton")}
               </button>
             </div>
 
@@ -232,14 +245,22 @@ export default function ProviderLayout({
           <div className="hidden lg:flex items-center gap-3 flex-shrink-0 ml-auto">
             <div className="flex items-center gap-1">
               {/* Language Switcher */}
-              <div className="relative">
+              <div ref={langRef} className="relative">
                 <button
-                  onClick={() => { setLangOpen(!langOpen); setThemeOpen(false); }}
+                  onClick={() => {
+                    const next = !langOpen;
+                    setLangOpen(next);
+                    if (next) {
+                      setThemeOpen(false);
+                      setUserMenuOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex h-9 items-center justify-center rounded-full px-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   aria-label="Toggle language"
                   aria-expanded={langOpen}
                 >
-                  <span className="font-semibold">Lang</span>
+                  <span className="font-semibold">{LOCALES.find((l) => l.code === locale)?.nativeLabel || "Lang"}</span>
                 </button>
                 <AnimatePresence>
                   {langOpen && (
@@ -266,9 +287,17 @@ export default function ProviderLayout({
               </div>
 
               {/* Theme Switcher */}
-              <div className="relative">
+              <div ref={themeRef} className="relative">
                 <button
-                  onClick={() => { setThemeOpen(!themeOpen); setLangOpen(false); }}
+                  onClick={() => {
+                    const next = !themeOpen;
+                    setThemeOpen(next);
+                    if (next) {
+                      setLangOpen(false);
+                      setUserMenuOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   aria-label="Toggle theme"
                   aria-expanded={themeOpen}
@@ -303,10 +332,18 @@ export default function ProviderLayout({
 
             {/* Auth CTA or User Profile Avatar */}
             {currentUser || profile.name ? (
-              <div className="relative border-l border-border pl-3 flex items-center gap-2">
+              <div ref={userMenuRef} className="relative border-l border-border pl-3 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  onClick={() => {
+                    const next = !userMenuOpen;
+                    setUserMenuOpen(next);
+                    if (next) {
+                      setLangOpen(false);
+                      setThemeOpen(false);
+                      setSearchFocused(false);
+                    }
+                  }}
                   className="flex items-center gap-2.5 p-1 rounded-full hover:bg-muted transition-colors focus:outline-none cursor-pointer"
                 >
                   <img
@@ -345,7 +382,7 @@ export default function ProviderLayout({
                         <p className="font-bold text-foreground truncate">{currentUser?.name || profile.name}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{currentUser?.email || profile.email}</p>
                         <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                          Service Provider
+                          {t("serviceProvider.portalTitle")}
                         </span>
                       </div>
 
@@ -355,7 +392,7 @@ export default function ProviderLayout({
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-foreground hover:bg-muted font-medium transition-colors text-left"
                       >
                         <LayoutDashboard className="h-4 w-4 text-blue-600" />
-                        <span>Provider Dashboard</span>
+                        <span>{t("serviceProvider.providerDashboard")}</span>
                       </Link>
 
                       <button
@@ -368,7 +405,7 @@ export default function ProviderLayout({
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold transition-colors cursor-pointer"
                       >
                         <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
+                        <span>{t("jobprovider.signOut")}</span>
                       </button>
                     </motion.div>
                   )}
@@ -380,14 +417,14 @@ export default function ProviderLayout({
                   href="/login"
                   className="text-sm font-semibold text-foreground hover:text-blue-600 transition-colors focus:outline-none rounded-md px-3 py-1.5"
                 >
-                  Sign In
+                  {t("nav.login")}
                 </Link>
 
                 <Link
                   href="/register"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-blue-700 transition-all"
                 >
-                  Get Started
+                  {t("nav.getStarted")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -429,6 +466,7 @@ export default function ProviderLayout({
         {mobileBottomNav.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/provider" && pathname.startsWith(item.href));
           const Icon = item.icon;
+          const label = t(`serviceProvider.${item.key}`);
 
           return (
             <Link
@@ -441,7 +479,7 @@ export default function ProviderLayout({
               }`}
             >
               <Icon className={`h-5 w-5 ${isActive ? "text-blue-600 dark:text-blue-400" : ""}`} />
-              <span className="text-[10px] tracking-tight">{item.label}</span>
+              <span className="text-[10px] tracking-tight">{label}</span>
             </Link>
           );
         })}

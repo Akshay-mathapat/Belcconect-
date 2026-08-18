@@ -7,8 +7,6 @@ import {
   ShieldCheck, 
   Star, 
   MapPin, 
-  Phone, 
-  Mail, 
   Briefcase, 
   Languages, 
   FileCheck,
@@ -365,17 +363,6 @@ export default function ProviderProfilePage() {
               </div>
             </div>
 
-            {/* Contact Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-muted/30 border border-border/60">
-              <div className="flex items-center gap-2.5 text-foreground">
-                <Phone className="h-4 w-4 text-blue-600" />
-                <span>{profile.phone}</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-foreground">
-                <Mail className="h-4 w-4 text-blue-600" />
-                <span>{profile.email}</span>
-              </div>
-            </div>
 
             {/* Government ID KYC Verification Interactive Banner */}
             <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-emerald-500/10 border border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

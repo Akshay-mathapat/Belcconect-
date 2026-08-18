@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query, hashPassword } from "@/lib/db";
+import { signJwtToken } from "@/lib/jwt";
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +61,24 @@ export async function POST(request: Request) {
       userObj.addresses = [];
     }
 
-    return NextResponse.json({ success: true, user: userObj });
+    // Generate JWT token
+    const token = signJwtToken({
+      userId: userObj.id,
+      email: userObj.email,
+      role: userObj.role,
+      name: userObj.name
+    });
+
+    const response = NextResponse.json({ success: true, user: userObj, token });
+    response.cookies.set("auth_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 3600,
+      path: "/"
+    });
+
+    return response;
   } catch (error: any) {
     console.error("Error in login API:", error);
     return NextResponse.json(

@@ -99,6 +99,7 @@ export function Hero() {
                 type="button"
                 onClick={() => setAreaDropdownOpen(!areaDropdownOpen)}
                 className="w-full flex items-center justify-between gap-2.5 px-4 py-3 text-left text-sm font-semibold text-foreground bg-muted/50 sm:bg-transparent rounded-xl sm:rounded-full hover:bg-muted/80 transition-colors"
+                suppressHydrationWarning
               >
                 <div className="flex items-center gap-2 truncate">
                   <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
@@ -117,6 +118,7 @@ export function Hero() {
                     className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                       selectedArea === "Belagavi (All Areas)" ? "bg-primary/10 text-primary font-semibold" : "text-foreground hover:bg-muted"
                     }`}
+                    suppressHydrationWarning
                   >
                     Belagavi (All Areas)
                   </button>
@@ -128,6 +130,7 @@ export function Hero() {
                       className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                         selectedArea === area.name ? "bg-primary/10 text-primary font-semibold" : "text-foreground hover:bg-muted"
                       }`}
+                      suppressHydrationWarning
                     >
                       {area.name}
                     </button>
@@ -148,6 +151,7 @@ export function Hero() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for Painter, Electrician, Plumber, Tutor..."
                 className="w-full bg-transparent pl-10 pr-4 py-3 text-sm text-foreground placeholder-muted-foreground/70 focus:outline-none"
+                suppressHydrationWarning
               />
             </div>
 
@@ -155,6 +159,7 @@ export function Hero() {
             <button
               type="submit"
               className="flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all flex-shrink-0"
+              suppressHydrationWarning
             >
               <Search className="h-4 w-4" />
               <span>{t("nav.searchButton")}</span>
@@ -165,12 +170,12 @@ export function Hero() {
         {/* OLX-Style Category Tiles Grid — Immediate visual orientation */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-heading font-bold text-foreground">Browse Popular Categories</h2>
+            <h2 className="text-xl font-heading font-bold text-foreground">{t("nav.browseAllCategories")}</h2>
             <Link 
               href="/services" 
               className="text-sm font-semibold text-primary hover:underline flex items-center gap-1"
             >
-              See all categories <ArrowRight className="h-4 w-4" />
+              {t("nav.viewAll")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
@@ -196,7 +201,7 @@ export function Hero() {
                       {category.name}
                     </span>
                     <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">
-                      Find Experts
+                      {t("trust.professionals")}
                     </span>
                   </Link>
                 </motion.div>

@@ -132,6 +132,7 @@ export default function Footer() {
                     onClick={() => setTheme(val)}
                     className={`p-1.5 transition-colors ${theme === val ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
                     aria-label={`${val} theme`}
+                    suppressHydrationWarning
                   >
                     <Icon className="h-3.5 w-3.5" />
                   </button>
@@ -144,6 +145,7 @@ export default function Footer() {
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
               aria-label="Back to top"
+              suppressHydrationWarning
             >
               <ArrowUp className="h-3.5 w-3.5" />
             </button>

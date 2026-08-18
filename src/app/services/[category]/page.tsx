@@ -2,7 +2,7 @@
 
 import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
-import { ArrowLeft, Star, Clock, MapPin, Search, User } from "lucide-react";
+import { ArrowLeft, Star, Search, User, UserX, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -12,12 +12,16 @@ import { SERVICE_CATEGORIES } from "@/constants/site";
 export default function ServicesCategoryPage() {
   const params = useParams();
   const categoryId = params.category as string;
-  const category = SERVICE_CATEGORIES.find(c => c.id === categoryId) || { name: "Services", description: "Explore our verified professionals.", startingPrice: 199 };
+  const category = SERVICE_CATEGORIES.find(c => c.id === categoryId) || {
+    name: "Services",
+    description: "Explore our verified professionals.",
+    startingPrice: 199
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("Recommended");
   const [dbPros, setDbPros] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCategoryServices = async () => {
@@ -26,7 +30,7 @@ export default function ServicesCategoryPage() {
         const res = await fetch(`/api/services?category=${encodeURIComponent(categoryId)}`);
         if (res.ok) {
           const data = await res.json();
-          setDbPros(data);
+          setDbPros(Array.isArray(data) ? data : []);
         }
       } catch (e) {
         console.error("Failed to load category services:", e);
@@ -37,32 +41,23 @@ export default function ServicesCategoryPage() {
     fetchCategoryServices();
   }, [categoryId]);
 
-  const mockPros = [
-    { id: "mock-1", name: "Ramesh Sharma", rating: 4.9, reviews: 128, jobs: 450, exp: 8, serviceName: "AC Repair & Servicing", description: "Professional AC repair and maintenance.", serviceId: undefined, providerId: "1" },
-    { id: "mock-2", name: "Suresh Kumar", rating: 4.7, reviews: 85, jobs: 310, exp: 5, serviceName: "Electrician Works", description: "General electrical repairs and installations.", serviceId: undefined, providerId: "2" },
-    { id: "mock-3", name: "Anil Desai", rating: 4.8, reviews: 104, jobs: 385, exp: 12, serviceName: "Plumbing Services", description: "Leakages fixing, pipeline repairs.", serviceId: undefined, providerId: "3" },
-    { id: "mock-4", name: "Priya Patil", rating: 5.0, reviews: 62, jobs: 190, exp: 4, serviceName: "Home Cleaning", description: "Deep cleaning, dusting, and sanitation.", serviceId: undefined, providerId: "4" },
-  ];
-
-  const dbFormatted = dbPros.map(srv => ({
+  const dbFormatted = dbPros.map((srv) => ({
     id: srv.id,
     name: srv.providerName || "Professional",
     rating: srv.rating !== undefined ? Number(srv.rating) : 0.0,
     reviews: srv.bookingsCount || 0,
     jobs: srv.bookingsCount || 0,
-    exp: srv.exp || 3,
+    exp: srv.exp || 4,
     providerId: srv.providerId,
     serviceId: srv.id,
     serviceName: srv.name,
     description: srv.description
   }));
 
-  const combinedPros = [...dbFormatted, ...mockPros];
-
-  // Apply sorting and filtering
-  const filteredPros = combinedPros
-    .filter(pro => 
-      pro.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  // Apply sorting and filtering strictly on database providers
+  const filteredPros = dbFormatted
+    .filter((pro) =>
+      pro.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pro.serviceName.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
@@ -77,7 +72,10 @@ export default function ServicesCategoryPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
           <div className="mb-6">
-            <Link href="/services" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+            <Link
+              href="/services"
+              className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to all categories
             </Link>
@@ -86,14 +84,14 @@ export default function ServicesCategoryPage() {
           {/* Header */}
           <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight text-foreground mb-3 capitalize"
               >
                 {category.name}
               </motion.h1>
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -102,8 +100,8 @@ export default function ServicesCategoryPage() {
                 {category.description}
               </motion.p>
             </div>
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
@@ -130,90 +128,114 @@ export default function ServicesCategoryPage() {
                 <div className="space-y-3">
                   {["Recommended", "Rating: High to Low", "Most Experienced"].map((sort, i) => (
                     <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                      <input 
-                        type="radio" 
-                        name="sort" 
+                      <input
+                        type="radio"
+                        name="sort"
                         checked={sortBy === sort}
                         onChange={() => setSortBy(sort)}
-                        className="text-primary focus:ring-primary bg-background border-border" 
+                        className="text-primary focus:ring-primary bg-background border-border"
                       />
-                      <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{sort}</span>
+                      <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                        {sort}
+                      </span>
                     </label>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Professionals List */}
+            {/* Real Database Professionals List */}
             <div className="lg:col-span-3 space-y-4">
-              {filteredPros.map((pro, index) => (
-                <motion.div
-                  key={pro.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="rounded-2xl border border-border bg-card p-5 sm:p-6 transition-all hover:shadow-lg hover:border-primary/30 flex flex-col sm:flex-row gap-5"
-                >
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                    <User className="h-8 w-8 text-muted-foreground" />
+              {isLoading ? (
+                <div className="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                  <p className="text-sm text-muted-foreground font-medium">Fetching verified professionals from database...</p>
+                </div>
+              ) : filteredPros.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                    <UserX className="h-7 w-7" />
                   </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground flex flex-wrap items-center gap-2">
-                          {pro.name}
-                          {pro.serviceId && (
-                            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-2 py-0.5 rounded-lg">
-                              {pro.serviceName}
+                  <h3 className="text-base font-bold text-foreground">No Registered Professionals Found</h3>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    There are currently no registered service providers in the <span className="font-semibold text-foreground">{category.name}</span> category in PostgreSQL database.
+                  </p>
+                  <Link
+                    href="/register"
+                    className="mt-2 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                  >
+                    Register as Service Provider
+                  </Link>
+                </div>
+              ) : (
+                filteredPros.map((pro, index) => (
+                  <motion.div
+                    key={pro.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    className="rounded-2xl border border-border bg-card p-5 sm:p-6 transition-all hover:shadow-lg hover:border-primary/30 flex flex-col sm:flex-row gap-5"
+                  >
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <User className="h-8 w-8 text-muted-foreground" />
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
+                        <div>
+                          <h3 className="text-lg font-bold text-foreground flex flex-wrap items-center gap-2">
+                            {pro.name}
+                            {pro.serviceId && (
+                              <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-2 py-0.5 rounded-lg">
+                                {pro.serviceName}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                              Verified
                             </span>
-                          )}
-                          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Verified</span>
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1 text-amber-500 font-medium">
-                            <Star className={`h-3.5 w-3.5 text-amber-500 ${pro.rating > 0 ? "fill-amber-500" : ""}`} />
-                            {pro.rating > 0 ? pro.rating : "No ratings"} ({pro.reviews})
-                          </span>
-                          <span>•</span>
-                          <span>{pro.jobs} jobs done</span>
-                          <span>•</span>
-                          <span>{pro.exp} yrs exp</span>
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1 text-amber-500 font-medium">
+                              <Star className={`h-3.5 w-3.5 text-amber-500 ${pro.rating > 0 ? "fill-amber-500" : ""}`} />
+                              {pro.rating > 0 ? pro.rating : "No ratings"} ({pro.reviews})
+                            </span>
+                            <span>•</span>
+                            <span>{pro.jobs} jobs done</span>
+                            <span>•</span>
+                            <span>{pro.exp} yrs exp</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
+                          </div>
                         </div>
                       </div>
+
+                      <p className="text-sm text-muted-foreground line-clamp-2 mt-3 mb-4">
+                        {pro.description || `Experienced professional providing top-quality ${category.name.toLowerCase()} with a focus on reliability and customer satisfaction.`}
+                      </p>
+
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&proName=${encodeURIComponent(pro.name)}`}
+                          className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"
+                        >
+                          Book Now
+                        </Link>
+                        <Link
+                          href={`/provider-profile/${pro.providerId}`}
+                          className="inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted"
+                        >
+                          View Profile
+                        </Link>
+                      </div>
                     </div>
-                    
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-3 mb-4">
-                      {pro.description || `Experienced professional providing top-quality ${category.name.toLowerCase()} with a focus on reliability and customer satisfaction.`}
-                    </p>
-                    
-                    <div className="flex items-center gap-3">
-                      <Link 
-                        href={pro.serviceId 
-                          ? `/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&proName=${encodeURIComponent(pro.name)}`
-                          : `/book?pro=${pro.providerId}&service=${categoryId}`
-                        }
-                        className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"
-                      >
-                        Book Now
-                      </Link>
-                      <Link 
-                        href={`/provider-profile/${pro.providerId}`}
-                        className="inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted"
-                      >
-                        View Profile
-                      </Link>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
           
         </div>
       </div>
-      
+
       <Footer />
     </main>
   );
