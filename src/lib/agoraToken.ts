@@ -16,6 +16,53 @@ function sanitizeChannelName(name: string): string {
   return sanitized.length > 0 ? sanitized.substring(0, 64) : "cityconnect_channel";
 }
 
+export function getNumericUid(userId: string): number {
+  if (!userId) return 10000001;
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash << 5) - hash + userId.charCodeAt(i);
+    hash |= 0;
+  }
+  return (Math.abs(hash) % 80000000) + 10000000;
+}
+
+export function resolveUserAgoraUid(
+  requestUserId: string | null | undefined,
+  call: { callerId: string; receiverId: string }
+): { targetUid: number; isCaller: boolean; callerUid: number; receiverUid: number } {
+  let callerUid = getNumericUid(call.callerId);
+  let receiverUid = getNumericUid(call.receiverId);
+  if (callerUid === receiverUid) {
+    receiverUid = callerUid + 54321;
+  }
+
+  const matches = (id1: string | null | undefined, id2: string) => {
+    if (!id1 || !id2) return false;
+    if (id1 === id2) return true;
+    const norm1 = id1.toLowerCase();
+    const norm2 = id2.toLowerCase();
+    if (norm1 === norm2) return true;
+    if ((norm1.includes("cust") || norm1 === "customer-1") && (norm2.includes("cust") || norm2 === "customer-1")) return true;
+    if ((norm1.includes("prov") || norm1 === "provider-1") && (norm2.includes("prov") || norm2 === "provider-1")) return true;
+    return false;
+  };
+
+  const isCallerMatch = matches(requestUserId, call.callerId);
+  const isReceiverMatch = matches(requestUserId, call.receiverId);
+
+  let isCaller = false;
+  if (isCallerMatch && !isReceiverMatch) {
+    isCaller = true;
+  } else if (!isCallerMatch && isReceiverMatch) {
+    isCaller = false;
+  } else {
+    isCaller = requestUserId === call.callerId;
+  }
+
+  const targetUid = isCaller ? callerUid : receiverUid;
+  return { targetUid, isCaller, callerUid, receiverUid };
+}
+
 /**
  * Generates an Agora RTC token for real-time voice streaming between customer and service provider.
  * Uses Agora RtcTokenBuilder specification (Role: Publisher).
@@ -42,7 +89,7 @@ export function generateAgoraRtcToken(
       appId,
       appCertificate,
       channelName,
-      userUid,
+      0,
       RtcRole.PUBLISHER,
       privilegeExpiredTs,
       privilegeExpiredTs

@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import CallButton from "@/components/calls/CallButton";
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
+import LocationPicker, { ConfirmedLocationData } from "@/components/location/LocationPicker";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -88,13 +89,28 @@ export default function AccountPage() {
         router.push("/login");
         return;
       }
-      fetchUserBookings();
+      fetchUserBookings().catch(() => {});
 
       const intervalId = setInterval(() => {
-        fetchUserBookings();
-      }, 3000);
+        fetchUserBookings().catch(() => {});
+      }, 5000);
 
-      return () => clearInterval(intervalId);
+      let syncChannel: BroadcastChannel | null = null;
+      try {
+        syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
+        syncChannel.onmessage = (event) => {
+          if (event.data?.type === "REFRESH_BOOKINGS") {
+            fetchUserBookings().catch(() => {});
+          }
+        };
+      } catch (e) {}
+
+      return () => {
+        clearInterval(intervalId);
+        if (syncChannel) {
+          try { syncChannel.close(); } catch (e) {}
+        }
+      };
     }
   }, [fetchUserBookings, currentUser?.id, router, logout]);
 
@@ -566,97 +582,51 @@ export default function AccountPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-2xl font-bold text-foreground">Saved Addresses</h2>
-                      <p className="text-sm text-muted-foreground">Manage your delivery and service addresses</p>
+                      <p className="text-sm text-muted-foreground">Manage your delivery and service locations with map pinning</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowAddressModal(true)}
                       className="px-4 py-2.5 rounded-xl bg-blue-600 text-white text-xs sm:text-sm font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md cursor-pointer"
                     >
-                      <Plus className="h-4 w-4" /> Add New Address
+                      <Plus className="h-4 w-4" /> Add Pinned Location
                     </button>
                   </div>
 
-                  {/* Add Address Modal */}
+                  {/* Add Location Modal with LocationPicker */}
                   <AnimatePresence>
                     {showAddressModal && (
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
                       >
-                        <motion.div
-                          initial={{ scale: 0.95 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0.95 }}
-                          className="bg-card border border-border rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4"
-                        >
-                          <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                            <h3 className="text-lg font-bold text-foreground">Add New Address</h3>
-                            <button
-                              onClick={() => setShowAddressModal(false)}
-                              className="text-muted-foreground hover:text-foreground text-sm font-bold"
-                            >
-                              ✕
-                            </button>
-                          </div>
-
-                          <form onSubmit={handleAddAddressSubmit} className="space-y-4">
-                            <div>
-                              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                                Address Type
-                              </label>
-                              <div className="grid grid-cols-3 gap-2">
-                                {["Home", "Office", "Other"].map((t) => (
-                                  <button
-                                    key={t}
-                                    type="button"
-                                    onClick={() => setAddressType(t)}
-                                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                                      addressType === t
-                                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                                        : "bg-muted/40 border-border text-foreground hover:bg-muted"
-                                    }`}
-                                  >
-                                    {t === "Home" ? <HomeIcon className="w-3.5 h-3.5" /> : <Building className="w-3.5 h-3.5" />}
-                                    {t}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                                Street Address & Area
-                              </label>
-                              <textarea
-                                required
-                                rows={3}
-                                value={addressText}
-                                onChange={(e) => setAddressText(e.target.value)}
-                                placeholder="123 Main Street, Tilakwadi, Belagavi, 590006"
-                                className="w-full p-3 bg-muted/30 border border-border rounded-xl text-sm text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-2">
-                              <button
-                                type="button"
-                                onClick={() => setShowAddressModal(false)}
-                                className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="submit"
-                                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all cursor-pointer shadow-md"
-                              >
-                                Save Address
-                              </button>
-                            </div>
-                          </form>
-                        </motion.div>
+                        <div className="w-full max-w-2xl my-auto">
+                          <LocationPicker
+                            onConfirm={async (location: ConfirmedLocationData) => {
+                              await addAddress({
+                                type: location.type,
+                                text: location.text,
+                                latitude: location.latitude,
+                                longitude: location.longitude,
+                                placeId: location.placeId,
+                                locationAccuracy: location.locationAccuracy,
+                                houseNumber: location.houseNumber,
+                                buildingName: location.buildingName,
+                                floor: location.floor,
+                                landmark: location.landmark,
+                                locality: location.locality,
+                                city: location.city,
+                                state: location.state,
+                                pincode: location.pincode,
+                                deliveryInstructions: location.deliveryInstructions
+                              });
+                              setShowAddressModal(false);
+                            }}
+                            onCancel={() => setShowAddressModal(false)}
+                          />
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -669,28 +639,68 @@ export default function AccountPage() {
                     </div>
                   ) : (
                     <div className="grid sm:grid-cols-2 gap-4">
-                      {activeUser.addresses.map((addr) => (
-                        <div
-                          key={addr.id}
-                          className="rounded-2xl border border-border bg-card p-5 relative shadow-sm hover:border-blue-600/40 transition-all group"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-bold">
-                              {addr.type === "Home" ? <HomeIcon className="h-3.5 w-3.5" /> : <Building className="h-3.5 w-3.5" />}
-                              {addr.type}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => deleteAddress(addr.id)}
-                              className="text-muted-foreground hover:text-rose-600 p-1 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                              title="Delete address"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                      {activeUser.addresses.map((addr) => {
+                        const isPinned = typeof addr.latitude === "number" && typeof addr.longitude === "number";
+                        return (
+                          <div
+                            key={addr.id}
+                            className="rounded-2xl border border-border bg-card p-5 relative shadow-sm hover:border-blue-600/40 transition-all flex flex-col justify-between gap-3"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-bold">
+                                    {addr.type === "Home" ? <HomeIcon className="h-3.5 w-3.5" /> : <Building className="h-3.5 w-3.5" />}
+                                    {addr.type}
+                                  </span>
+                                  {isPinned ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
+                                      <CheckCircle2 className="h-3 w-3" /> Pinned
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-bold">
+                                      <AlertCircle className="h-3 w-3" /> Not Pinned
+                                    </span>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => deleteAddress(addr.id)}
+                                  className="text-muted-foreground hover:text-rose-600 p-1 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                  title="Delete address"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+
+                              <p className="text-sm text-foreground font-semibold leading-relaxed">{addr.text}</p>
+
+                              {addr.landmark && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">
+                                  Landmark: {addr.landmark}
+                                </p>
+                              )}
+
+                              {isPinned && addr.latitude && addr.longitude && (
+                                <p className="text-[10px] font-mono text-muted-foreground mt-2">
+                                  GPS: {Number(addr.latitude).toFixed(6)}, {Number(addr.longitude).toFixed(6)}
+                                </p>
+                              )}
+                            </div>
+
+                            {!isPinned && (
+                              <button
+                                type="button"
+                                onClick={() => setShowAddressModal(true)}
+                                className="w-full mt-2 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <MapPin className="w-3.5 h-3.5" /> Pin Exact Location
+                              </button>
+                            )}
                           </div>
-                          <p className="text-sm text-foreground leading-relaxed">{addr.text}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

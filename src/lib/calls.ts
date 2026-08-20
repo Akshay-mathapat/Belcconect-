@@ -118,14 +118,38 @@ export async function updateCallStatus(
   return getCallById(callId);
 }
 
-export async function getActiveCallForBooking(bookingId: string): Promise<CallRecord | null> {
+export async function getActiveCallForBooking(bookingId: string, maxAgeSeconds = 60): Promise<CallRecord | null> {
   const res = await query(
     `SELECT id FROM calls 
      WHERE booking_id = $1 
        AND status IN ('INITIATED', 'RINGING', 'ACCEPTED', 'CONNECTED')
+       AND created_at >= NOW() - INTERVAL '${maxAgeSeconds} seconds'
      ORDER BY created_at DESC 
      LIMIT 1`,
     [bookingId]
+  );
+
+  if (res.rows.length === 0) return null;
+  return getCallById(res.rows[0].id);
+}
+
+export async function getActiveCallForUser(userId: string): Promise<CallRecord | null> {
+  if (!userId) return null;
+  const isProvider = userId.includes("prov") || userId === "provider-1";
+  const isCustomer = userId.includes("cust") || userId === "customer-1";
+
+  const res = await query(
+    `SELECT id FROM calls 
+     WHERE (
+       caller_id = $1 OR receiver_id = $1
+       OR ($2 = true AND (receiver_id LIKE 'prov%' OR receiver_id = 'provider-1' OR caller_id LIKE 'prov%' OR caller_id = 'provider-1'))
+       OR ($3 = true AND (receiver_id LIKE 'cust%' OR receiver_id = 'customer-1' OR caller_id LIKE 'cust%' OR caller_id = 'customer-1'))
+     )
+       AND status IN ('INITIATED', 'RINGING', 'ACCEPTED', 'CONNECTED')
+       AND created_at >= NOW() - INTERVAL '120 seconds'
+     ORDER BY created_at DESC 
+     LIMIT 1`,
+    [userId, isProvider, isCustomer]
   );
 
   if (res.rows.length === 0) return null;
@@ -161,7 +185,7 @@ export async function getUserRateLimitCount(userId: string, windowHours = 1): Pr
   return parseInt(res.rows[0]?.count || "0", 10);
 }
 
-export async function autoExpireRingingCalls(timeoutSeconds = 60): Promise<CallRecord[]> {
+export async function autoExpireStaleCalls(timeoutSeconds = 45): Promise<CallRecord[]> {
   const res = await query(
     `UPDATE calls
      SET status = 'MISSED',
@@ -179,6 +203,8 @@ export async function autoExpireRingingCalls(timeoutSeconds = 60): Promise<CallR
   }
   return expiredRecords;
 }
+
+export const autoExpireRingingCalls = autoExpireStaleCalls;
 
 export async function createCallReport(callId: string, reporterId: string, reason: string): Promise<boolean> {
   const reportId = `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;

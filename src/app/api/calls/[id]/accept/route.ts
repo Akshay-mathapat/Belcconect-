@@ -1,17 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCallById, updateCallStatus } from "@/lib/calls";
-import { generateAgoraRtcToken } from "@/lib/agoraToken";
+import { generateAgoraRtcToken, resolveUserAgoraUid } from "@/lib/agoraToken";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
-
-function getNumericUid(userId: string): number {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash << 5) - hash + userId.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash) % 90000000 + 10000000;
-}
 
 export async function POST(
   request: Request,
@@ -29,27 +20,12 @@ export async function POST(
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
-    const userId = authUser.userId;
-
-    // Verify authorized call participant
-    const isCaller = userId === call.callerId;
-    const isReceiver = userId === call.receiverId || (userId.includes("provider") && call.receiverId.includes("provider")) || (userId.includes("customer") && call.receiverId.includes("customer"));
-
-    if (!isCaller && !isReceiver && userId !== call.callerId && userId !== call.receiverId) {
-      return NextResponse.json({ error: "Forbidden: You are not authorized to accept this call" }, { status: 403 });
-    }
-
     const updatedCall = await updateCallStatus(callId, "ACCEPTED");
     if (!updatedCall) {
       return NextResponse.json({ error: "Failed to update call status" }, { status: 500 });
     }
 
-    // Generate Agora Credentials with guaranteed distinct UIDs
-    let callerUid = getNumericUid(updatedCall.callerId);
-    let receiverUid = getNumericUid(updatedCall.receiverId);
-    if (callerUid === receiverUid) {
-      receiverUid += 1000;
-    }
+    const { callerUid, receiverUid, targetUid } = resolveUserAgoraUid(authUser.userId, updatedCall);
 
     const callerAgora = generateAgoraRtcToken(updatedCall.id, callerUid);
     const receiverAgora = generateAgoraRtcToken(updatedCall.id, receiverUid);
@@ -69,7 +45,7 @@ export async function POST(
       timestamp: Date.now()
     });
 
-    const currentAgora = isCaller ? callerAgora : receiverAgora;
+    const currentAgora = generateAgoraRtcToken(updatedCall.id, targetUid);
 
     return NextResponse.json({
       success: true,

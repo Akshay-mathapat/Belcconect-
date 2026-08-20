@@ -23,6 +23,13 @@ export interface Booking {
   rating?: number;
   reviewComment?: string;
   createdAt?: string;
+  serviceAddressId?: string;
+  destinationLatitude?: number | null;
+  destinationLongitude?: number | null;
+  destinationPlaceId?: string | null;
+  destinationAddress?: string | null;
+  destinationLandmark?: string | null;
+  destinationInstructions?: string | null;
 }
 
 export interface ServiceFAQ {

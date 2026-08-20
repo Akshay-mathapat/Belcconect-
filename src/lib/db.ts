@@ -3,12 +3,23 @@ import crypto from "crypto";
 
 const connectionString =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:Akshay_a015@localhost:5432/cityconnect";
+  "postgresql://postgres:Akshay_a015@127.0.0.1:5432/cityconnect";
 
-const pool = new Pool({
-  connectionString,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-});
+
+declare global {
+  var postgresPool: Pool | undefined;
+}
+
+const pool =
+  globalThis.postgresPool ||
+  new Pool({
+    connectionString,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.postgresPool = pool;
+}
 
 let dbInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -22,8 +33,9 @@ export async function initDB() {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const client = await pool.connect();
+    let client;
     try {
+      client = await pool.connect();
       await client.query("BEGIN");
 
       // 1. Create Customers table
@@ -51,6 +63,15 @@ export async function initDB() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+
+      // Migration columns for KYC verification documents
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS kyc_document_type VARCHAR(100)`);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS kyc_document_number VARCHAR(100)`);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS kyc_document_photo TEXT`);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(50) DEFAULT 'Unverified'`);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE`);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS pan_number VARCHAR(100)`);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(100)`);
 
       // 3. Create Job Providers table
       await client.query(`
@@ -118,6 +139,32 @@ export async function initDB() {
         ALTER TABLE bookings ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       `);
 
+      // Location system migration columns for addresses
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS latitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS longitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS place_id TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS location_accuracy NUMERIC`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS house_number TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS building_name TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS floor TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS landmark TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS locality TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS city TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS state TEXT`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS pincode VARCHAR(10)`);
+      await client.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS delivery_instructions TEXT`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_addresses_lat_lng ON addresses(latitude, longitude)`);
+
+      // Location system snapshot columns for bookings
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS service_address_id VARCHAR(100)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_latitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_longitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_place_id TEXT`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_address TEXT`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_landmark TEXT`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_instructions TEXT`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_bookings_dest_lat_lng ON bookings(destination_latitude, destination_longitude)`);
+
       await client.query(`
         ALTER TABLE services DROP COLUMN IF EXISTS base_price
       `);
@@ -160,6 +207,13 @@ export async function initDB() {
           reason TEXT NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+
+      // Auto-expire lingering call sessions on server/DB initialization
+      await client.query(`
+        UPDATE calls 
+        SET status = 'ENDED', ended_at = NOW() 
+        WHERE status IN ('INITIATED', 'RINGING', 'ACCEPTED', 'CONNECTED')
       `);
 
       const defaultHash = hashPassword("password123");
@@ -237,14 +291,23 @@ export async function initDB() {
       dbInitialized = true;
       console.log("Database initialized successfully.");
     } catch (error) {
-      await client.query("ROLLBACK");
+      if (client) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (_) {}
+      }
       console.error("Error during database initialization:", error);
       initPromise = null;
       throw error;
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+      }
     }
-  })();
+  })().catch((err) => {
+    initPromise = null;
+    throw err;
+  });
 
   return initPromise;
 }

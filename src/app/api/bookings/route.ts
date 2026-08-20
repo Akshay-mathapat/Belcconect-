@@ -12,13 +12,20 @@ function mapRowToBooking(row: any) {
     category: row.category,
     date: row.date,
     time: row.time,
-    address: row.address || "No address provided",
+    address: row.destination_address || row.address || "No address provided",
     status: row.status,
     providerName: row.provider_name || "Verified Expert",
     providerId: row.provider_id || "provider-1",
     uploadedImages: [],
     rating: row.rating,
     reviewComment: row.review_comment || "",
+    serviceAddressId: row.service_address_id || null,
+    destinationLatitude: row.destination_latitude ? parseFloat(row.destination_latitude) : null,
+    destinationLongitude: row.destination_longitude ? parseFloat(row.destination_longitude) : null,
+    destinationPlaceId: row.destination_place_id || null,
+    destinationAddress: row.destination_address || null,
+    destinationLandmark: row.destination_landmark || null,
+    destinationInstructions: row.destination_instructions || null,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
   };
 }
@@ -45,10 +52,17 @@ export async function GET(request: Request) {
         b.rating,
         b.review_comment,
         b.created_at,
+        b.service_address_id,
+        b.destination_latitude,
+        b.destination_longitude,
+        b.destination_place_id,
+        b.destination_address,
+        b.destination_landmark,
+        b.destination_instructions,
         COALESCE(c.name, 'Customer') AS customer_name,
         COALESCE(c.phone, '') AS customer_phone,
         COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
-        COALESCE(addr.text, 'No address provided') AS address
+        COALESCE(b.destination_address, addr.text, 'No address provided') AS address
       FROM bookings b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN (
@@ -84,10 +98,59 @@ export async function POST(request: Request) {
       category,
       date,
       time,
+      address,
+      serviceAddressId,
+      destinationLatitude,
+      destinationLongitude,
+      destinationPlaceId,
+      destinationAddress,
+      destinationLandmark,
+      destinationInstructions
     } = body;
 
     if (!customerId || !providerId || !serviceName || !date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Ensure customerId and providerId exist in DB to prevent Foreign Key constraint errors
+    let validCustomerId = customerId;
+    try {
+      const custCheck = await query("SELECT id FROM customers WHERE id = $1 LIMIT 1", [customerId]);
+      if (custCheck.rows.length === 0) {
+        validCustomerId = "customer-1";
+      }
+    } catch (e) {
+      validCustomerId = "customer-1";
+    }
+
+    let validProviderId = providerId;
+    try {
+      const proCheck = await query("SELECT id FROM service_providers WHERE id = $1 LIMIT 1", [providerId]);
+      if (proCheck.rows.length === 0) {
+        validProviderId = "provider-1";
+      }
+    } catch (e) {
+      validProviderId = "provider-1";
+    }
+
+    // Check if the requested time slot is already booked for this date & provider
+    if (date && time) {
+      const existingCheck = await query(
+        `SELECT id FROM bookings 
+         WHERE date = $1 
+           AND (time = $2 OR time ILIKE $3)
+           AND (provider_id = $4 OR provider_id = 'provider-1' OR $4 = 'provider-1')
+           AND (status IS NULL OR LOWER(status) NOT IN ('cancelled', 'rejected'))
+         LIMIT 1`,
+        [date, time, `%${time}%`, validProviderId]
+      );
+
+      if (existingCheck.rows.length > 0) {
+        return NextResponse.json(
+          { error: "This time slot has already been booked. Please select a different timing." },
+          { status: 409 }
+        );
+      }
     }
 
     let finalCategory = category || "General";
@@ -119,21 +182,31 @@ export async function POST(request: Request) {
 
     const bookingId = `B-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const finalDestAddress = destinationAddress || address || "No address provided";
+
     await query(
       `INSERT INTO bookings (
         id, customer_id, provider_id, provider_name, service_name, category, 
-        date, time, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        date, time, status, service_address_id, destination_latitude, destination_longitude,
+        destination_place_id, destination_address, destination_landmark, destination_instructions
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
       [
         bookingId,
-        customerId,
-        providerId,
+        validCustomerId,
+        validProviderId,
         providerName || "Ramesh Sharma",
         serviceName,
         finalCategory,
         date,
         time || "10:00 AM",
-        "Requested", // initial status
+        "Requested",
+        serviceAddressId || null,
+        destinationLatitude ?? null,
+        destinationLongitude ?? null,
+        destinationPlaceId || null,
+        finalDestAddress,
+        destinationLandmark || null,
+        destinationInstructions || null
       ]
     );
 
@@ -150,10 +223,18 @@ export async function POST(request: Request) {
         b.status, 
         b.rating,
         b.review_comment,
+        b.created_at,
+        b.service_address_id,
+        b.destination_latitude,
+        b.destination_longitude,
+        b.destination_place_id,
+        b.destination_address,
+        b.destination_landmark,
+        b.destination_instructions,
         c.name AS customer_name,
         c.phone AS customer_phone,
         c.avatar AS customer_photo,
-        addr.text AS address
+        COALESCE(b.destination_address, addr.text, 'No address provided') AS address
       FROM bookings b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN (
@@ -164,6 +245,7 @@ export async function POST(request: Request) {
       WHERE b.id = $1`,
       [bookingId]
     );
+
     return NextResponse.json({ success: true, booking: mapRowToBooking(insertedRes.rows[0]) });
   } catch (error: any) {
     console.error("Error creating booking:", error);

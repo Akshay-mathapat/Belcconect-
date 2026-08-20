@@ -66,16 +66,16 @@ class CallSignalingManager extends EventEmitter {
     this.broadcastToUser(receiverId, event);
 
     // Also broadcast to demo user aliases if needed for local cross-tab testing
-    if (callerId.includes("customer") || callerId === "customer-1") {
+    if (callerId.includes("cust") || callerId === "customer-1") {
       this.broadcastToUser("customer-1", event);
     }
-    if (receiverId.includes("provider") || receiverId === "provider-1") {
+    if (receiverId.includes("prov") || receiverId === "provider-1") {
       this.broadcastToUser("provider-1", event);
     }
-    if (callerId.includes("provider") || callerId === "provider-1") {
+    if (callerId.includes("prov") || callerId === "provider-1") {
       this.broadcastToUser("provider-1", event);
     }
-    if (receiverId.includes("customer") || receiverId === "customer-1") {
+    if (receiverId.includes("cust") || receiverId === "customer-1") {
       this.broadcastToUser("customer-1", event);
     }
   }

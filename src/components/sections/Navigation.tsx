@@ -61,6 +61,7 @@ export function SearchDropdown({
   onClose: () => void;
   isOpen: boolean;
 }) {
+  const { t } = useTranslation();
   const filteredServices = query.trim().length > 0
     ? SERVICE_CATEGORIES.filter(s =>
       s.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -96,8 +97,12 @@ export function SearchDropdown({
                         <IconComponent className={`h-5 w-5 ${service.iconColor}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground group-hover:text-[#1F5F5B] transition-colors">{service.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{service.description}</p>
+                        <p className="text-sm font-semibold text-foreground group-hover:text-[#1F5F5B] transition-colors">
+                          {t("categories." + service.id) !== ("categories." + service.id) ? t("categories." + service.id) : service.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {t("categoryDesc." + service.id) !== ("categoryDesc." + service.id) ? t("categoryDesc." + service.id) : service.description}
+                        </p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                     </Link>
@@ -289,7 +294,7 @@ export default function Navigation() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 className="w-full bg-transparent pl-10 pr-24 py-2.5 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none"
-                placeholder="Search..."
+                placeholder={t("nav.search")}
                 aria-label="Search"
                 id="navbar-search-input"
                 suppressHydrationWarning
@@ -306,7 +311,7 @@ export default function Navigation() {
                 suppressHydrationWarning
               >
                 <Search className="h-3.5 w-3.5" />
-                Search
+                {t("nav.searchButton")}
               </button>
             </div>
 
@@ -402,7 +407,7 @@ export default function Navigation() {
                           suppressHydrationWarning
                         >
                           <opt.icon className="h-4 w-4" />
-                          {opt.label}
+                          {opt.value === "light" ? t("common.lightMode") : opt.value === "dark" ? t("common.darkMode") : t("common.systemMode")}
                         </button>
                       ))}
                     </motion.div>
@@ -451,7 +456,7 @@ export default function Navigation() {
                         <p className="font-bold text-foreground truncate">{currentUser.name}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{currentUser.email}</p>
                         <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                          {currentUser.role === "provider" ? "Service Provider" : currentUser.role === "job_provider" ? "Employer" : "Customer Account"}
+                          {currentUser.role === "provider" ? t("common.serviceProvider") : currentUser.role === "job_provider" ? t("common.employer") : t("common.customerAccount")}
                         </span>
                       </div>
 
@@ -462,7 +467,7 @@ export default function Navigation() {
                       >
                         <LayoutDashboard className="h-4 w-4 text-blue-600" />
                         <span>
-                          {currentUser.role === "provider" ? "Provider Dashboard" : currentUser.role === "job_provider" ? "Job Provider Workspace" : "My Account"}
+                          {currentUser.role === "provider" ? t("common.providerDashboard") : currentUser.role === "job_provider" ? t("common.jobProviderWorkspace") : t("common.myAccount")}
                         </span>
                       </Link>
 
@@ -478,7 +483,7 @@ export default function Navigation() {
                         suppressHydrationWarning
                       >
                         <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
+                        <span>{t("common.signOut")}</span>
                       </button>
                     </motion.div>
                   )}
@@ -576,6 +581,7 @@ export default function Navigation() {
 
               {NAV_LINKS.map((link) => {
                 const isActive = pathname === link.href;
+                const linkText = t(link.i18nKey) !== link.i18nKey ? t(link.i18nKey) : link.label;
 
                 if (link.label === "Services") {
                   return (
@@ -585,7 +591,7 @@ export default function Navigation() {
                         className={`flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-base font-medium transition-colors ${isActive || mobileServicesOpen ? "bg-[#1F5F5B]/10 text-[#1F5F5B]" : "text-foreground hover:bg-muted"
                           }`}
                       >
-                        {link.label}
+                        {linkText}
                         <ChevronRight className={`h-5 w-5 transition-transform ${mobileServicesOpen ? "rotate-90" : ""}`} />
                       </button>
 
@@ -598,28 +604,34 @@ export default function Navigation() {
                             className="overflow-hidden"
                           >
                             <div className="pl-4 pr-2 py-2 space-y-4">
-                              {SERVICE_TAXONOMY.map((section) => (
+                              {(SERVICE_TAXONOMY as unknown as any[]).map((section: any) => (
                                 <div key={section.section} className="pl-4 border-l-2 border-border/50 space-y-2">
-                                  <h4 className="text-sm font-semibold text-foreground/80 pt-2">{section.section}</h4>
-                                  {section.items.map(group => (
-                                    <div key={group.id} className="space-y-1">
-                                      <p className="text-xs font-medium text-muted-foreground pt-1">{group.name}</p>
-                                      {group.services.map(serviceId => {
-                                        const service = SERVICE_CATEGORIES.find(s => s.id === serviceId);
-                                        if (!service) return null;
-                                        return (
-                                          <Link
-                                            key={service.id}
-                                            href={`/services/${service.id}`}
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block py-1.5 pl-2 text-sm text-foreground hover:text-[#1F5F5B] transition-colors"
-                                          >
-                                            {service.name}
-                                          </Link>
-                                        )
-                                      })}
-                                    </div>
-                                  ))}
+                                  <h4 className="text-sm font-semibold text-foreground/80 pt-2">
+                                    {section.section === "Home & Property" ? t("taxonomy.homeProperty") : section.section === "Lifestyle & Professional" ? t("taxonomy.lifestyle") : section.section}
+                                  </h4>
+                                  {section.items.map((group: any) => {
+                                    const localizedGroupName = group.name === "Home Repairs & Maintenance" ? t("taxonomy.repairs") : group.name === "Cleaning & Pest Control" ? t("taxonomy.cleaningPest") : group.name === "Renovations & Improvements" ? t("taxonomy.renovations") : group.name === "Personal Care" ? t("taxonomy.personalCare") : group.name === "Tech & Education" ? t("taxonomy.techEdu") : group.name;
+                                    return (
+                                      <div key={group.id} className="space-y-1">
+                                        <p className="text-xs font-medium text-muted-foreground pt-1">{localizedGroupName}</p>
+                                        {group.services.map((serviceId: string) => {
+                                          const service = SERVICE_CATEGORIES.find(s => s.id === serviceId);
+                                          if (!service) return null;
+                                          const localizedServiceName = t("categories." + service.id) !== ("categories." + service.id) ? t("categories." + service.id) : service.name;
+                                          return (
+                                            <Link
+                                              key={service.id}
+                                              href={`/services/${service.id}`}
+                                              onClick={() => setMobileOpen(false)}
+                                              className="block py-1.5 pl-2 text-sm text-foreground hover:text-[#1F5F5B] transition-colors"
+                                            >
+                                              {localizedServiceName}
+                                            </Link>
+                                          )
+                                        })}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ))}
                             </div>
@@ -637,14 +649,14 @@ export default function Navigation() {
                     className={`block rounded-xl px-4 py-3.5 text-base font-medium transition-colors ${isActive ? "bg-[#1F5F5B]/10 text-[#1F5F5B]" : "text-foreground hover:bg-muted"
                       }`}
                   >
-                    {link.label}
+                    {linkText}
                   </Link>
                 );
               })}
 
               <div className="my-6 border-t border-border pt-6 px-4">
                 <div className="mb-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Language</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("common.language")}</p>
                   <div className="flex flex-wrap gap-2">
                     {LOCALES.map((opt) => (
                       <button
@@ -682,7 +694,7 @@ export default function Navigation() {
                       onClick={() => setMobileOpen(false)}
                       className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700"
                     >
-                      {currentUser.role === "provider" ? "Go to Provider Dashboard" : currentUser.role === "job_provider" ? "Go to Job Provider Portal" : "Go to My Account"}
+                      {currentUser.role === "provider" ? t("common.providerDashboard") : currentUser.role === "job_provider" ? t("common.jobProviderWorkspace") : t("common.myAccount")}
                     </Link>
 
                     <button
@@ -695,7 +707,7 @@ export default function Navigation() {
                       }}
                       className="block w-full rounded-xl border border-rose-500/30 bg-rose-500/10 py-3 text-center text-sm font-bold text-rose-500 transition-colors hover:bg-rose-500/20 cursor-pointer"
                     >
-                      Sign Out
+                      {t("common.signOut")}
                     </button>
                   </div>
                 ) : (

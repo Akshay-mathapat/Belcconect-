@@ -70,7 +70,7 @@ export default function Footer() {
               <span className="font-heading text-lg font-bold text-foreground">{SITE_NAME}</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-sm">
-              Connecting Belagavi with trusted local professionals for all your home and business needs.
+              {t("footer.tagline")}
             </p>
 
             {/* Social links */}
@@ -110,11 +110,11 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-border py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 text-xs text-muted-foreground">
-            <span>© {new Date().getFullYear()} {SITE_NAME}. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} {SITE_NAME}. {t("footer.copyright")}</span>
             <span className="hidden sm:inline">·</span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              Proudly made in Belagavi
+              {t("footer.madeIn")}
             </span>
           </div>
 
