@@ -5,15 +5,15 @@ import {
   getActiveCallForBooking,
   getCallHistoryForUser,
   getUserRateLimitCount,
-  autoExpireRingingCalls
+  autoExpireStaleCalls
 } from "@/lib/calls";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function POST(request: Request) {
   try {
-    // Auto-expire ringing calls older than 60s
-    const expired = await autoExpireRingingCalls(60);
+    // Auto-expire stale ringing or hanging calls older than 60s
+    const expired = await autoExpireStaleCalls(60);
     expired.forEach((call) => {
       callSignaling.emitCallEvent({ type: "call:missed", call, timestamp: Date.now() });
     });

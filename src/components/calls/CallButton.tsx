@@ -18,21 +18,32 @@ export default function CallButton({
   bookingStatus,
   size = "md",
   className = "",
-  title = "Call Provider/Customer"
+  title
 }: CallButtonProps) {
   const { startCall, isCalling } = useCallContext();
   const [loading, setLoading] = useState(false);
 
+  const isInactive = ["Rejected", "Cancelled", "Declined"].includes(bookingStatus || "");
+  const defaultTitle = isInactive
+    ? `Calling unavailable: Booking is ${bookingStatus}`
+    : "Call Provider/Customer";
+
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (isInactive) {
+      alert(`Calling is unavailable because this booking has been ${bookingStatus?.toLowerCase() || "cancelled"}.`);
+      return;
+    }
+
     if (loading || isCalling) return;
 
     setLoading(true);
     try {
       await startCall(bookingId);
     } catch (err: any) {
-      alert(err.message || "Could not initiate call");
+      // Handled in CallProvider
     } finally {
       setLoading(false);
     }
@@ -45,14 +56,16 @@ export default function CallButton({
     <button
       type="button"
       onClick={handleClick}
-      disabled={loading}
-      className={`${paddingSize} border border-border bg-muted/40 hover:bg-muted text-foreground transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${className}`}
-      title={title}
+      disabled={loading || isInactive}
+      className={`${paddingSize} border border-border bg-muted/40 hover:bg-muted text-foreground transition-all shadow-sm ${
+        isInactive ? "opacity-40 cursor-not-allowed" : "hover:scale-105 active:scale-95 cursor-pointer"
+      } flex items-center justify-center ${className}`}
+      title={title || defaultTitle}
     >
       {loading ? (
         <Loader2 className={`${iconSize} animate-spin text-blue-600`} />
       ) : (
-        <Phone className={`${iconSize} text-foreground`} />
+        <Phone className={`${iconSize} ${isInactive ? "text-muted-foreground" : "text-foreground"}`} />
       )}
     </button>
   );

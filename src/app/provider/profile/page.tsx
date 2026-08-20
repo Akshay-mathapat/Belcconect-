@@ -123,12 +123,42 @@ export default function ProviderProfilePage() {
     }
   };
 
-  const handleKycSubmit = (e: React.FormEvent) => {
+  // Fetch persisted KYC details from PostgreSQL database on load
+  useEffect(() => {
+    const providerId = currentUser?.id || "provider-1";
+    fetch(`/api/provider/kyc?providerId=${encodeURIComponent(providerId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.kyc) {
+          updateProfile({
+            isVerified: Boolean(data.kyc.isVerified),
+            kycStatus: data.kyc.kycStatus || "Verified",
+            kycDocumentType: data.kyc.kycDocumentType || undefined,
+            kycDocumentNumber: data.kyc.kycDocumentNumber || undefined,
+            kycDocumentPhoto: data.kyc.kycDocumentPhoto || undefined,
+            panNumber: data.kyc.panNumber || undefined,
+            aadhaarNumber: data.kyc.aadhaarNumber || undefined
+          });
+          setKycForm((prev) => ({
+            ...prev,
+            documentType: data.kyc.kycDocumentType || prev.documentType,
+            documentNumber: data.kyc.kycDocumentNumber || prev.documentNumber,
+            documentPhoto: data.kyc.kycDocumentPhoto || prev.documentPhoto,
+            fullName: data.kyc.name || prev.fullName
+          }));
+        }
+      })
+      .catch((e) => console.error("Error loading KYC from PostgreSQL database:", e));
+  }, [currentUser, updateProfile]);
+
+  const handleKycSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!kycForm.documentNumber) {
       alert("Please enter your Government Document / ID Number.");
       return;
     }
+
+    const providerId = currentUser?.id || "provider-1";
 
     const updatedKyc = {
       isVerified: true,
@@ -140,7 +170,44 @@ export default function ProviderProfilePage() {
       aadhaarNumber: kycForm.documentType === "Aadhaar Card" ? kycForm.documentNumber : profile.aadhaarNumber
     };
 
+    // 1. Update local state
     updateProfile(updatedKyc);
+
+    // 2. Persist to PostgreSQL database
+    try {
+      const res = await fetch("/api/provider/kyc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": providerId
+        },
+        body: JSON.stringify({
+          providerId,
+          documentType: kycForm.documentType,
+          documentNumber: kycForm.documentNumber,
+          documentPhoto: kycForm.documentPhoto,
+          fullName: kycForm.fullName
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.kyc) {
+          updateProfile({
+            isVerified: true,
+            kycStatus: "Verified",
+            kycDocumentType: data.kyc.kycDocumentType,
+            kycDocumentNumber: data.kyc.kycDocumentNumber,
+            kycDocumentPhoto: data.kyc.kycDocumentPhoto,
+            panNumber: data.kyc.panNumber || profile.panNumber,
+            aadhaarNumber: data.kyc.aadhaarNumber || profile.aadhaarNumber
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to save KYC documents to PostgreSQL database:", err);
+    }
+
     setIsKycModalOpen(false);
     setShowSavedAlert(true);
     setTimeout(() => setShowSavedAlert(false), 3000);

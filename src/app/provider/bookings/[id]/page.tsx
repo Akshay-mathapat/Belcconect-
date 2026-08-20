@@ -16,6 +16,7 @@ import {
 import { useProviderStore } from "@/store/useProviderStore";
 import { BookingStatus } from "@/types/provider";
 import CallButton from "@/components/calls/CallButton";
+import ProviderMapView from "@/components/location/ProviderMapView";
 
 const timelineSteps: BookingStatus[] = [
   "Requested",
@@ -185,37 +186,17 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
         </div>
 
-        {/* Right Column: Google Maps Placeholder & Internal Notes */}
+        {/* Right Column: Google Maps Location & Provider Navigation */}
         <div className="space-y-6">
-          
-          {/* Map Card */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-blue-600" />
-              Location & Navigation
-            </h3>
-
-            {/* Map visual mock */}
-            <div className="w-full h-56 rounded-xl bg-slate-200 dark:bg-slate-800 relative overflow-hidden flex flex-col items-center justify-center p-4 text-center">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg animate-bounce mb-2">
-                <MapPin className="h-5 w-5" />
-              </div>
-              <span className="text-xs font-bold text-foreground">{booking.address}</span>
-              <span className="text-[10px] text-muted-foreground mt-1">Google Maps API Ready</span>
-
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.address)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-colors"
-              >
-                Open in Google Maps
-              </a>
-            </div>
-          </div>
-
-
-
+          <ProviderMapView
+            latitude={booking.destinationLatitude}
+            longitude={booking.destinationLongitude}
+            address={booking.destinationAddress || booking.address}
+            landmark={booking.destinationLandmark}
+            instructions={booking.destinationInstructions}
+            customerName={booking.customerName}
+            customerPhone={booking.customerPhone}
+          />
         </div>
 
       </div>

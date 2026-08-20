@@ -144,27 +144,32 @@ export default function CategoryBar() {
                   <div className="flex">
                     {/* Left Pane - Category Groups */}
                     <div className="w-[260px] bg-muted/30 border-r border-border p-4 flex flex-col gap-5">
-                      {SERVICE_TAXONOMY.map((section) => (
+                      {(SERVICE_TAXONOMY as unknown as any[]).map((section: any) => (
                         <div key={section.section}>
-                          <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-3">{section.section}</h4>
+                          <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-3">
+                            {section.section === "Home & Property" ? t("taxonomy.homeProperty") : section.section === "Lifestyle & Professional" ? t("taxonomy.lifestyle") : section.section}
+                          </h4>
                           <ul className="space-y-0.5">
-                            {section.items.map((group) => (
-                              <li key={group.id}>
-                                <button
-                                  onMouseEnter={() => setActiveGroup(group.id)}
-                                  onClick={() => setActiveGroup(group.id)}
-                                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all duration-150 text-left ${
-                                    activeGroup === group.id
-                                      ? "bg-primary/10 text-primary font-semibold shadow-sm"
-                                      : "text-foreground hover:bg-muted hover:text-foreground"
-                                  }`}
-                                  suppressHydrationWarning
-                                >
-                                  <span>{group.name}</span>
-                                  <ChevronRight className={`h-4 w-4 transition-all duration-150 ${activeGroup === group.id ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`} />
-                                </button>
-                              </li>
-                            ))}
+                            {section.items.map((group: any) => {
+                              const localizedGroupName = group.name === "Home Repairs & Maintenance" ? t("taxonomy.repairs") : group.name === "Cleaning & Pest Control" ? t("taxonomy.cleaningPest") : group.name === "Renovations & Improvements" ? t("taxonomy.renovations") : group.name === "Personal Care" ? t("taxonomy.personalCare") : group.name === "Tech & Education" ? t("taxonomy.techEdu") : group.name;
+                              return (
+                                <li key={group.id}>
+                                  <button
+                                    onMouseEnter={() => setActiveGroup(group.id)}
+                                    onClick={() => setActiveGroup(group.id)}
+                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all duration-150 text-left ${
+                                      activeGroup === group.id
+                                        ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                                        : "text-foreground hover:bg-muted hover:text-foreground"
+                                    }`}
+                                    suppressHydrationWarning
+                                  >
+                                    <span>{localizedGroupName}</span>
+                                    <ChevronRight className={`h-4 w-4 transition-all duration-150 ${activeGroup === group.id ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`} />
+                                  </button>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       ))}
@@ -178,6 +183,9 @@ export default function CategoryBar() {
                           if (!service) return null;
                           const IconComponent = iconMap[service.icon] || Sparkles;
 
+                          const localizedName = t("categories." + service.id) !== ("categories." + service.id) ? t("categories." + service.id) : (t(service.i18nKey) !== service.i18nKey ? t(service.i18nKey) : service.name);
+                          const localizedDesc = t("categoryDesc." + service.id) !== ("categoryDesc." + service.id) ? t("categoryDesc." + service.id) : service.description;
+
                           return (
                             <Link
                               key={service.id}
@@ -189,8 +197,8 @@ export default function CategoryBar() {
                                 <IconComponent className={`h-5 w-5 ${service.iconColor}`} />
                               </div>
                               <div className="min-w-0">
-                                <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{service.name}</h4>
-                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{service.description}</p>
+                                <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{localizedName}</h4>
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{localizedDesc}</p>
                               </div>
                             </Link>
                           );
@@ -208,8 +216,8 @@ export default function CategoryBar() {
                             <TrendingUp className="h-4 w-4 text-primary" />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-foreground">Not sure what you need?</p>
-                            <p className="text-xs text-muted-foreground">Browse all services and find the right expert</p>
+                            <p className="text-sm font-semibold text-foreground">{t("nav.findPerfectService")}</p>
+                            <p className="text-xs text-muted-foreground">{t("nav.browseAllCategories")}</p>
                           </div>
                           <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                         </Link>
@@ -257,6 +265,7 @@ export default function CategoryBar() {
             >
               {quickCategories.map((category) => {
                 const IconComponent = iconMap[category.icon] || Sparkles;
+                const pillName = t("categories." + category.id) !== ("categories." + category.id) ? t("categories." + category.id) : (t(category.i18nKey) !== category.i18nKey ? t(category.i18nKey) : category.name);
                 return (
                   <Link
                     key={category.id}
@@ -264,7 +273,7 @@ export default function CategoryBar() {
                     className="group flex-shrink-0 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200 whitespace-nowrap"
                   >
                     <IconComponent className={`h-3.5 w-3.5 ${category.iconColor} opacity-70 group-hover:opacity-100 transition-opacity`} />
-                    {category.name}
+                    {pillName}
                   </Link>
                 );
               })}

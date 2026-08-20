@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { callSignaling, SignalingEvent } from "@/lib/callSignaling";
-import { autoExpireRingingCalls } from "@/lib/calls";
+import { autoExpireStaleCalls } from "@/lib/calls";
 import { getAuthenticatedUser, verifyJwtToken } from "@/lib/jwt";
 
 export const runtime = "nodejs";
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         try {
           controller.enqueue(encoder.encode(`: ping\n\n`));
 
-          const expiredCalls = await autoExpireRingingCalls(60);
+          const expiredCalls = await autoExpireStaleCalls(60);
           expiredCalls.forEach((call) => {
             callSignaling.emitCallEvent({
               type: "call:missed",

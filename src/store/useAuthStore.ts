@@ -9,6 +9,19 @@ export interface SavedAddress {
   id: string;
   type: string; // e.g. "Home", "Office", "Other"
   text: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string | null;
+  locationAccuracy?: number | null;
+  houseNumber?: string | null;
+  buildingName?: string | null;
+  floor?: string | null;
+  landmark?: string | null;
+  locality?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  deliveryInstructions?: string | null;
 }
 
 export interface BookingItem {
@@ -59,7 +72,23 @@ interface AuthState {
     avatar?: string;
   }) => void;
 
-  addAddress: (data: { type: string; text: string }) => Promise<void>;
+  addAddress: (data: {
+    type: string;
+    text?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    placeId?: string | null;
+    locationAccuracy?: number | null;
+    houseNumber?: string | null;
+    buildingName?: string | null;
+    floor?: string | null;
+    landmark?: string | null;
+    locality?: string | null;
+    city?: string | null;
+    state?: string | null;
+    pincode?: string | null;
+    deliveryInstructions?: string | null;
+  }) => Promise<SavedAddress | undefined>;
   deleteAddress: (id: string) => Promise<void>;
 
   addBooking: (booking: Omit<BookingItem, "id">) => void;
@@ -193,7 +222,7 @@ export const useAuthStore = create<AuthState>()(
         }));
       },
 
-      addAddress: async ({ type, text }) => {
+      addAddress: async (addressData) => {
         const current = get().currentUser;
         if (!current) return;
 
@@ -201,7 +230,7 @@ export const useAuthStore = create<AuthState>()(
           const res = await fetch("/api/addresses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: current.id, type, text })
+            body: JSON.stringify({ userId: current.id, ...addressData })
           });
           if (res.ok) {
             const data = await res.json();
@@ -216,6 +245,7 @@ export const useAuthStore = create<AuthState>()(
                 currentUser: updatedUser,
                 usersList: state.usersList.map((u) => u.id === current.id ? updatedUser : u)
               }));
+              return newAddress;
             }
           }
         } catch (err) {
@@ -276,11 +306,16 @@ export const useAuthStore = create<AuthState>()(
         if (!current) return;
 
         try {
-          const res = await fetch("/api/bookings", {
-            headers: { "x-user-id": current.id }
-          });
+          const headers: Record<string, string> = { "x-user-id": current.id };
+          if (current.token) {
+            headers["Authorization"] = `Bearer ${current.token}`;
+          }
+
+          const res = await fetch("/api/bookings", { headers });
           if (res.ok) {
             const dbBookings = await res.json();
+            if (!Array.isArray(dbBookings)) return;
+
             const mappedBookings: BookingItem[] = dbBookings.map((b: any) => ({
               id: b.id,
               service: b.serviceName,
@@ -294,15 +329,16 @@ export const useAuthStore = create<AuthState>()(
             }));
 
             set((state) => {
-              const updatedUser = { ...current, bookings: mappedBookings };
+              const latestCurrent = get().currentUser || current;
+              const updatedUser = { ...latestCurrent, bookings: mappedBookings };
               return {
                 currentUser: updatedUser,
-                usersList: state.usersList.map((u) => u.id === current.id ? updatedUser : u)
+                usersList: state.usersList.map((u) => u.id === latestCurrent.id ? updatedUser : u)
               };
             });
           }
         } catch (e) {
-          console.error("Failed to load user bookings from PostgreSQL:", e);
+          // Ignore transient network errors during dev server compilation or restarts
         }
       },
 

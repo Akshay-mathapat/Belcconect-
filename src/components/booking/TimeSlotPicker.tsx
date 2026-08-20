@@ -20,15 +20,35 @@ function format12Hour(hour: number): string {
   return `${display}:00 ${isPM ? "PM" : "AM"}`;
 }
 
+// Check if a time slot is already booked
+function isSlotBooked(slot: string, bookedSlots: string[]): boolean {
+  if (!bookedSlots || bookedSlots.length === 0) return false;
+
+  const normSlot = slot.toLowerCase().replace(/\s+/g, "").replace(/–/g, "-");
+
+  return bookedSlots.some((b) => {
+    if (!b) return false;
+    const normB = b.toLowerCase().replace(/\s+/g, "").replace(/–/g, "-");
+    if (normSlot === normB) return true;
+
+    // Match start time e.g. "10:00am" matching "10:00am-11:00am"
+    const slotStart = normSlot.split("-")[0];
+    const bStart = normB.split("-")[0];
+    if (slotStart && bStart && slotStart === bStart) return true;
+
+    return false;
+  });
+}
+
 // Generate next 7 days for quick date selection
 function getNext7Days() {
   const days = [];
   const today = new Date();
-  
+
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(today.getDate() + i);
-    
+
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -48,7 +68,7 @@ function getNext7Days() {
       displayTitle,
       shortLabel: `${dayName}, ${monthName} ${dayNum}`,
       badge,
-      dayOfWeek: fullDayName
+      dayOfWeek: fullDayName,
     });
   }
 
@@ -57,13 +77,13 @@ function getNext7Days() {
 
 // Compute slots based on provider schedule
 function getSlotsForDay(dayOfWeek: string, schedule: AvailabilitySchedule[]) {
-  const daySchedule = schedule.find(s => s.day.toLowerCase() === dayOfWeek.toLowerCase()) || {
+  const daySchedule = schedule.find((s) => s.day.toLowerCase() === dayOfWeek.toLowerCase()) || {
     day: dayOfWeek,
     isWorking: true,
     startTime: "09:00",
     endTime: "19:00",
     breakStart: "13:00",
-    breakEnd: "14:00"
+    breakEnd: "14:00",
   };
 
   if (!daySchedule.isWorking) {
@@ -101,10 +121,13 @@ export default function TimeSlotPicker({
   onDateChange,
   selectedTime,
   onTimeChange,
-  providerId
+  providerId,
 }: TimeSlotPickerProps) {
   const { schedule } = useProviderStore();
   const days = getNext7Days();
+
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   // If no date selected yet, default to today
   useEffect(() => {
@@ -113,21 +136,76 @@ export default function TimeSlotPicker({
     }
   }, [selectedDate, days, onDateChange]);
 
+  // Fetch already booked slots for the selected date
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    let isMounted = true;
+    setIsLoadingSlots(true);
+
+    const url = `/api/bookings/booked-slots?date=${encodeURIComponent(selectedDate)}${
+      providerId ? `&providerId=${encodeURIComponent(providerId)}` : ""
+    }`;
+
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.bookedSlots && Array.isArray(data.bookedSlots)) {
+          setBookedSlots(data.bookedSlots);
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading booked slots:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingSlots(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate, providerId]);
+
+  // Reset selected time if it becomes booked
+  useEffect(() => {
+    if (selectedTime && isSlotBooked(selectedTime, bookedSlots)) {
+      onTimeChange("");
+    }
+  }, [selectedTime, bookedSlots, onTimeChange]);
+
   // Determine current day info
-  const selectedDayObj = days.find(d => d.dateStr === selectedDate) || {
+  const selectedDayObj = days.find((d) => d.dateStr === selectedDate) || {
     dateStr: selectedDate,
     fullDayName: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", { weekday: "long" }),
-    displayTitle: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
-    shortLabel: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+    displayTitle: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    }),
+    shortLabel: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    }),
     badge: "",
-    dayOfWeek: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", { weekday: "long" })
+    dayOfWeek: new Date(selectedDate || Date.now()).toLocaleDateString("en-US", { weekday: "long" }),
   };
 
-  const slotData = getSlotsForDay(selectedDayObj.dayOfWeek, schedule);
+  const rawSlotData = getSlotsForDay(selectedDayObj.dayOfWeek, schedule);
+
+  // Filter out already-booked time slots so earlier booked timings are NOT shown/selectable
+  const slotData = {
+    isOff: rawSlotData.isOff,
+    morning: rawSlotData.morning.filter((slot) => !isSlotBooked(slot, bookedSlots)),
+    afternoon: rawSlotData.afternoon.filter((slot) => !isSlotBooked(slot, bookedSlots)),
+    evening: rawSlotData.evening.filter((slot) => !isSlotBooked(slot, bookedSlots)),
+    totalBooked: rawSlotData.morning.concat(rawSlotData.afternoon, rawSlotData.evening).filter((slot) => isSlotBooked(slot, bookedSlots)).length,
+  };
+
+  const totalAvailableCount = slotData.morning.length + slotData.afternoon.length + slotData.evening.length;
 
   return (
     <div className="space-y-6">
-      
       {/* 1. Date Selection Header & Chips */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -135,9 +213,7 @@ export default function TimeSlotPicker({
             <CalendarIcon className="w-4 h-4 text-primary" />
             Select Service Date
           </label>
-          <span className="text-xs font-semibold text-primary">
-            {selectedDayObj.displayTitle}
-          </span>
+          <span className="text-xs font-semibold text-primary">{selectedDayObj.displayTitle}</span>
         </div>
 
         {/* Scrollable Horizontal Date Chips */}
@@ -150,7 +226,6 @@ export default function TimeSlotPicker({
                 type="button"
                 onClick={() => {
                   onDateChange(d.dateStr);
-                  // Reset selected time when switching date if previous slot not available
                   onTimeChange("");
                 }}
                 className={`flex-shrink-0 px-4 py-3 rounded-2xl border text-left transition-all cursor-pointer min-w-[120px] flex flex-col justify-between ${
@@ -160,7 +235,11 @@ export default function TimeSlotPicker({
                 }`}
               >
                 <div className="flex items-center justify-between w-full mb-1">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider ${
+                      isSelected ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
                     {d.badge || d.fullDayName.slice(0, 3)}
                   </span>
                   {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
@@ -201,6 +280,16 @@ export default function TimeSlotPicker({
             </p>
           </div>
         </div>
+      ) : totalAvailableCount === 0 ? (
+        <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
+          <div>
+            <p className="font-bold">All Slots Fully Booked</p>
+            <p className="text-[11px] opacity-90 mt-0.5">
+              All time slots on {selectedDayObj.displayTitle} have already been booked by other customers. Please choose another date.
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="space-y-5 border-t border-border/80 pt-5">
           <div className="flex items-center justify-between">
@@ -208,15 +297,20 @@ export default function TimeSlotPicker({
               <Clock className="w-4 h-4 text-primary" />
               Available Time Slots
             </label>
-            {selectedTime ? (
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
-                Selected: {selectedTime}
-              </span>
-            ) : (
-              <span className="text-[11px] text-muted-foreground font-medium">
-                Select an available slot below
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {slotData.totalBooked > 0 && (
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                  {slotData.totalBooked} slot{slotData.totalBooked > 1 ? "s" : ""} booked
+                </span>
+              )}
+              {selectedTime ? (
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                  Selected: {selectedTime}
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground font-medium">Select an available slot</span>
+              )}
+            </div>
           </div>
 
           {/* Morning Section */}
@@ -240,9 +334,11 @@ export default function TimeSlotPicker({
                           : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
                       }`}
                     >
-                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                        isSelected ? "border-white bg-white" : "border-muted-foreground/60"
-                      }`}>
+                      <span
+                        className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          isSelected ? "border-white bg-white" : "border-muted-foreground/60"
+                        }`}
+                      >
                         {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </span>
                       <span className="truncate">{slot}</span>
@@ -274,9 +370,11 @@ export default function TimeSlotPicker({
                           : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
                       }`}
                     >
-                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                        isSelected ? "border-white bg-white" : "border-muted-foreground/60"
-                      }`}>
+                      <span
+                        className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          isSelected ? "border-white bg-white" : "border-muted-foreground/60"
+                        }`}
+                      >
                         {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </span>
                       <span className="truncate">{slot}</span>
@@ -308,9 +406,11 @@ export default function TimeSlotPicker({
                           : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
                       }`}
                     >
-                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                        isSelected ? "border-white bg-white" : "border-muted-foreground/60"
-                      }`}>
+                      <span
+                        className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          isSelected ? "border-white bg-white" : "border-muted-foreground/60"
+                        }`}
+                      >
                         {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </span>
                       <span className="truncate">{slot}</span>
@@ -320,10 +420,8 @@ export default function TimeSlotPicker({
               </div>
             </div>
           )}
-
         </div>
       )}
-
     </div>
   );
 }

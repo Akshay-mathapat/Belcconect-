@@ -103,7 +103,7 @@ export function Hero() {
               >
                 <div className="flex items-center gap-2 truncate">
                   <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                  <span className="truncate">{selectedArea}</span>
+                  <span className="truncate">{selectedArea === "Belagavi (All Areas)" ? t("common.allAreas") : selectedArea}</span>
                 </div>
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${areaDropdownOpen ? "rotate-180" : ""}`} />
               </button>
@@ -111,7 +111,7 @@ export function Hero() {
               {/* Area Dropdown Menu */}
               {areaDropdownOpen && (
                 <div className="absolute top-[calc(100%+0.5rem)] left-0 w-64 rounded-2xl border border-border bg-card p-2 shadow-2xl z-50">
-                  <p className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Location</p>
+                  <p className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("common.selectLocation")}</p>
                   <button
                     type="button"
                     onClick={() => { setSelectedArea("Belagavi (All Areas)"); setAreaDropdownOpen(false); }}
@@ -120,7 +120,7 @@ export function Hero() {
                     }`}
                     suppressHydrationWarning
                   >
-                    Belagavi (All Areas)
+                    {t("common.allAreas")}
                   </button>
                   {BELAGAVI_AREAS.map((area) => (
                     <button
@@ -149,7 +149,7 @@ export function Hero() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for Painter, Electrician, Plumber, Tutor..."
+                placeholder={t("hero.searchPlaceholder") !== "hero.searchPlaceholder" ? t("hero.searchPlaceholder") : t("common.searchPlaceholder")}
                 className="w-full bg-transparent pl-10 pr-4 py-3 text-sm text-foreground placeholder-muted-foreground/70 focus:outline-none"
                 suppressHydrationWarning
               />
@@ -182,6 +182,7 @@ export function Hero() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             {SERVICE_CATEGORIES.slice(0, 12).map((category, index) => {
               const IconComponent = iconMap[category.icon] || Sparkles;
+              const catName = t("categories." + category.id) !== ("categories." + category.id) ? t("categories." + category.id) : (t(category.i18nKey) !== category.i18nKey ? t(category.i18nKey) : category.name);
 
               return (
                 <motion.div
@@ -198,7 +199,7 @@ export function Hero() {
                       <IconComponent className={`h-6 w-6 ${category.iconColor}`} />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                      {category.name}
+                      {catName}
                     </span>
                     <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">
                       {t("trust.professionals")}
