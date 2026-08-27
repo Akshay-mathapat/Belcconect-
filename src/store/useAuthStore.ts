@@ -46,6 +46,7 @@ export interface AuthUser {
   token?: string;
   addresses?: SavedAddress[];
   bookings?: BookingItem[];
+  isFirstLogin?: boolean;
 }
 
 interface AuthState {
@@ -93,6 +94,9 @@ interface AuthState {
 
   addBooking: (booking: Omit<BookingItem, "id">) => void;
   fetchUserBookings: () => Promise<void>;
+
+  dismissTour: () => void;
+  restartTour: () => void;
 
   logout: () => void;
 }
@@ -154,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user = { ...data.user, token: data.token };
+            const user: AuthUser = { bookings: [], isFirstLogin: true, ...data.user, token: data.token };
             set((state) => ({
               usersList: [...state.usersList, user],
               currentUser: user
@@ -181,7 +185,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user = { ...data.user, token: data.token };
+            const user = { bookings: [], ...data.user, token: data.token };
             set((state) => {
               const list = state.usersList.map((u) => u.id === user.id ? user : u);
               return { currentUser: user, usersList: list };
@@ -319,7 +323,7 @@ export const useAuthStore = create<AuthState>()(
             const mappedBookings: BookingItem[] = dbBookings.map((b: any) => ({
               id: b.id,
               service: b.serviceName,
-              provider: b.providerName || (b.providerId === "provider-1" ? "Rohan Electrician" : "Verified Expert"),
+              provider: b.providerName || "Verified Expert",
               providerId: b.providerId,
               date: `${b.date} at ${b.time}`,
               status: b.status || "Requested",
@@ -342,7 +346,32 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      dismissTour: () => {
+        const current = get().currentUser;
+        if (!current) return;
+        const updatedUser: AuthUser = { ...current, isFirstLogin: false };
+        set((state) => ({
+          currentUser: updatedUser,
+          usersList: state.usersList.map((u) => u.id === current.id ? updatedUser : u)
+        }));
+      },
+
+      restartTour: () => {
+        const current = get().currentUser;
+        if (!current) return;
+        const updatedUser: AuthUser = { ...current, isFirstLogin: true };
+        set((state) => ({
+          currentUser: updatedUser,
+          usersList: state.usersList.map((u) => u.id === current.id ? updatedUser : u)
+        }));
+      },
+
       logout: () => {
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("belconnect-provider-storage-v2");
+          }
+        } catch (e) {}
         set({ currentUser: null });
       }
     }),

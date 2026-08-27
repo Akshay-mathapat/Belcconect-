@@ -1,35 +1,78 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   MessageSquare, 
-  Send, 
-  Paperclip, 
   Search, 
-  Phone, 
-  CheckCheck,
-  ChevronLeft
+  ChevronLeft,
+  Loader2,
+  User
 } from "lucide-react";
-import { useProviderStore } from "@/store/useProviderStore";
-import CallButton from "@/components/calls/CallButton";
+import ChatWindow from "@/components/chat/ChatWindow";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslation } from "@/lib/i18n";
+
+interface ConversationMeta {
+  id: string;
+  customerId: string;
+  providerId: string;
+  bookingId?: string;
+  serviceName?: string;
+  bookingStatus?: string;
+  peerId: string;
+  peerName: string;
+  peerAvatar: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+}
 
 export default function MessagesPage() {
-  const { conversations, sendMessage } = useProviderStore();
-  const [activeBookingId, setActiveBookingId] = useState(conversations[0]?.bookingId || "");
-  const [inputText, setInputText] = useState("");
+  const { currentUser } = useAuthStore();
+  const { t } = useTranslation();
+  const providerId = currentUser?.id || "provider-1";
+
+  const [conversations, setConversations] = useState<ConversationMeta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showChatMobile, setShowChatMobile] = useState(false);
 
-  const activeConv = conversations.find((c) => c.bookingId === activeBookingId) || conversations[0];
-
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
-    sendMessage(activeBookingId, inputText);
-    setInputText("");
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch(`/api/chat/conversations?userId=${providerId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setConversations(data);
+          if (!activeConvId && data.length > 0) {
+            setActiveConvId(data[0].id);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching provider conversations:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSelectConv = (bookingId: string) => {
-    setActiveBookingId(bookingId);
+  useEffect(() => {
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 5000);
+    return () => clearInterval(interval);
+  }, [providerId]);
+
+  const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
+
+  const filteredConversations = conversations.filter((c) =>
+    c.peerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.serviceName && c.serviceName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSelectConv = (id: string) => {
+    setActiveConvId(id);
     setShowChatMobile(true);
   };
 
@@ -43,9 +86,9 @@ export default function MessagesPage() {
         <div>
           <div className="p-4 border-b border-border space-y-3">
             <h2 className="font-heading text-lg font-bold text-foreground flex items-center justify-between">
-              <span>Customer Chats</span>
+              <span>{t("serviceProvider.customerConversations")}</span>
               <span className="text-xs font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-full">
-                {conversations.length} Active
+                {conversations.length} {t("serviceProvider.active")}
               </span>
             </h2>
 
@@ -53,38 +96,63 @@ export default function MessagesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search messages..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-card border border-border focus:outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("serviceProvider.searchMessagesOrCustomers")}
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-blue-600/30"
               />
             </div>
           </div>
 
-          <div className="divide-y divide-border/50 max-h-[calc(100vh-250px)] overflow-y-auto">
-            {conversations.map((conv) => {
-              const isSelected = conv.bookingId === activeBookingId;
-              return (
-                <button
-                  key={conv.bookingId}
-                  onClick={() => handleSelectConv(conv.bookingId)}
-                  className={`w-full p-4 text-left flex items-start gap-3 transition-colors ${
-                    isSelected ? "bg-blue-500/10 border-l-4 border-blue-600" : "hover:bg-muted/40"
-                  }`}
-                >
-                  <img
-                    src={conv.customerPhoto}
-                    alt={conv.customerName}
-                    className="w-10 h-10 rounded-full object-cover border border-border shrink-0"
-                  />
-                  <div className="overflow-hidden flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-foreground truncate">{conv.customerName}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{conv.lastMessageTime}</span>
+          <div className="divide-y divide-border/50 max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin">
+            {loading ? (
+              <div className="flex items-center justify-center p-8 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+                <span className="text-xs font-semibold">{t("chat.loadingChats")}</span>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                {t("chat.noCustomerChatsFound")}
+              </div>
+            ) : (
+              filteredConversations.map((conv) => {
+                const isSelected = conv.id === activeConvId;
+                return (
+                  <button
+                    key={conv.id}
+                    onClick={() => handleSelectConv(conv.id)}
+                    className={`w-full p-4 text-left flex items-start gap-3 transition-colors cursor-pointer ${
+                      isSelected ? "bg-blue-500/10 border-l-4 border-blue-600" : "hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="relative">
+                      <img
+                        src={conv.peerAvatar}
+                        alt={conv.peerName}
+                        className="w-10 h-10 rounded-full object-cover border border-border shrink-0"
+                      />
+                      {conv.unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white font-bold text-[9px] rounded-full flex items-center justify-center">
+                          {conv.unreadCount}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="overflow-hidden flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground truncate">{conv.peerName}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{conv.lastMessageTime}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
+                      {conv.serviceName && (
+                        <span className="inline-block mt-1 text-[9px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-500/10 px-1.5 py-0.2 rounded">
+                          {conv.serviceName}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -94,94 +162,33 @@ export default function MessagesPage() {
         <div className={`flex-1 flex-col justify-between bg-card min-w-0 ${
           !showChatMobile ? "hidden md:flex" : "flex"
         }`}>
-          
-          {/* Active Header */}
-          <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between bg-card">
-            <div className="flex items-center gap-2.5">
-              {/* Mobile Back Button */}
-              <button
-                onClick={() => setShowChatMobile(false)}
-                className="md:hidden p-1.5 rounded-xl border border-border bg-muted/30 text-foreground"
-                aria-label="Back to conversations"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
+          {/* Mobile Back Button Bar */}
+          <div className="md:hidden p-2 border-b border-border bg-card">
+            <button
+              onClick={() => setShowChatMobile(false)}
+              className="px-3 py-1.5 rounded-xl border border-border bg-muted/30 text-foreground text-xs font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" /> {t("serviceProvider.backToChatList")}
+            </button>
+          </div>
 
-              <img
-                src={activeConv.customerPhoto}
-                alt={activeConv.customerName}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-border shrink-0"
-              />
-              <div className="overflow-hidden">
-                <h3 className="text-xs font-bold text-foreground truncate">{activeConv.customerName}</h3>
-                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="truncate">Active In-App Call Session</span>
-                </span>
-              </div>
-            </div>
-
-            <CallButton
+          <div className="flex-1 flex overflow-hidden">
+            <ChatWindow
+              conversationId={activeConv.id}
+              peerName={activeConv.peerName}
+              peerAvatar={activeConv.peerAvatar}
+              peerId={activeConv.peerId}
               bookingId={activeConv.bookingId}
-              title="Call Customer In-App"
+              serviceName={activeConv.serviceName}
+              bookingStatus={activeConv.bookingStatus}
+              currentUserId={providerId}
             />
           </div>
-
-          {/* Messages Stream */}
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/20 scrollbar-thin">
-            {activeConv.messages.map((m) => {
-              const isProvider = m.sender === "provider";
-              return (
-                <div
-                  key={m.id}
-                  className={`flex flex-col ${isProvider ? "items-end" : "items-start"}`}
-                >
-                  <div
-                    className={`max-w-[85%] sm:max-w-md p-3.5 rounded-2xl text-xs space-y-1 shadow-sm ${
-                      isProvider
-                        ? "bg-blue-600 text-white rounded-br-none"
-                        : "bg-card border border-border text-foreground rounded-bl-none"
-                    }`}
-                  >
-                    <p className="leading-relaxed">{m.text}</p>
-                    <div className={`flex items-center justify-end gap-1 text-[9px] ${isProvider ? "text-white/70" : "text-muted-foreground"}`}>
-                      <span>{m.timestamp}</span>
-                      {isProvider && <CheckCheck className="h-3 w-3" />}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Chat Input */}
-          <form onSubmit={handleSend} className="p-3 border-t border-border bg-card flex items-center gap-2">
-            <button
-              type="button"
-              className="p-2 rounded-xl hover:bg-muted text-muted-foreground shrink-0"
-              title="Attach File"
-            >
-              <Paperclip className="h-4 w-4" />
-            </button>
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Type message..."
-              className="flex-1 min-w-0 px-3 sm:px-4 py-2.5 text-xs rounded-xl bg-muted/40 border border-border focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-            />
-            <button
-              type="submit"
-              className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-md shrink-0"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
-
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">
-          Select a customer chat to view messages
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-xs p-8 text-center">
+          <MessageSquare className="w-10 h-10 text-muted-foreground/30 mb-2" />
+          <span>{t("chat.selectConversationPrompt")}</span>
         </div>
       )}
 

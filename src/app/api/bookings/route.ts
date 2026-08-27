@@ -26,6 +26,9 @@ function mapRowToBooking(row: any) {
     destinationAddress: row.destination_address || null,
     destinationLandmark: row.destination_landmark || null,
     destinationInstructions: row.destination_instructions || null,
+    providerCurrentLatitude: row.provider_current_latitude ? parseFloat(row.provider_current_latitude) : null,
+    providerCurrentLongitude: row.provider_current_longitude ? parseFloat(row.provider_current_longitude) : null,
+    providerLocationUpdatedAt: row.provider_location_updated_at ? new Date(row.provider_location_updated_at).toISOString() : null,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
   };
 }
@@ -37,7 +40,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Retrieve bookings where this user is customer or assigned provider (or demo/fallback provider)
+    const lowerId = userId.toLowerCase();
+    const isProvider = lowerId.startsWith("prov") || lowerId.startsWith("emp") || lowerId === "provider-1";
+
+    // Retrieve bookings strictly for this specific customer or provider
     const bookingsRes = await query(
       `SELECT 
         b.id, 
@@ -59,6 +65,9 @@ export async function GET(request: Request) {
         b.destination_address,
         b.destination_landmark,
         b.destination_instructions,
+        b.provider_current_latitude,
+        b.provider_current_longitude,
+        b.provider_location_updated_at,
         COALESCE(c.name, 'Customer') AS customer_name,
         COALESCE(c.phone, '') AS customer_phone,
         COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
@@ -70,11 +79,7 @@ export async function GET(request: Request) {
         FROM addresses 
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
-      WHERE b.customer_id = $1 
-         OR b.provider_id = $1 
-         OR b.provider_id = 'provider-1'
-         OR LOWER($1) LIKE '%provider%'
-         OR LOWER($1) LIKE '%usr%'
+      WHERE ${isProvider ? "b.provider_id = $1" : "b.customer_id = $1"}
       ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
       [userId]
     );
@@ -139,7 +144,7 @@ export async function POST(request: Request) {
         `SELECT id FROM bookings 
          WHERE date = $1 
            AND (time = $2 OR time ILIKE $3)
-           AND (provider_id = $4 OR provider_id = 'provider-1' OR $4 = 'provider-1')
+           AND provider_id = $4
            AND (status IS NULL OR LOWER(status) NOT IN ('cancelled', 'rejected'))
          LIMIT 1`,
         [date, time, `%${time}%`, validProviderId]
@@ -209,6 +214,15 @@ export async function POST(request: Request) {
         destinationInstructions || null
       ]
     );
+
+    // Auto-create a brand new clean conversation for this booking
+    const convId = `conv-${bookingId}`;
+    await query(
+      `INSERT INTO conversations (id, customer_id, provider_id, booking_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING`,
+      [convId, validCustomerId, validProviderId, bookingId]
+    ).catch((e) => console.warn("Failed to pre-create conversation for booking:", e));
 
     const insertedRes = await query(
       `SELECT 

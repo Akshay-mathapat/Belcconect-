@@ -47,7 +47,7 @@ export default function ServicesCategoryPage() {
     rating: srv.rating !== undefined ? Number(srv.rating) : 0.0,
     reviews: srv.bookingsCount || 0,
     jobs: srv.bookingsCount || 0,
-    exp: srv.exp || 4,
+    exp: srv.exp ? Number(srv.exp) : 0,
     providerId: srv.providerId,
     serviceId: srv.id,
     serviceName: srv.name,
@@ -116,6 +116,7 @@ export default function ServicesCategoryPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-border rounded-xl bg-card focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-sm text-foreground placeholder-muted-foreground"
                 placeholder="Search professionals..."
+                suppressHydrationWarning
               />
             </motion.div>
           </div>
@@ -134,6 +135,7 @@ export default function ServicesCategoryPage() {
                         checked={sortBy === sort}
                         onChange={() => setSortBy(sort)}
                         className="text-primary focus:ring-primary bg-background border-border"
+                        suppressHydrationWarning
                       />
                       <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                         {sort}
@@ -157,15 +159,6 @@ export default function ServicesCategoryPage() {
                     <UserX className="h-7 w-7" />
                   </div>
                   <h3 className="text-base font-bold text-foreground">No Registered Professionals Found</h3>
-                  <p className="text-xs text-muted-foreground max-w-md">
-                    There are currently no registered service providers in the <span className="font-semibold text-foreground">{category.name}</span> category in PostgreSQL database.
-                  </p>
-                  <Link
-                    href="/register"
-                    className="mt-2 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-                  >
-                    Register as Service Provider
-                  </Link>
                 </div>
               ) : (
                 filteredPros.map((pro, index) => (

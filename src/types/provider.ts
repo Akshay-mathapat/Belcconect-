@@ -10,6 +10,9 @@ export type BookingStatus =
 
 export interface Booking {
   id: string;
+  customerId?: string;
+  providerId?: string;
+  providerName?: string;
   customerName: string;
   customerPhone: string;
   customerPhoto: string;
@@ -30,6 +33,9 @@ export interface Booking {
   destinationAddress?: string | null;
   destinationLandmark?: string | null;
   destinationInstructions?: string | null;
+  providerCurrentLatitude?: number | null;
+  providerCurrentLongitude?: number | null;
+  providerLocationUpdatedAt?: string | null;
 }
 
 export interface ServiceFAQ {

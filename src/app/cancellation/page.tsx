@@ -17,8 +17,8 @@ export default function CancellationPage() {
             </p>
             <ul>
               <li><strong>Free Cancellation:</strong> Bookings can be cancelled without any charge up to 4 hours before the scheduled service time.</li>
-              <li><strong>Late Cancellation:</strong> Cancellations made within 4 hours of the scheduled service time may incur a cancellation fee of ₹150 to compensate the professional for their blocked time.</li>
-              <li><strong>On-Arrival Cancellation:</strong> If a cancellation is made after the professional has arrived at the location, a minimum visiting charge of ₹299 will be applicable.</li>
+              <li><strong>Late Cancellation:</strong> Cancellations made within 4 hours of the scheduled service time may compensate the professional for their blocked time.</li>
+              <li><strong>On-Arrival Cancellation:</strong> If a cancellation is made after the professional has arrived at the location, a minimum visiting charge may apply.</li>
             </ul>
 
             <h2>2. Rescheduling</h2>

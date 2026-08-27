@@ -191,7 +191,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
         {/* Full Name / Company Name Input */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -216,10 +216,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               onChange={(e) => setFullName(e.target.value)}
               placeholder={
                 signupRole === "job_provider"
-                  ? "Jane Doe (Acme Corp)"
+                  ? "Rajesh Kumar (BelConnect Pvt Ltd)"
                   : signupRole === "provider"
-                  ? "Jane Doe (Certified Technician)"
-                  : "Jane Doe"
+                  ? "Aarav Sharma (Certified Technician)"
+                  : "Aarav Sharma"
               }
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
               suppressHydrationWarning
@@ -239,7 +239,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="(555) 123-4567"
+              placeholder="+91 98765 43210"
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
               suppressHydrationWarning
             />
@@ -258,7 +258,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="jane@example.com"
+              placeholder="aarav.sharma@example.com"
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
               suppressHydrationWarning
             />

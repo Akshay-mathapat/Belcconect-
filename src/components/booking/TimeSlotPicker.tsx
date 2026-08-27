@@ -40,6 +40,43 @@ function isSlotBooked(slot: string, bookedSlots: string[]): boolean {
   });
 }
 
+// Check if a time slot has already passed for the selected date
+function isSlotInPast(slot: string, selectedDateStr: string): boolean {
+  if (!selectedDateStr) return false;
+
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  // If selected date is in the future, it's not in the past
+  if (selectedDateStr > todayStr) return false;
+
+  // If selected date is before today (yesterday or earlier), all slots are in the past
+  if (selectedDateStr < todayStr) return true;
+
+  // Selected date IS today! Parse slot start time e.g. "9:00 AM – 10:00 AM" or "09:00 AM - 10:00 AM"
+  const startPart = slot.split(/–|-/)[0]?.trim();
+  if (!startPart) return false;
+
+  const match = startPart.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return false;
+
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+
+  if (ampm === "PM" && hour < 12) hour += 12;
+  if (ampm === "AM" && hour === 12) hour = 0;
+
+  const slotStartMinutes = hour * 60 + minute;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Slot has passed if slot start time is less than or equal to current time
+  return slotStartMinutes <= currentMinutes;
+}
+
 // Generate next 7 days for quick date selection
 function getNext7Days() {
   const days = [];
@@ -166,12 +203,12 @@ export default function TimeSlotPicker({
     };
   }, [selectedDate, providerId]);
 
-  // Reset selected time if it becomes booked
+  // Reset selected time if it becomes booked or has passed
   useEffect(() => {
-    if (selectedTime && isSlotBooked(selectedTime, bookedSlots)) {
+    if (selectedTime && (isSlotBooked(selectedTime, bookedSlots) || isSlotInPast(selectedTime, selectedDate))) {
       onTimeChange("");
     }
-  }, [selectedTime, bookedSlots, onTimeChange]);
+  }, [selectedTime, bookedSlots, selectedDate, onTimeChange]);
 
   // Determine current day info
   const selectedDayObj = days.find((d) => d.dateStr === selectedDate) || {
@@ -193,13 +230,14 @@ export default function TimeSlotPicker({
 
   const rawSlotData = getSlotsForDay(selectedDayObj.dayOfWeek, schedule);
 
-  // Filter out already-booked time slots so earlier booked timings are NOT shown/selectable
+  // Filter out already-booked or past time slots so earlier/passed timings are NOT shown/selectable
   const slotData = {
     isOff: rawSlotData.isOff,
-    morning: rawSlotData.morning.filter((slot) => !isSlotBooked(slot, bookedSlots)),
-    afternoon: rawSlotData.afternoon.filter((slot) => !isSlotBooked(slot, bookedSlots)),
-    evening: rawSlotData.evening.filter((slot) => !isSlotBooked(slot, bookedSlots)),
+    morning: rawSlotData.morning.filter((slot) => !isSlotBooked(slot, bookedSlots) && !isSlotInPast(slot, selectedDate)),
+    afternoon: rawSlotData.afternoon.filter((slot) => !isSlotBooked(slot, bookedSlots) && !isSlotInPast(slot, selectedDate)),
+    evening: rawSlotData.evening.filter((slot) => !isSlotBooked(slot, bookedSlots) && !isSlotInPast(slot, selectedDate)),
     totalBooked: rawSlotData.morning.concat(rawSlotData.afternoon, rawSlotData.evening).filter((slot) => isSlotBooked(slot, bookedSlots)).length,
+    totalPassed: rawSlotData.morning.concat(rawSlotData.afternoon, rawSlotData.evening).filter((slot) => isSlotInPast(slot, selectedDate)).length,
   };
 
   const totalAvailableCount = slotData.morning.length + slotData.afternoon.length + slotData.evening.length;
@@ -301,6 +339,11 @@ export default function TimeSlotPicker({
               {slotData.totalBooked > 0 && (
                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
                   {slotData.totalBooked} slot{slotData.totalBooked > 1 ? "s" : ""} booked
+                </span>
+              )}
+              {slotData.totalPassed > 0 && (
+                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {slotData.totalPassed} slot{slotData.totalPassed > 1 ? "s" : ""} passed
                 </span>
               )}
               {selectedTime ? (

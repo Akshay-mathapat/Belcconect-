@@ -67,7 +67,7 @@ export default function ProviderRegisterPage() {
                           type="text"
                           required
                           className="block w-full pl-10 pr-3 py-3 border border-border rounded-xl bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm text-foreground placeholder-muted-foreground"
-                          placeholder="Jane Doe"
+                          placeholder="Aarav Sharma"
                         />
                       </div>
                     </div>
@@ -84,7 +84,7 @@ export default function ProviderRegisterPage() {
                           value={mobile}
                           onChange={(e) => setMobile(e.target.value)}
                           className="block w-full pl-12 pr-3 py-3 border border-border rounded-xl bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm text-foreground placeholder-muted-foreground"
-                          placeholder="10-digit number"
+                          placeholder="98765 43210"
                         />
                       </div>
                     </div>
@@ -142,7 +142,7 @@ export default function ProviderRegisterPage() {
                         type="email"
                         required
                         className="block w-full pl-10 pr-3 py-3 border border-border rounded-xl bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm text-foreground placeholder-muted-foreground"
-                        placeholder="you@example.com"
+                        placeholder="aarav.sharma@example.com"
                       />
                     </div>
                   </div>

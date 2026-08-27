@@ -20,21 +20,19 @@ export default function HelpPage() {
         <div className="mx-auto max-w-4xl">
           
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-heading font-bold tracking-tight mb-4">How can we help you?</h1>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Search our knowledge base or browse frequently asked questions to find the answers you need.
+            <h1 className="text-4xl font-extrabold tracking-tight mb-4">How can we help you?</h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+              Search for topics or browse our frequently asked questions below.
             </p>
             
-            <div className="mt-8 max-w-xl mx-auto relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-muted-foreground" />
-              </div>
+            <div className="relative max-w-2xl mx-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <input
                 type="text"
+                placeholder="Search help articles..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="block w-full pl-12 pr-4 py-4 border border-border rounded-2xl bg-card focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm text-foreground placeholder-muted-foreground"
-                placeholder="Search for answers..."
+                className="w-full pl-12 pr-4 py-4 rounded-2xl border border-border bg-card shadow-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               />
             </div>
           </div>
@@ -79,7 +77,7 @@ export default function HelpPage() {
           
         </div>
       </div>
-      
+
       <Footer />
     </main>
   );

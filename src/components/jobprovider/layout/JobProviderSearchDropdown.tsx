@@ -33,10 +33,10 @@ const JOB_PROVIDER_PAGES = [
 ];
 
 const MOCK_JOBS = [
-  { id: "J-001", panel: "my-jobs", title: "Senior Electrician", location: "Belagavi", salary: "₹25,000–35,000/mo", applicants: 18, status: "Active" },
-  { id: "J-002", panel: "my-jobs", title: "Plumbing Supervisor", location: "Hubli", salary: "₹20,000–28,000/mo", applicants: 9, status: "Active" },
-  { id: "J-003", panel: "my-jobs", title: "HVAC Technician", location: "Dharwad", salary: "₹15,000–20,000/mo", applicants: 5, status: "Paused" },
-  { id: "J-004", panel: "my-jobs", title: "Cleaning Team Lead", location: "Belagavi", salary: "₹18,000–22,000/mo", applicants: 24, status: "Closed" },
+  { id: "J-001", panel: "my-jobs", title: "Senior Electrician", location: "Belagavi", salary: "Competitive", applicants: 18, status: "Active" },
+  { id: "J-002", panel: "my-jobs", title: "Plumbing Supervisor", location: "Hubli", salary: "As per standards", applicants: 9, status: "Active" },
+  { id: "J-003", panel: "my-jobs", title: "HVAC Technician", location: "Dharwad", salary: "Best in industry", applicants: 5, status: "Paused" },
+  { id: "J-004", panel: "my-jobs", title: "Cleaning Team Lead", location: "Belagavi", salary: "Negotiable", applicants: 24, status: "Closed" },
 ];
 
 const MOCK_APPLICANTS = [

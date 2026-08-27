@@ -14,11 +14,10 @@ export type SignalingEventType =
 export interface SignalingEvent {
   type: SignalingEventType;
   call: CallRecord;
-  agora?: {
-    appId: string;
-    channelName: string;
-    token: string;
-    uid: number;
+  livekit?: {
+    serverUrl: string;
+    participantToken: string;
+    roomName: string;
   };
   timestamp: number;
 }

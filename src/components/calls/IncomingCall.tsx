@@ -49,6 +49,20 @@ export default function IncomingCall({ call, onAccept, onReject }: IncomingCallP
     }
     if (isAcceptedRef.current) return;
     isAcceptedRef.current = true;
+
+    // Explicitly unlock Web Audio Context on user gesture thread
+    if (typeof window !== "undefined") {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === "suspended") {
+            ctx.resume();
+          }
+        }
+      } catch (err) {}
+    }
+
     onAccept();
   };
 

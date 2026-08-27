@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCallById, updateCallStatus } from "@/lib/calls";
+import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
+import { getAuthenticatedUser } from "@/lib/jwt";
+import { sendPushToUser } from "@/lib/pushNotifications";
 
 export async function POST(
   request: Request,
@@ -8,23 +11,24 @@ export async function POST(
 ) {
   try {
     const { id: callId } = await params;
-    const body = await request.json().catch(() => ({}));
-    const headerUserId = request.headers.get("x-user-id");
-    const userId = body.userId || headerUserId;
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+    }
 
     const call = await getCallById(callId);
     if (!call) {
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
-    if (userId && userId !== call.receiverId && userId !== call.callerId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (authUser.userId !== call.receiverId && authUser.userId !== call.callerId) {
+      return NextResponse.json({ error: "Forbidden: You are not a participant in this call" }, { status: 403 });
     }
 
-    // Determine status: if call was never answered, it's CANCELLED (if caller ended) or MISSED (if timeout)
+    // Determine status transition
     let newStatus: any = "ENDED";
     if (call.status === "INITIATED" || call.status === "RINGING") {
-      newStatus = userId === call.callerId ? "CANCELLED" : "MISSED";
+      newStatus = authUser.userId === call.callerId ? "CANCELLED" : "MISSED";
     }
 
     const updatedCall = await updateCallStatus(callId, newStatus);
@@ -32,11 +36,29 @@ export async function POST(
       return NextResponse.json({ error: "Failed to end call" }, { status: 500 });
     }
 
+    const signalType = newStatus === "CANCELLED" ? "call:cancel" : "call:end";
+
+    // Non-blocking fire-and-forget signal relay to caller and receiver
+    sendCallSignal({
+      type: signalType,
+      targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
+      call: updatedCall
+    }).catch((err) => console.error("[End API] Signal relay failed:", err));
+
     callSignaling.emitCallEvent({
-      type: newStatus === "CANCELLED" ? "call:cancel" : "call:end",
+      type: signalType,
       call: updatedCall,
       timestamp: Date.now()
     });
+
+    // Dismiss Web Push notification banners for both participants
+    const pushCancelPayload = {
+      title: "Call Ended",
+      body: "Call was ended",
+      data: { type: "call:cancelled", callId: updatedCall.id }
+    };
+    sendPushToUser(updatedCall.callerId, pushCancelPayload).catch(() => {});
+    sendPushToUser(updatedCall.receiverId, pushCancelPayload).catch(() => {});
 
     return NextResponse.json({
       success: true,

@@ -14,12 +14,14 @@ import {
   XCircle, 
   ChevronRight,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { BookingStatus } from "@/types/provider";
 import { useTranslation } from "@/lib/i18n";
 import CallButton from "@/components/calls/CallButton";
+import ChatButton from "@/components/chat/ChatButton";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -69,27 +71,23 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 }
 
 export default function BookingsManagementPage() {
-  const { bookings, updateBookingStatus, fetchProviderBookings } = useProviderStore();
-  const [activeTab, setActiveTab] = useState<BookingStatus | "ALL" | "Rejected">("ALL");
+  const { bookings, updateBookingStatus, deleteBooking, fetchProviderBookings } = useProviderStore();
+  const [activeTab, setActiveTab] = useState<string>("ACTIVE");
   const [searchQuery, setSearchQuery] = useState("");
   const { t } = useTranslation();
 
-  const statusFilterTabs: { key: string; label: string; value: BookingStatus | "ALL" | "Rejected" }[] = [
-    { key: "allBookings", label: "All Bookings", value: "ALL" },
+  const statusFilterTabs = [
+    { key: "activeBookings", label: "Active Jobs", value: "ACTIVE" },
     { key: "requested", label: "Requested", value: "Requested" },
     { key: "accepted", label: "Accepted", value: "Accepted" },
     { key: "started", label: "Started", value: "Started" },
     { key: "completed", label: "Completed", value: "Completed" },
-    { key: "reject", label: "Rejected", value: "Rejected" },
-    { key: "reviewSubmitted", label: "Review Submitted", value: "ReviewSubmitted" },
+    { key: "rejected", label: "Rejected", value: "Rejected" },
+    { key: "allBookings", label: "All History", value: "ALL" },
   ];
 
   useEffect(() => {
     fetchProviderBookings();
-
-    const intervalId = setInterval(() => {
-      fetchProviderBookings();
-    }, 3000);
 
     let syncChannel: BroadcastChannel | null = null;
     try {
@@ -102,7 +100,6 @@ export default function BookingsManagementPage() {
     } catch (e) {}
 
     return () => {
-      clearInterval(intervalId);
       if (syncChannel) {
         try { syncChannel.close(); } catch (e) {}
       }
@@ -110,7 +107,14 @@ export default function BookingsManagementPage() {
   }, [fetchProviderBookings]);
 
   const filteredBookings = bookings.filter((b) => {
-    const matchesTab = activeTab === "ALL" || b.status === activeTab;
+    let matchesTab = true;
+    if (activeTab === "ACTIVE") {
+      matchesTab = b.status !== "Completed" && b.status !== "ReviewSubmitted" && (b.status as any) !== "Rejected";
+    } else if (activeTab === "Completed") {
+      matchesTab = b.status === "Completed" || b.status === "ReviewSubmitted";
+    } else if (activeTab !== "ALL") {
+      matchesTab = b.status === activeTab;
+    }
     const matchesSearch = 
       b.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -167,8 +171,12 @@ export default function BookingsManagementPage() {
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {statusFilterTabs.map((tab) => {
-          const count = tab.value === "ALL" 
-            ? bookings.length 
+          const count = tab.value === "ACTIVE"
+            ? bookings.filter(b => b.status !== "Completed" && b.status !== "ReviewSubmitted" && (b.status as any) !== "Rejected").length
+            : tab.value === "Completed"
+            ? bookings.filter(b => b.status === "Completed" || b.status === "ReviewSubmitted").length
+            : tab.value === "ALL"
+            ? bookings.length
             : bookings.filter(b => b.status === tab.value).length;
           
           const isActive = activeTab === tab.value;
@@ -183,7 +191,7 @@ export default function BookingsManagementPage() {
                   : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              <span>{t(`serviceProvider.${tab.key}`)}</span>
+              <span>{t(`serviceProvider.${tab.key}`) || tab.label}</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
                 isActive ? "bg-white/20 text-white" : "bg-muted text-foreground/70"
               }`}>
@@ -225,7 +233,7 @@ export default function BookingsManagementPage() {
                       <span className="text-xs font-bold text-muted-foreground">{b.id}</span>
                       <span className="text-xs font-extrabold text-foreground">{b.customerName}</span>
                       <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadgeStyle(b.status)}`}>
-                        {b.status}
+                        {t(`account.statuses.${b.status}`) || b.status}
                       </span>
                     </div>
 
@@ -236,7 +244,7 @@ export default function BookingsManagementPage() {
                     <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5 text-foreground/60" />
-                        {b.date} at {b.time}
+                        {b.date} {t("common.at") || "at"} {b.time}
                       </span>
                       <span className="flex items-center gap-1 truncate max-w-md">
                         <MapPin className="h-3.5 w-3.5 text-foreground/60 shrink-0" />
@@ -246,27 +254,24 @@ export default function BookingsManagementPage() {
                   </div>
                 </div>
 
-                {/* Right: Pricing & Actions */}
                 <div className="flex flex-col sm:flex-row lg:flex-col items-end justify-between gap-3 border-t lg:border-t-0 pt-4 lg:pt-0 border-border">
-                  <div className="text-right">
-                    <span className="text-xs text-muted-foreground block">{t("serviceProvider.pricing")}</span>
-                    <span className="font-heading text-sm font-bold text-emerald-600 dark:text-emerald-400">{t("serviceProvider.mutuallyAgreed")}</span>
-                  </div>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <CallButton
                       bookingId={b.id}
                       bookingStatus={b.status}
-                      title="Call Customer"
+                      title={t("account.callProvider")}
                     />
 
-                    <Link
-                      href="/provider/messages"
-                      className="p-2 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground"
-                      title="Message Customer"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Link>
+                    <ChatButton
+                      customerId={b.customerId || "customer-1"}
+                      providerId={b.providerId || "provider-1"}
+                      bookingId={b.id}
+                      peerName={b.customerName}
+                      serviceName={b.serviceName}
+                      bookingStatus={b.status}
+                      title={t("common.chat")}
+                    />
 
                     {b.status === "Requested" && (
                       <div className="flex gap-2">
@@ -297,9 +302,24 @@ export default function BookingsManagementPage() {
                     {b.status === "Started" && (
                       <button
                         onClick={() => updateBookingStatus(b.id, "Completed")}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all"
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
                       >
                         {t("serviceProvider.completeService")}
+                      </button>
+                    )}
+
+                    {(b.status === "Completed" || b.status === "ReviewSubmitted") && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Are you sure you want to delete this completed service record?")) {
+                            deleteBooking(b.id);
+                          }
+                        }}
+                        className="px-3.5 py-2 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Delete Completed Service"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete</span>
                       </button>
                     )}
 

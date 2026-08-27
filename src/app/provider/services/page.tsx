@@ -24,9 +24,11 @@ import {
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { SERVICE_CATEGORIES } from "@/constants/site";
+import { useTranslation } from "@/lib/i18n";
 
 export default function ServicesManagementPage() {
   const { services, toggleServiceAvailability, deleteService, addService, fetchProviderServices } = useProviderStore();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPreviewService, setSelectedPreviewService] = useState<any | null>(null);
 
@@ -56,10 +58,10 @@ export default function ServicesManagementPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            My Offered Services
+            {t("serviceProvider.myOfferedServices")}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage your service offerings, prices, gallery photos, and customer availability.
+            {t("serviceProvider.myOfferedServicesDesc")}
           </p>
         </div>
 
@@ -71,7 +73,7 @@ export default function ServicesManagementPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search services..."
+              placeholder={t("serviceProvider.searchPlaceholder")}
               className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-card border border-border focus:outline-none"
             />
           </div>
@@ -108,7 +110,7 @@ export default function ServicesManagementPage() {
                   }`}
                 >
                   <Power className="h-3 w-3" />
-                  <span>{s.isAvailable ? "Active" : "Disabled"}</span>
+                  <span>{s.isAvailable ? t("serviceProvider.active") : t("serviceProvider.disabled")}</span>
                 </button>
               </div>
 
@@ -117,7 +119,7 @@ export default function ServicesManagementPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[#1F5F5B] flex items-center gap-1">
                     <Star className={`h-3.5 w-3.5 text-[#D4A017] ${s.rating > 0 ? "fill-[#D4A017]" : ""}`} />
-                    <span>{s.rating > 0 ? s.rating : "No ratings"} ({s.bookingsCount} bookings)</span>
+                    <span>{s.rating > 0 ? s.rating : t("serviceProvider.noRatings")} ({s.bookingsCount} {t("serviceProvider.bookingsCountLabel")})</span>
                   </span>
                 </div>
 
@@ -131,9 +133,9 @@ export default function ServicesManagementPage() {
 
                 <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">Pricing</span>
+                    <span className="text-[10px] text-muted-foreground block">{t("serviceProvider.pricing")}</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1">
-                      Mutually Decided
+                      {t("serviceProvider.mutuallyAgreed")}
                     </span>
                   </div>
                 </div>
@@ -146,14 +148,14 @@ export default function ServicesManagementPage() {
                 <button
                   onClick={() => handleDuplicate(s.id)}
                   className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  title="Duplicate Service"
+                  title={t("serviceProvider.duplicateService")}
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => deleteService(s.id)}
                   className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-600 transition-colors"
-                  title="Delete Service"
+                  title={t("serviceProvider.deleteService")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -166,7 +168,7 @@ export default function ServicesManagementPage() {
                   className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground flex items-center gap-1 cursor-pointer"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  <span>Preview</span>
+                  <span>{t("serviceProvider.preview")}</span>
                 </button>
               </div>
             </div>
@@ -191,7 +193,7 @@ export default function ServicesManagementPage() {
                     <Wrench className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="font-heading text-sm font-bold text-foreground">Service Preview</h3>
+                    <h3 className="font-heading text-sm font-bold text-foreground">{t("serviceProvider.servicePreview")}</h3>
                     <span className="text-[9px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-full capitalize border border-blue-500/20">
                       {SERVICE_CATEGORIES.find(c => c.id === selectedPreviewService.category)?.name || selectedPreviewService.category}
                     </span>
@@ -218,20 +220,20 @@ export default function ServicesManagementPage() {
                   <div className="flex items-center gap-2 font-medium">
                     <span className="text-[#1F5F5B] flex items-center gap-1 text-[11px]">
                       <Star className="h-3 w-3 fill-[#D4A017] text-[#D4A017]" />
-                      <span>{selectedPreviewService.rating > 0 ? selectedPreviewService.rating : "No ratings"} ({selectedPreviewService.bookingsCount} bookings)</span>
+                      <span>{selectedPreviewService.rating > 0 ? selectedPreviewService.rating : t("serviceProvider.noRatings")} ({selectedPreviewService.bookingsCount} {t("serviceProvider.bookingsCountLabel")})</span>
                     </span>
                   </div>
                 </div>
 
                 {/* Status Badge */}
                 <div className="flex items-center gap-2 text-[11px]">
-                  <span className="text-muted-foreground font-bold">Service Status:</span>
+                  <span className="text-muted-foreground font-bold">{t("serviceProvider.serviceStatus")}</span>
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide border ${
                     selectedPreviewService.isAvailable 
                       ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
                       : "bg-muted border-border text-muted-foreground"
                   }`}>
-                    {selectedPreviewService.isAvailable ? "Active & Visible" : "Disabled / Offline"}
+                    {selectedPreviewService.isAvailable ? t("serviceProvider.activeAndVisible") : t("serviceProvider.disabledOffline")}
                   </span>
                 </div>
 
@@ -241,7 +243,7 @@ export default function ServicesManagementPage() {
                 {/* Description */}
                 <div className="space-y-1">
                   <h5 className="font-bold text-foreground uppercase tracking-wider text-[9px] text-muted-foreground">
-                    Service Description
+                    {t("serviceProvider.serviceDescription")}
                   </h5>
                   <p className="text-foreground leading-relaxed bg-muted/30 p-2.5 rounded-lg border border-border/50 text-[11px] font-medium max-h-[80px] overflow-y-auto whitespace-pre-line scrollbar-thin">
                     {selectedPreviewService.description || "No description provided for this service offering."}
@@ -251,14 +253,14 @@ export default function ServicesManagementPage() {
                 {/* Pricing block */}
                 <div className="space-y-1">
                   <h5 className="font-bold text-foreground uppercase tracking-wider text-[9px] text-muted-foreground">
-                    Pricing Model
+                    {t("serviceProvider.pricingModel")}
                   </h5>
                   <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex gap-2.5">
                     <Handshake className="h-4.5 w-4.5 text-blue-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-blue-600 dark:text-blue-400 text-[11px]">Direct Mutual Pricing Model</p>
+                      <p className="font-bold text-blue-600 dark:text-blue-400 text-[11px]">{t("serviceProvider.directMutualPricingModel")}</p>
                       <p className="text-muted-foreground text-[10px] leading-relaxed mt-0.5 font-medium">
-                        Pricing is decided directly between the customer and provider based on scoping.
+                        {t("serviceProvider.directMutualPricingModalDesc")}
                       </p>
                     </div>
                   </div>
@@ -268,7 +270,7 @@ export default function ServicesManagementPage() {
                 {selectedPreviewService.terms && (
                   <div className="space-y-1">
                     <h5 className="font-bold text-foreground uppercase tracking-wider text-[9px] text-muted-foreground">
-                      Service Agreement Terms
+                      {t("serviceProvider.serviceAgreementTerms")}
                     </h5>
                     <p className="text-muted-foreground text-[10px] font-medium leading-normal line-clamp-2">
                       {selectedPreviewService.terms}
@@ -285,7 +287,7 @@ export default function ServicesManagementPage() {
                   onClick={() => setSelectedPreviewService(null)}
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
                 >
-                  Close Preview
+                  {t("serviceProvider.closePreview")}
                 </button>
               </div>
 

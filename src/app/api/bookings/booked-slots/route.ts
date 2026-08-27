@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const params: any[] = [date];
 
     if (providerId && providerId !== "null" && providerId !== "undefined") {
-      sql += ` AND (provider_id = $2 OR provider_id IS NULL OR $2 = 'provider-1')`;
+      sql += ` AND provider_id = $2`;
       params.push(providerId);
     }
 

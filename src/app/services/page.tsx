@@ -38,8 +38,8 @@ export default function ServicesPage() {
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
 
-  const filteredCategories = SERVICE_CATEGORIES.filter(cat => 
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredCategories = SERVICE_CATEGORIES.filter(cat =>
+    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     cat.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -47,17 +47,17 @@ export default function ServicesPage() {
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
       <div className="flex-1 pt-8 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
+
           {/* Header & Search */}
           <div className="mb-12 text-center max-w-3xl mx-auto">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl sm:text-5xl font-heading font-bold tracking-tight text-foreground mb-4"
             >
               All Services
             </motion.h1>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -65,8 +65,8 @@ export default function ServicesPage() {
             >
               Find the perfect professional for your home, business, or personal needs in Belagavi.
             </motion.p>
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -81,6 +81,7 @@ export default function ServicesPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="block w-full pl-11 pr-4 py-4 border border-border rounded-full bg-card focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-base text-foreground placeholder-muted-foreground shadow-sm"
                 placeholder="Search for 'AC repair', 'Cleaning', etc."
+                suppressHydrationWarning
               />
             </motion.div>
           </div>
@@ -94,7 +95,7 @@ export default function ServicesPage() {
                   <span>Matched Professionals & Services</span>
                   <span className="text-sm font-normal text-muted-foreground">({searchResults.length} found)</span>
                 </h2>
-                
+
                 {isLoading ? (
                   <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
@@ -121,17 +122,17 @@ export default function ServicesPage() {
                               </span>
                             </div>
                           </div>
-                          
+
                           <h3 className="text-lg font-bold text-foreground mb-1">{srv.name}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{srv.description}</p>
                         </div>
-                        
+
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
                           <div>
                             <span className="text-xs text-muted-foreground block font-medium">Pricing Model</span>
                             <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
                           </div>
-                          <Link 
+                          <Link
                             href={`/book?pro=${srv.providerId}&service=${encodeURIComponent(srv.name)}&proName=${encodeURIComponent(srv.providerName || "")}`}
                             className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground font-semibold px-4 py-2 text-sm hover:bg-primary/95 shadow-sm transition-colors"
                           >
@@ -170,7 +171,7 @@ export default function ServicesPage() {
                             </div>
                             <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{category.name}</h3>
                             <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">{category.description}</p>
-                            
+
                             <div className="mt-auto flex items-center text-sm font-semibold text-primary">
                               View services
                               <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -197,7 +198,7 @@ export default function ServicesPage() {
             <div className="space-y-16">
               {SERVICE_TAXONOMY.map((section, sIndex) => (
                 <div key={section.section}>
-                  <motion.h2 
+                  <motion.h2
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: sIndex * 0.1 }}
@@ -205,11 +206,11 @@ export default function ServicesPage() {
                   >
                     {section.section}
                   </motion.h2>
-                  
+
                   <div className="space-y-12">
                     {section.items.map((group, gIndex) => (
                       <div key={group.id}>
-                        <motion.h3 
+                        <motion.h3
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: sIndex * 0.1 + gIndex * 0.05 }}
@@ -217,12 +218,12 @@ export default function ServicesPage() {
                         >
                           {group.name}
                         </motion.h3>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                           {group.services.map((serviceId, iIndex) => {
                             const category = SERVICE_CATEGORIES.find(s => s.id === serviceId);
                             if (!category) return null;
-                            
+
                             return (
                               <motion.div
                                 key={category.id}
@@ -242,7 +243,7 @@ export default function ServicesPage() {
                                     </div>
                                     <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{category.name}</h3>
                                     <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">{category.description}</p>
-                                    
+
                                     <div className="mt-auto flex items-center text-sm font-semibold text-primary">
                                       View services
                                       <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -260,10 +261,10 @@ export default function ServicesPage() {
               ))}
             </div>
           )}
-          
+
         </div>
       </div>
-      
+
       <Footer />
     </main>
   );

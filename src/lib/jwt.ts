@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.AGORA_APP_CERTIFICATE || "cityconnect-secure-jwt-secret-key-2026";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.LIVEKIT_API_SECRET || "cityconnect-secure-jwt-secret-key-2026";
 
 export interface SessionPayload {
   userId: string;
@@ -115,4 +115,9 @@ export function getAuthenticatedUser(request: Request): SessionPayload | null {
   } catch (e) {
     return null;
   }
+}
+
+export function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") || null;
 }

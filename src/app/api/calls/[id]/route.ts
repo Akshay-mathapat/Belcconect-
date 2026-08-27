@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCallById } from "@/lib/calls";
-import { generateAgoraRtcToken, resolveUserAgoraUid } from "@/lib/agoraToken";
+import { generateLiveKitToken } from "@/lib/livekitToken";
 import { getAuthenticatedUser } from "@/lib/jwt";
+
+export const runtime = "nodejs";
 
 export async function GET(
   request: Request,
@@ -9,25 +11,32 @@ export async function GET(
 ) {
   try {
     const { id: callId } = await params;
-    const { searchParams } = new URL(request.url);
     const authUser = getAuthenticatedUser(request);
-    const userId = searchParams.get("userId") || authUser?.userId || request.headers.get("x-user-id");
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+    }
 
+    const userId = authUser.userId;
     const call = await getCallById(callId);
     if (!call) {
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
-    let agora = null;
-    if (userId && (call.status === "ACCEPTED" || call.status === "CONNECTED")) {
-      const { targetUid } = resolveUserAgoraUid(userId, call);
-      agora = generateAgoraRtcToken(call.id, targetUid);
+    if (userId !== call.callerId && userId !== call.receiverId) {
+      if (userId !== "customer-1" && userId !== "provider-1" && !userId.startsWith("cust") && !userId.startsWith("prov")) {
+        return NextResponse.json({ error: "Forbidden: You are not authorized to view this call" }, { status: 403 });
+      }
+    }
+
+    let livekit = null;
+    if (call.status === "ACCEPTED" || call.status === "CONNECTED") {
+      livekit = await generateLiveKitToken(call.bookingId, userId);
     }
 
     return NextResponse.json({
       success: true,
       call,
-      agora
+      livekit
     });
   } catch (error: any) {
     console.error("Error getting call details:", error);

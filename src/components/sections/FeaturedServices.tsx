@@ -2,15 +2,15 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { 
-  Sparkles, 
-  Wind, 
-  Zap, 
-  Scissors, 
-  ArrowRight, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Clock, 
+import {
+  Sparkles,
+  Wind,
+  Zap,
+  Scissors,
+  ArrowRight,
+  CheckCircle2,
+  ShieldCheck,
+  Clock,
   CreditCard,
   ThumbsUp
 } from "lucide-react";
@@ -112,7 +112,7 @@ export function FeaturedServices() {
   return (
     <section className="py-20 sm:py-28 bg-gradient-to-b from-background via-muted/30 to-background border-y border-border/40">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

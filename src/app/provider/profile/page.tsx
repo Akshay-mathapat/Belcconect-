@@ -15,14 +15,18 @@ import {
   CheckCircle2,
   X,
   Upload,
-  FileText
+  FileText,
+  Eye,
+  ExternalLink
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslation } from "@/lib/i18n";
 
 export default function ProviderProfilePage() {
   const { currentUser, updateProfile: updateAuthProfile } = useAuthStore();
   const { profile, updateProfile, syncWithAuthUser, bookings } = useProviderStore();
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [showSavedAlert, setShowSavedAlert] = useState(false);
   const [isKycModalOpen, setIsKycModalOpen] = useState(false);
@@ -220,10 +224,10 @@ export default function ProviderProfilePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            Provider Professional Profile
+            {t("serviceProvider.providerProfessionalProfile")}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage your public bio, profile picture, credentials, language skills, and contact info.
+            {t("serviceProvider.providerProfileDesc")}
           </p>
         </div>
 
@@ -239,7 +243,7 @@ export default function ProviderProfilePage() {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-all"
         >
           <Edit3 className="h-4 w-4" />
-          <span>{isEditing ? "Cancel Edit" : "Edit Profile"}</span>
+          <span>{isEditing ? t("serviceProvider.cancelEdit") : t("serviceProvider.editProfile")}</span>
         </button>
       </div>
 
@@ -286,7 +290,7 @@ export default function ProviderProfilePage() {
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-muted-foreground pt-1">
               <span className="flex items-center gap-1 font-bold text-foreground">
                 <Star className={`h-3.5 w-3.5 text-[#D4A017] ${totalReviews > 0 ? "fill-[#D4A017]" : ""}`} />
-                {totalReviews > 0 ? `${avgRating} Rating` : "No ratings"} ({totalReviews} Reviews)
+                {totalReviews > 0 ? `${avgRating} Rating` : t("serviceProvider.noRatings")} ({totalReviews} Reviews)
               </span>
               <span>• {profile.experienceYears} Years Experience</span>
               <span>• Belagavi Zone</span>
@@ -299,7 +303,7 @@ export default function ProviderProfilePage() {
           <form onSubmit={handleSave} className="space-y-4 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Full Name *</label>
+                <label className="font-bold text-foreground">{t("account.fullName")} *</label>
                 <input
                   type="text"
                   required
@@ -333,7 +337,7 @@ export default function ProviderProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Phone Number</label>
+                <label className="font-bold text-foreground">{t("account.mobileNumber")}</label>
                 <input
                   type="text"
                   value={formData.phone}
@@ -343,7 +347,7 @@ export default function ProviderProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Email</label>
+                <label className="font-bold text-foreground">{t("account.emailAddress")}</label>
                 <input
                   type="email"
                   value={formData.email}
@@ -391,7 +395,7 @@ export default function ProviderProfilePage() {
               type="submit"
               className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold shadow-md hover:bg-blue-700 transition-all text-xs"
             >
-              Save Profile Changes to LocalStorage
+              {t("account.saveProfileChanges")}
             </button>
           </form>
         ) : (
@@ -399,16 +403,16 @@ export default function ProviderProfilePage() {
             
             {/* Bio */}
             <div>
-              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">About & Bio</span>
+              <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">{t("serviceProvider.aboutAndBio")}</span>
               <p className="text-foreground leading-relaxed font-medium bg-muted/30 p-4 rounded-2xl border border-border/50">
-                "{profile.bio}"
+                "{profile.bio || t("serviceProvider.defaultBio")}"
               </p>
             </div>
 
             {/* Skills & Languages */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Verified Skills</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">{t("serviceProvider.verifiedSkills")}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {profile.skills.map((skill, i) => (
                     <span key={i} className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
@@ -419,7 +423,7 @@ export default function ProviderProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Spoken Languages</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">{t("serviceProvider.spokenLanguages")}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {profile.languages.map((lang, i) => (
                     <span key={i} className="px-2.5 py-1 rounded-lg bg-card border border-border text-foreground font-semibold">
@@ -439,31 +443,45 @@ export default function ProviderProfilePage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-foreground">KYC Identity Verification</h4>
+                    <h4 className="font-bold text-foreground">{t("serviceProvider.kycIdentityVerification")}</h4>
                     <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
                       profile.isVerified 
                         ? "bg-emerald-500/20 text-emerald-600 border-emerald-500/30" 
                         : "bg-amber-500/20 text-amber-600 border-amber-500/30"
                     }`}>
-                      {profile.isVerified ? "Verified ✅" : "Action Required ⚠️"}
+                      {profile.isVerified ? t("serviceProvider.verifiedBadge") : t("serviceProvider.actionRequiredBadge")}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {profile.kycDocumentType 
                       ? `${profile.kycDocumentType}: ${profile.kycDocumentNumber}` 
-                      : "Upload Aadhaar, PAN, Driving License or Govt ID for identity trust"}
+                      : t("serviceProvider.kycDesc")}
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsKycModalOpen(true)}
-                className="w-auto self-start sm:self-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all shrink-0 whitespace-nowrap"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                <span>{profile.isVerified ? "Update KYC Details" : "Verify or Complete KYC"}</span>
-              </button>
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                {profile.kycDocumentPhoto && (
+                  <a
+                    href={profile.kycDocumentPhoto}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card border border-border hover:bg-muted text-foreground text-xs font-bold transition-all shadow-xs"
+                    title="View Uploaded Document (Photo / PDF)"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-blue-600" />
+                    <span>View Document</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsKycModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all shrink-0 whitespace-nowrap"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>{profile.isVerified ? t("serviceProvider.updateKycDetails") : t("serviceProvider.verifyOrCompleteKyc")}</span>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -488,8 +506,8 @@ export default function ProviderProfilePage() {
                     <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-heading text-lg font-bold text-foreground">Complete KYC Verification</h3>
-                    <p className="text-[11px] text-muted-foreground">Upload official Govt ID to verify your profile</p>
+                    <h3 className="font-heading text-lg font-bold text-foreground">{t("serviceProvider.completeKycVerification")}</h3>
+                    <p className="text-[11px] text-muted-foreground">{t("serviceProvider.uploadGovtIdDesc")}</p>
                   </div>
                 </div>
                 <button
@@ -506,7 +524,7 @@ export default function ProviderProfilePage() {
                 
                 {/* Government ID Type */}
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground block">Select Government ID Type *</label>
+                  <label className="font-bold text-foreground block">{t("serviceProvider.selectGovtIdType")}</label>
                   <select
                     required
                     value={kycForm.documentType}
@@ -523,7 +541,7 @@ export default function ProviderProfilePage() {
 
                 {/* ID Number */}
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground block">Government ID / Document Number *</label>
+                  <label className="font-bold text-foreground block">{t("serviceProvider.govtIdNumber")}</label>
                   <input
                     type="text"
                     required
@@ -536,7 +554,7 @@ export default function ProviderProfilePage() {
 
                 {/* Full Name on Document */}
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground block">Full Name (As on Government ID) *</label>
+                  <label className="font-bold text-foreground block">{t("serviceProvider.fullNameOnGovtId")}</label>
                   <input
                     type="text"
                     required
@@ -547,40 +565,107 @@ export default function ProviderProfilePage() {
                   />
                 </div>
 
-                {/* Document Photo Upload */}
+                {/* Document Photo / PDF Upload */}
                 <div className="space-y-2 pt-2">
-                  <label className="font-bold text-foreground block">Upload Photo of Document *</label>
+                  <label className="font-bold text-foreground block">{t("serviceProvider.uploadDocumentPhoto")}</label>
                   
                   <div className="border-2 border-dashed border-border hover:border-blue-600 rounded-2xl p-6 text-center bg-muted/20 flex flex-col items-center justify-center transition-colors">
                     {kycForm.documentPhoto ? (
-                      <div className="space-y-2">
-                        <img
-                          src={kycForm.documentPhoto}
-                          alt="Document Preview"
-                          className="w-48 h-32 rounded-xl object-cover border border-border mx-auto shadow-md"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setKycForm({ ...kycForm, documentPhoto: "" })}
-                          className="text-[11px] font-bold text-red-500 hover:underline block mx-auto"
-                        >
-                          Remove Photo
-                        </button>
-                      </div>
+                      (() => {
+                        const isPdf = 
+                          kycForm.documentPhoto.startsWith("data:application/pdf") || 
+                          kycForm.documentPhoto.toLowerCase().endsWith(".pdf") || 
+                          kycForm.documentPhoto.includes("pdf");
+
+                        if (isPdf) {
+                          return (
+                            <div className="space-y-3 w-full max-w-sm mx-auto">
+                              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-center gap-3 text-left">
+                                  <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-extrabold text-xs shadow-md shrink-0">
+                                    PDF
+                                  </div>
+                                  <div className="overflow-hidden">
+                                    <h5 className="font-bold text-foreground text-xs truncate">
+                                      {kycForm.documentType || "Government ID"} Document
+                                    </h5>
+                                    <p className="text-[10px] text-muted-foreground">PDF Document Uploaded</p>
+                                  </div>
+                                </div>
+                                <a
+                                  href={kycForm.documentPhoto}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm transition-all shrink-0 cursor-pointer"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                  <span>View PDF</span>
+                                </a>
+                              </div>
+
+                              {kycForm.documentPhoto.startsWith("data:application/pdf") && (
+                                <iframe
+                                  src={kycForm.documentPhoto}
+                                  className="w-full h-44 rounded-xl border border-border bg-background shadow-inner"
+                                  title="PDF Document Preview"
+                                />
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => setKycForm({ ...kycForm, documentPhoto: "" })}
+                                className="text-[11px] font-bold text-red-500 hover:underline block mx-auto pt-1 cursor-pointer"
+                              >
+                                Remove PDF Document
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            <div className="relative group mx-auto w-48">
+                              <img
+                                src={kycForm.documentPhoto}
+                                alt="Document Preview"
+                                className="w-48 h-32 rounded-xl object-cover border border-border mx-auto shadow-md"
+                              />
+                              <a
+                                href={kycForm.documentPhoto}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity font-bold text-xs gap-1.5 cursor-pointer"
+                              >
+                                <Eye className="h-4 w-4" />
+                                <span>View Photo</span>
+                              </a>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setKycForm({ ...kycForm, documentPhoto: "" })}
+                              className="text-[11px] font-bold text-red-500 hover:underline block mx-auto cursor-pointer"
+                            >
+                              Remove Photo
+                            </button>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <>
                         <FileText className="h-8 w-8 text-blue-600 mb-2" />
-                        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-all">
+                        <label className="cursor-pointer inline-flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-all">
                           <Upload className="h-4 w-4" />
-                          <span>Choose Document Photo</span>
+                          <span>{t("serviceProvider.chooseDocumentPhoto")}</span>
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/*,application/pdf,.pdf"
                             onChange={handleKycDocUpload}
                             className="hidden"
                           />
                         </label>
-                        <span className="text-[10px] text-muted-foreground mt-2">Clear image of PAN, Aadhaar or License card</span>
+                        <span className="text-[10px] text-muted-foreground mt-2 font-medium">
+                          Upload clear photo (PNG, JPG) or PDF file of PAN, Aadhaar or License card
+                        </span>
                       </>
                     )}
                   </div>
@@ -593,13 +678,13 @@ export default function ProviderProfilePage() {
                     onClick={() => setIsKycModalOpen(false)}
                     className="px-5 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground"
                   >
-                    Cancel
+                    {t("serviceProvider.cancel")}
                   </button>
                   <button
                     type="submit"
                     className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all"
                   >
-                    Submit KYC for Verification
+                    {t("serviceProvider.submitKycForVerification")}
                   </button>
                 </div>
 

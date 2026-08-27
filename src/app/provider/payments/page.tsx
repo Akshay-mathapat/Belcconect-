@@ -35,15 +35,15 @@ export default function PaymentsPage() {
       {/* Financial Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-1">
-          <span className="text-xs text-muted-foreground font-semibold">Total Lifetime Earnings</span>
-          <div className="font-heading text-2xl font-bold text-foreground">₹{totalEarnings.toLocaleString()}</div>
-          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">Real Customer Payouts</span>
+          <span className="text-xs text-muted-foreground font-semibold">Total Completed Services</span>
+          <div className="font-heading text-2xl font-bold text-foreground">{transactions.length} Jobs</div>
+          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">Real Customer Fulfillment</span>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-1">
-          <span className="text-xs text-muted-foreground font-semibold">This Month Revenue</span>
-          <div className="font-heading text-2xl font-bold text-blue-600 dark:text-blue-400">₹{thisMonthRevenue.toLocaleString()}</div>
-          <span className="text-[10px] text-muted-foreground font-medium">{transactions.length} jobs completed</span>
+          <span className="text-xs text-muted-foreground font-semibold">This Month Jobs</span>
+          <div className="font-heading text-2xl font-bold text-blue-600 dark:text-blue-400">{transactions.length} Jobs</div>
+          <span className="text-[10px] text-muted-foreground font-medium">Verified service delivery</span>
         </div>
       </div>
 
@@ -51,11 +51,11 @@ export default function PaymentsPage() {
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h3 className="font-heading text-base font-bold text-foreground">Payout & Transaction History</h3>
-            <p className="text-xs text-muted-foreground">List of completed service earnings</p>
+            <h3 className="font-heading text-base font-bold text-foreground">Completed Service History</h3>
+            <p className="text-xs text-muted-foreground">List of fulfilled customer service requests</p>
           </div>
           <span className="text-xs font-bold text-blue-600 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-            {transactions.length} Transactions
+            {transactions.length} Completed
           </span>
         </div>
 
@@ -67,8 +67,8 @@ export default function PaymentsPage() {
                 className="p-4 rounded-xl border border-border/80 bg-muted/20 flex items-center justify-between gap-4 text-xs"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
-                    ₹
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div>
                     <h4 className="font-bold text-foreground">{t.serviceName}</h4>
@@ -77,7 +77,7 @@ export default function PaymentsPage() {
                 </div>
 
                 <div className="text-right">
-                  <span className="font-heading font-bold text-sm text-foreground block">+₹{t.amount}</span>
+                  <span className="font-heading font-bold text-xs text-foreground block">Fulfilled</span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
                     <CheckCircle2 className="h-3 w-3" />
                     {t.status}

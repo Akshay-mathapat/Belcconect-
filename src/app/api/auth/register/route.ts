@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     const userRes = await query(`SELECT id, email, name, phone, avatar FROM ${targetTable} WHERE id = $1`, [userId]);
     const userObj = { ...userRes.rows[0], role };
     userObj.addresses = [];
+    userObj.bookings = [];
 
     // Generate JWT token
     const token = signJwtToken({

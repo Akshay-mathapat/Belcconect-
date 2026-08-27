@@ -44,6 +44,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/BelConnect-logo.png",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

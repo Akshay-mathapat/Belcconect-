@@ -4,14 +4,15 @@ import Footer from "@/components/sections/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, ArrowRight, MapPin, Plus, Navigation, AlertCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import LocationPicker, { ConfirmedLocationData } from "@/components/location/LocationPicker";
 
 function BookingFlow() {
+  const router = useRouter();
   const { currentUser, addAddress } = useAuthStore();
   const searchParams = useSearchParams();
   const service = searchParams.get("service") || "Service";
@@ -21,6 +22,16 @@ function BookingFlow() {
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-redirect to Customer Dashboard (/account) upon booking confirmation
+  useEffect(() => {
+    if (step === 6) {
+      const timer = setTimeout(() => {
+        router.push("/account");
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [step, router]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(() => {
     return savedAddresses.length > 0 ? savedAddresses[0].id : "new";
   });
@@ -416,15 +427,19 @@ function BookingFlow() {
                 <CheckCircle2 className="h-8 w-8 text-emerald-500" />
               </div>
               <h2 className="text-2xl font-bold text-foreground mb-2">Booking Confirmed!</h2>
-              <p className="text-muted-foreground mb-8">Your professional has been assigned and is on the way.</p>
+              <p className="text-muted-foreground mb-4">Your professional has been assigned and is on the way.</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-6 flex items-center justify-center gap-1.5 animate-pulse">
+                <span>Redirecting to your dashboard...</span>
+              </p>
               
-              <Link 
-                href="/account"
+              <button 
+                type="button"
+                onClick={() => router.push("/account")}
                 className="inline-flex justify-center items-center py-3 px-6 rounded-xl border border-border bg-card text-foreground hover:bg-muted font-semibold transition-colors w-full cursor-pointer"
               >
                 Go to Dashboard
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </button>
             </motion.div>
           )}
         </div>

@@ -12,10 +12,12 @@ import {
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { SERVICE_CATEGORIES } from "@/constants/site";
+import { useTranslation } from "@/lib/i18n";
 
 export default function NewServicePage() {
   const router = useRouter();
   const { addService } = useProviderStore();
+  const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -67,9 +69,9 @@ export default function NewServicePage() {
           className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Services</span>
+          <span>{t("serviceProvider.backToServices")}</span>
         </Link>
-        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Creating New Service</span>
+        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{t("serviceProvider.creatingNewService")}</span>
       </div>
 
       {isSubmitted ? (
@@ -81,9 +83,9 @@ export default function NewServicePage() {
           <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-lg">
             <CheckCircle2 className="h-8 w-8" />
           </div>
-          <h2 className="font-heading text-2xl font-bold text-foreground">Service Published Successfully!</h2>
+          <h2 className="font-heading text-2xl font-bold text-foreground">{t("serviceProvider.servicePublishedSuccess")}</h2>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            Your service has been published and saved. Redirecting to your service list...
+            {t("serviceProvider.servicePublishedDesc")}
           </p>
         </motion.div>
       ) : (
@@ -93,48 +95,48 @@ export default function NewServicePage() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
             <h2 className="font-heading text-base font-bold text-foreground flex items-center gap-2 border-b border-border pb-3">
               <Wrench className="h-4 w-4 text-blue-600" />
-              Basic Service Details
+              {t("serviceProvider.basicServiceDetails")}
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="sm:col-span-2 space-y-1">
-                <label className="font-bold text-foreground">Service Name *</label>
+                <label className="font-bold text-foreground">{t("serviceProvider.serviceNameRequired")}</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Electrical Safety Inspection & Wiring"
+                  placeholder={t("serviceProvider.serviceNamePlaceholder")}
                   className="w-full p-3 rounded-xl bg-muted/30 border border-border focus:outline-none focus:ring-2 focus:ring-blue-600/30"
                 />
               </div>
 
               {/* Category (REQUIRED) */}
               <div className="sm:col-span-2 space-y-1">
-                <label className="font-bold text-foreground">Category *</label>
+                <label className="font-bold text-foreground">{t("serviceProvider.categoryRequired")}</label>
                 <select
                   required
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full p-3 rounded-xl bg-muted/30 border border-border focus:outline-none focus:ring-2 focus:ring-blue-600/30"
                 >
-                  <option value="" disabled>Select Service Category</option>
+                  <option value="" disabled>{t("serviceProvider.selectServiceCategory")}</option>
                   {SERVICE_CATEGORIES.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
                   ))}
-                  <option value="Other Service">Other Service</option>
+                  <option value="Other Service">{t("serviceProvider.otherService")}</option>
                 </select>
               </div>
 
               <div className="sm:col-span-2 space-y-1">
-                <label className="font-bold text-foreground">Service Description</label>
+                <label className="font-bold text-foreground">{t("serviceProvider.serviceDescription")}</label>
                 <textarea
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe what is included in this service package..."
+                  placeholder={t("serviceProvider.serviceDescriptionPlaceholder")}
                   className="w-full p-3 rounded-xl bg-muted/30 border border-border focus:outline-none"
                 />
               </div>
@@ -145,15 +147,15 @@ export default function NewServicePage() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
             <h2 className="font-heading text-base font-bold text-foreground flex items-center gap-2 border-b border-border pb-3">
               <Handshake className="h-4 w-4 text-emerald-600" />
-              Mutual Price Agreement
+              {t("serviceProvider.mutualPriceAgreement")}
             </h2>
 
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs space-y-2">
               <p className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                <span>Direct Mutual Pricing Model</span>
+                <span>{t("serviceProvider.directMutualPricingModel")}</span>
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Pricing is decided directly between customer and service provider based on job scope, materials required, and inspection.
+                {t("serviceProvider.directMutualPricingDesc")}
               </p>
             </div>
           </div>
@@ -164,13 +166,13 @@ export default function NewServicePage() {
               href="/provider/services"
               className="px-5 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground"
             >
-              Cancel
+              {t("serviceProvider.cancel")}
             </Link>
             <button
               type="submit"
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all"
             >
-              Publish Service
+              {t("serviceProvider.publishService")}
             </button>
           </div>
 

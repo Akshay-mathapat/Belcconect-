@@ -135,26 +135,27 @@ export async function getActiveCallForBooking(bookingId: string, maxAgeSeconds =
 
 export async function getActiveCallForUser(userId: string): Promise<CallRecord | null> {
   if (!userId) return null;
-  const isProvider = userId.includes("prov") || userId === "provider-1";
-  const isCustomer = userId.includes("cust") || userId === "customer-1";
 
   const res = await query(
     `SELECT id FROM calls 
-     WHERE (
-       caller_id = $1 OR receiver_id = $1
-       OR ($2 = true AND (receiver_id LIKE 'prov%' OR receiver_id = 'provider-1' OR caller_id LIKE 'prov%' OR caller_id = 'provider-1'))
-       OR ($3 = true AND (receiver_id LIKE 'cust%' OR receiver_id = 'customer-1' OR caller_id LIKE 'cust%' OR caller_id = 'customer-1'))
-     )
+     WHERE (caller_id = $1 OR receiver_id = $1)
        AND status IN ('INITIATED', 'RINGING', 'ACCEPTED', 'CONNECTED')
        AND created_at >= NOW() - INTERVAL '120 seconds'
      ORDER BY created_at DESC 
      LIMIT 1`,
-    [userId, isProvider, isCustomer]
+    [userId]
   );
 
   if (res.rows.length === 0) return null;
   return getCallById(res.rows[0].id);
 }
+
+export async function checkUserBusy(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  const active = await getActiveCallForUser(userId);
+  return !!active;
+}
+
 
 export async function getCallHistoryForUser(userId: string): Promise<CallRecord[]> {
   const res = await query(

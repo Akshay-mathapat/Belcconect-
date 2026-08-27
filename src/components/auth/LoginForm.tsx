@@ -8,6 +8,7 @@ import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
+import { registerAndSubscribeUser } from "@/lib/registerSW";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -37,6 +38,11 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       if (!res.success) {
         setErrorMessage(res.error || "Login failed. Please check your credentials.");
         return;
+      }
+
+      // Register Service Worker & Subscribe to Web Push Notifications upon login
+      if (res.user?.id) {
+        registerAndSubscribeUser(res.user.id).catch(() => {});
       }
 
       setIsSubmitted(true);
@@ -114,7 +120,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5" suppressHydrationWarning>
         {/* Email or Phone Input */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">

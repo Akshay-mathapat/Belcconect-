@@ -1,10 +1,10 @@
 import { Job, Applicant, Message, JobStatus, AppStatus } from "./types";
 
 export const MOCK_JOBS: Job[] = [
-  { id: "J-001", title: "Senior Electrician", type: "Full-time", location: "Belagavi", salary: "₹25,000–35,000/mo", applicants: 18, status: "active", posted: "3 days ago", deadline: "Aug 15, 2026" },
-  { id: "J-002", title: "Plumbing Supervisor", type: "Contract", location: "Hubli", salary: "₹20,000–28,000/mo", applicants: 9, status: "active", posted: "1 week ago", deadline: "Aug 20, 2026" },
-  { id: "J-003", title: "HVAC Technician", type: "Part-time", location: "Dharwad", salary: "₹15,000–20,000/mo", applicants: 5, status: "paused", posted: "2 weeks ago", deadline: "Sep 1, 2026" },
-  { id: "J-004", title: "Cleaning Team Lead", type: "Full-time", location: "Belagavi", salary: "₹18,000–22,000/mo", applicants: 24, status: "closed", posted: "1 month ago", deadline: "Jul 10, 2026" },
+  { id: "J-001", title: "Senior Electrician", type: "Full-time", location: "Belagavi", salary: "Competitive", applicants: 18, status: "active", posted: "3 days ago", deadline: "Aug 15, 2026" },
+  { id: "J-002", title: "Plumbing Supervisor", type: "Contract", location: "Hubli", salary: "As per industry standards", applicants: 9, status: "active", posted: "1 week ago", deadline: "Aug 20, 2026" },
+  { id: "J-003", title: "HVAC Technician", type: "Part-time", location: "Dharwad", salary: "Best in industry", applicants: 5, status: "paused", posted: "2 weeks ago", deadline: "Sep 1, 2026" },
+  { id: "J-004", title: "Cleaning Team Lead", type: "Full-time", location: "Belagavi", salary: "Disclosed on interview", applicants: 24, status: "closed", posted: "1 month ago", deadline: "Jul 10, 2026" },
 ];
 
 export const MOCK_APPLICANTS: Applicant[] = [

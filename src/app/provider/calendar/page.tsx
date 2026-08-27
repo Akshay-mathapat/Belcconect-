@@ -12,11 +12,13 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
+import { useTranslation } from "@/lib/i18n";
 
 const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarPage() {
   const { bookings } = useProviderStore();
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<number>(30); // 30th Jul
 
   return (
@@ -26,10 +28,10 @@ export default function CalendarPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            Schedule & Job Calendar
+            {t("serviceProvider.scheduleAndJobCalendar")}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Visual interactive calendar showing daily bookings, site appointments, and completed jobs.
+            {t("serviceProvider.scheduleCalendarDesc")}
           </p>
         </div>
 
@@ -38,7 +40,7 @@ export default function CalendarPage() {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border hover:bg-muted text-xs font-bold text-foreground self-start sm:self-auto"
         >
           <Clock className="h-4 w-4 text-[#1F5F5B]" />
-          <span>Configure Working Hours</span>
+          <span>{t("serviceProvider.configureWorkingHours")}</span>
         </Link>
       </div>
 
@@ -50,7 +52,7 @@ export default function CalendarPage() {
           <div className="flex items-center justify-between border-b border-border pb-4">
             <div className="flex items-center gap-2 font-heading font-bold text-base text-foreground">
               <CalendarIcon className="h-5 w-5 text-[#1F5F5B]" />
-              <span>July 2026</span>
+              <span>{t("serviceProvider.july2026")}</span>
             </div>
             <div className="flex items-center gap-1">
               <button className="p-1.5 rounded-lg border border-border hover:bg-muted text-foreground">
@@ -92,17 +94,17 @@ export default function CalendarPage() {
                     <div className="space-y-0.5 sm:space-y-1">
                       {dayNum === 30 && (
                         <span className="block text-[8px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded bg-blue-600 text-white truncate">
-                          2 Jobs
+                          {t("serviceProvider.twoJobs")}
                         </span>
                       )}
                       {dayNum === 29 && (
                         <span className="block text-[8px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded bg-emerald-600 text-white truncate">
-                          Done
+                          {t("serviceProvider.completed")}
                         </span>
                       )}
                       {dayNum === 28 && (
                         <span className="block text-[8px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded bg-amber-600 text-white truncate">
-                          1 Review
+                          {t("serviceProvider.oneReview")}
                         </span>
                       )}
                     </div>
@@ -117,10 +119,10 @@ export default function CalendarPage() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
           <div className="border-b border-border pb-3 flex items-center justify-between">
             <h3 className="font-heading text-base font-bold text-foreground">
-              Bookings on July {selectedDate}, 2026
+              {t("serviceProvider.bookingsOnDate").replace("{date}", String(selectedDate))}
             </h3>
             <span className="text-xs font-bold text-[#1F5F5B]">
-              {selectedDate === 30 ? "2 Jobs Today" : "1 Completed Job"}
+              {selectedDate === 30 ? t("serviceProvider.twoJobsToday") : t("serviceProvider.oneCompletedJob")}
             </span>
           </div>
 
@@ -130,7 +132,7 @@ export default function CalendarPage() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-[#1F5F5B]">{b.time}</span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1F5F5B]/10 text-[#1F5F5B]">
-                    {b.status}
+                    {t(`account.statuses.${b.status}`) || b.status}
                   </span>
                 </div>
                 <h4 className="text-xs font-bold text-foreground">{b.serviceName}</h4>

@@ -31,7 +31,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
   const router = useRouter();
   const { currentUser, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
-  const { locale, setLocale } = useTranslation();
+  const { locale, setLocale, t } = useTranslation();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -101,13 +101,13 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
   ];
 
   const allNavItems = [
-    { href: "/jobprovider/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/jobprovider/jobs", label: "Job Listings", icon: Briefcase },
-    { href: "/jobprovider/candidates", label: "Candidates", icon: Users },
-    { href: "/jobprovider/messages", label: "Messages", icon: MessageSquare },
-    { href: "/jobprovider/settings", label: "Settings", icon: Settings },
-    { href: "/jobprovider/business-profile", label: "Business Profile", icon: Building2 },
-    { href: "/jobprovider/help", label: "Help", icon: HelpCircle },
+    { href: "/jobprovider/dashboard", label: t("jobprovider.dashboard") !== "jobprovider.dashboard" ? t("jobprovider.dashboard") : "Dashboard", icon: LayoutDashboard },
+    { href: "/jobprovider/jobs", label: t("jobprovider.jobListings") !== "jobprovider.jobListings" ? t("jobprovider.jobListings") : "Job Listings", icon: Briefcase },
+    { href: "/jobprovider/candidates", label: t("jobprovider.candidates") !== "jobprovider.candidates" ? t("jobprovider.candidates") : "Candidates", icon: Users },
+    { href: "/jobprovider/messages", label: t("jobprovider.messages") !== "jobprovider.messages" ? t("jobprovider.messages") : "Messages", icon: MessageSquare },
+    { href: "/jobprovider/settings", label: t("jobprovider.settings") !== "jobprovider.settings" ? t("jobprovider.settings") : "Settings", icon: Settings },
+    { href: "/jobprovider/business-profile", label: t("jobprovider.businessProfile") !== "jobprovider.businessProfile" ? t("jobprovider.businessProfile") : "Business Profile", icon: Building2 },
+    { href: "/jobprovider/help", label: t("jobprovider.help") !== "jobprovider.help" ? t("jobprovider.help") : "Help", icon: HelpCircle },
   ];
 
   const handleSelectPanel = (panelKey: string) => {
@@ -154,7 +154,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                 {SITE_NAME}
               </span>
               <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
-                Job Provider Portal
+                {t("common.jobProviderWorkspace")}
               </span>
             </div>
           </Link>
@@ -177,7 +177,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                 }}
                 onFocus={() => setSearchFocused(true)}
                 className="w-full bg-transparent pl-10 pr-24 py-2.5 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none"
-                placeholder="Search jobs, candidates, or insights..."
+                placeholder={t("common.searchPlaceholder")}
                 aria-label="Search"
                 id="jobprovider-navbar-search-input"
               />
@@ -191,7 +191,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                 className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition-all"
               >
                 <Search className="h-3.5 w-3.5" />
-                Search
+                {t("nav.searchButton")}
               </button>
             </div>
 
@@ -220,7 +220,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                   }}
                   className="flex h-9 items-center justify-center rounded-full px-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors focus:outline-none"
                 >
-                  <span className="font-semibold">Lang</span>
+                  <span className="font-semibold">{LOCALES.find((l) => l.code === locale)?.nativeLabel || "Lang"}</span>
                 </button>
                 <AnimatePresence>
                   {langOpen && (
@@ -281,7 +281,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                           }`}
                         >
                           <opt.icon className="h-4 w-4" />
-                          {opt.label}
+                          {opt.value === "light" ? t("common.lightMode") : opt.value === "dark" ? t("common.darkMode") : t("common.systemMode")}
                         </button>
                       ))}
                     </motion.div>
@@ -342,7 +342,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                         <p className="font-bold text-foreground truncate">{currentUser.name}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{currentUser.email}</p>
                         <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                          Employer
+                          {t("common.employer")}
                         </span>
                       </div>
 
@@ -351,7 +351,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-foreground hover:bg-muted font-medium transition-colors text-left"
                       >
                         <LayoutDashboard className="h-4 w-4 text-blue-600" />
-                        <span>Employer Workspace</span>
+                        <span>{t("common.jobProviderWorkspace")}</span>
                       </button>
 
                       <button
@@ -364,7 +364,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold transition-colors cursor-pointer"
                       >
                         <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
+                        <span>{t("common.signOut")}</span>
                       </button>
                     </motion.div>
                   )}

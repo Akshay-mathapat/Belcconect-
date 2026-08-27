@@ -53,12 +53,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Load customer addresses if customer logged in
+    // Load customer addresses & bookings if customer logged in
     if (userObj.role === "user") {
       const addrRes = await query("SELECT id, type, text FROM addresses WHERE user_id = $1", [userObj.id]);
       userObj.addresses = addrRes.rows || [];
+
+      const bookRes = await query(
+        `SELECT b.id, b.service_name, b.provider_name, b.provider_id, b.date, b.time, b.status, b.rating, b.review_comment, b.created_at
+         FROM bookings b WHERE b.customer_id = $1 ORDER BY b.created_at DESC`,
+        [userObj.id]
+      );
+      userObj.bookings = (bookRes.rows || []).map((b: any) => ({
+        id: b.id,
+        service: b.service_name,
+        provider: b.provider_name || "Verified Expert",
+        providerId: b.provider_id,
+        date: `${b.date} at ${b.time}`,
+        status: b.status || "Requested",
+        rating: b.rating,
+        reviewComment: b.review_comment,
+        createdAt: b.created_at ? new Date(b.created_at).toISOString() : new Date().toISOString()
+      }));
     } else {
       userObj.addresses = [];
+      userObj.bookings = [];
     }
 
     // Generate JWT token

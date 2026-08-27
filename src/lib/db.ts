@@ -209,6 +209,95 @@ export async function initDB() {
         )
       `);
 
+      // 9. Create Conversations table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS conversations (
+          id VARCHAR(100) PRIMARY KEY,
+          customer_id VARCHAR(100) REFERENCES customers(id) ON DELETE CASCADE,
+          provider_id VARCHAR(100) REFERENCES service_providers(id) ON DELETE CASCADE,
+          booking_id VARCHAR(100) REFERENCES bookings(id) ON DELETE SET NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_customer ON conversations(customer_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_provider ON conversations(provider_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_booking ON conversations(booking_id)`);
+
+      // 10. Create Messages table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS messages (
+          id VARCHAR(100) PRIMARY KEY,
+          conversation_id VARCHAR(100) REFERENCES conversations(id) ON DELETE CASCADE,
+          sender_id VARCHAR(100) NOT NULL,
+          sender_role VARCHAR(50) NOT NULL,
+          body TEXT,
+          media_url TEXT,
+          location_url TEXT,
+          latitude NUMERIC(10,7),
+          longitude NUMERIC(10,7),
+          message_type VARCHAR(50) DEFAULT 'text',
+          is_deleted_from_ui BOOLEAN DEFAULT FALSE,
+          read_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP
+        )
+      `);
+
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at)`);
+
+      // 11. Create Push Subscriptions table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id VARCHAR(255) PRIMARY KEY,
+          user_id VARCHAR(255) NOT NULL,
+          endpoint TEXT NOT NULL UNIQUE,
+          p256dh TEXT NOT NULL,
+          auth TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_push_sub_user_id ON push_subscriptions(user_id);
+      `);
+
+      // 12. Create Notifications table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id VARCHAR(255) PRIMARY KEY,
+          user_id VARCHAR(255) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          body TEXT NOT NULL,
+          booking_id VARCHAR(255),
+          is_read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+      `);
+
+      // 13. Create Notification Logs table for SMS & Push idempotency tracking
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS notification_logs (
+          id VARCHAR(255) PRIMARY KEY,
+          user_id VARCHAR(255) NOT NULL,
+          booking_id VARCHAR(255) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          channel VARCHAR(20) NOT NULL,
+          status VARCHAR(20) NOT NULL,
+          provider_message_id VARCHAR(255),
+          error_message TEXT,
+          attempt_count INTEGER DEFAULT 1,
+          sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_notif_logs_booking_type ON notification_logs(booking_id, type, channel);
+        CREATE INDEX IF NOT EXISTS idx_notif_logs_user ON notification_logs(user_id);
+        CREATE INDEX IF NOT EXISTS idx_notif_logs_status ON notification_logs(status);
+      `);
+
       // Auto-expire lingering call sessions on server/DB initialization
       await client.query(`
         UPDATE calls 
@@ -284,6 +373,22 @@ export async function initDB() {
         VALUES
           ('B-1001', 'customer-1', 'provider-1', 'Rohan Electrician', 'Fan Repair & Installation', 'electrical', 'Today', '10:00 AM', 'Accepted'),
           ('B-1002', 'customer-1', 'provider-1', 'Rohan Electrician', 'House Wiring Checkup', 'electrical', 'Tomorrow', '02:30 PM', 'Requested')
+        ON CONFLICT (id) DO NOTHING
+      `);
+
+      // Seed initial conversation for B-1001
+      await client.query(`
+        INSERT INTO conversations (id, customer_id, provider_id, booking_id)
+        VALUES ('conv-B-1001', 'customer-1', 'provider-1', 'B-1001')
+        ON CONFLICT (id) DO NOTHING
+      `);
+
+      // Seed initial messages for conv-B-1001
+      await client.query(`
+        INSERT INTO messages (id, conversation_id, sender_id, sender_role, body, message_type)
+        VALUES
+          ('msg-1', 'conv-B-1001', 'customer-1', 'customer', 'Hello Rohan! Are you on the way for the fan repair?', 'text'),
+          ('msg-2', 'conv-B-1001', 'provider-1', 'provider', 'Hi Akshay! Yes, I am leaving now and will arrive in 10 minutes.', 'text')
         ON CONFLICT (id) DO NOTHING
       `);
 

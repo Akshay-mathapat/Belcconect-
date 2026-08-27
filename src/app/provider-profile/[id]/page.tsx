@@ -198,6 +198,7 @@ export default function ProviderProfilePage() {
                         <div className="mt-4 pt-3 border-t border-border/60">
                           <Link 
                             href={`/book?pro=${provider.id}&service=${encodeURIComponent(srv.name)}`}
+                            data-tour="book-service"
                             className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1"
                           >
                             Book Service

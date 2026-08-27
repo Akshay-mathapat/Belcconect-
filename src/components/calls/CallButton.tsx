@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Phone, Loader2 } from "lucide-react";
 import { useCallContext } from "./CallProvider";
 
+import { useTranslation } from "@/lib/i18n";
+
 interface CallButtonProps {
   bookingId: string;
   receiverId?: string;
@@ -21,12 +23,19 @@ export default function CallButton({
   title
 }: CallButtonProps) {
   const { startCall, isCalling } = useCallContext();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   const isInactive = ["Rejected", "Cancelled", "Declined"].includes(bookingStatus || "");
-  const defaultTitle = isInactive
-    ? `Calling unavailable: Booking is ${bookingStatus}`
-    : "Call Provider/Customer";
+  const displayTitle = title
+    ? (t(title) !== title
+        ? t(title)
+        : t(`common.${title.toLowerCase()}`) !== `common.${title.toLowerCase()}`
+          ? t(`common.${title.toLowerCase()}`)
+          : title)
+    : isInactive
+      ? `Calling unavailable: Booking is ${t(`account.statuses.${bookingStatus}`) || bookingStatus}`
+      : t("common.call");
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -40,13 +49,11 @@ export default function CallButton({
     if (loading || isCalling) return;
 
     setLoading(true);
-    try {
-      await startCall(bookingId);
-    } catch (err: any) {
-      // Handled in CallProvider
-    } finally {
-      setLoading(false);
-    }
+    startCall(bookingId)
+      .catch(() => {})
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const iconSize = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-5 w-5" : "h-4 w-4";
@@ -60,7 +67,7 @@ export default function CallButton({
       className={`${paddingSize} border border-border bg-muted/40 hover:bg-muted text-foreground transition-all shadow-sm ${
         isInactive ? "opacity-40 cursor-not-allowed" : "hover:scale-105 active:scale-95 cursor-pointer"
       } flex items-center justify-center ${className}`}
-      title={title || defaultTitle}
+      title={displayTitle}
     >
       {loading ? (
         <Loader2 className={`${iconSize} animate-spin text-blue-600`} />

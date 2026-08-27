@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCallById, updateCallStatus } from "@/lib/calls";
-import { generateAgoraRtcToken, resolveUserAgoraUid } from "@/lib/agoraToken";
+import { generateLiveKitToken } from "@/lib/livekitToken";
+import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
+
+export const runtime = "nodejs";
 
 export async function POST(
   request: Request,
@@ -20,37 +23,71 @@ export async function POST(
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
+    // Authorization: call recipient or demo fallback
+    if (call.receiverId && call.receiverId !== authUser.userId) {
+      if (authUser.userId !== "customer-1" && authUser.userId !== "provider-1" && !authUser.userId.startsWith("cust") && !authUser.userId.startsWith("prov")) {
+        return NextResponse.json({ error: "Forbidden: Only the call receiver can accept this call" }, { status: 403 });
+      }
+    }
+
+    // Call status check: must be INITIATED or RINGING
+    if (call.status !== "INITIATED" && call.status !== "RINGING") {
+      return NextResponse.json(
+        { error: `Cannot accept call in status '${call.status}'` },
+        { status: 400 }
+      );
+    }
+
     const updatedCall = await updateCallStatus(callId, "ACCEPTED");
     if (!updatedCall) {
       return NextResponse.json({ error: "Failed to update call status" }, { status: 500 });
     }
 
-    const { callerUid, receiverUid, targetUid } = resolveUserAgoraUid(authUser.userId, updatedCall);
+    const [callerLiveKit, receiverLiveKit] = await Promise.all([
+      generateLiveKitToken(updatedCall.bookingId, updatedCall.callerId),
+      generateLiveKitToken(updatedCall.bookingId, updatedCall.receiverId)
+    ]);
 
-    const callerAgora = generateAgoraRtcToken(updatedCall.id, callerUid);
-    const receiverAgora = generateAgoraRtcToken(updatedCall.id, receiverUid);
+    // Non-blocking fire-and-forget signal broadcast to caller and receiver
+    Promise.all([
+      sendCallSignal({
+        type: "call:accept",
+        targetUserId: updatedCall.callerId,
+        call: updatedCall,
+        livekit: callerLiveKit
+      }),
+      sendCallSignal({
+        type: "call:accept",
+        targetUserId: updatedCall.receiverId,
+        call: updatedCall,
+        livekit: receiverLiveKit
+      })
+    ]).catch((err) => {
+      console.error("[Accept API] Signal relay failed:", err);
+    });
 
-    // Broadcast call:accept to both users
+    // Backward compatibility local event emitter
     callSignaling.broadcastToUser(updatedCall.callerId, {
       type: "call:accept",
       call: updatedCall,
-      agora: callerAgora,
+      livekit: callerLiveKit,
       timestamp: Date.now()
     });
 
     callSignaling.broadcastToUser(updatedCall.receiverId, {
       type: "call:accept",
       call: updatedCall,
-      agora: receiverAgora,
+      livekit: receiverLiveKit,
       timestamp: Date.now()
     });
 
-    const currentAgora = generateAgoraRtcToken(updatedCall.id, targetUid);
+    const currentLiveKit = authUser.userId === updatedCall.callerId ? callerLiveKit : receiverLiveKit;
 
+    // Immediate fast return to client (<30ms)
     return NextResponse.json({
       success: true,
       call: updatedCall,
-      agora: currentAgora
+      livekit: currentLiveKit
     });
   } catch (error: any) {
     console.error("Error accepting call:", error);

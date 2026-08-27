@@ -7,6 +7,20 @@ class CustomRingtonePlayer {
   private ringInterval: any = null;
 
   /**
+   * Preloads ringtone sound file into memory immediately on app boot.
+   */
+  preload() {
+    if (typeof window === "undefined") return;
+    try {
+      if (!this.audioElement) {
+        this.audioElement = new Audio("/sounds/ringtone.wav");
+        this.audioElement.preload = "auto";
+        this.audioElement.load();
+      }
+    } catch (e) {}
+  }
+
+  /**
    * Starts playing the custom ringtone sound file.
    * @param mode 'incoming' for full volume ringtone, 'outgoing' for ringback sound.
    */
@@ -19,6 +33,7 @@ class CustomRingtonePlayer {
     try {
       if (!this.audioElement) {
         this.audioElement = new Audio("/sounds/ringtone.wav");
+        this.audioElement.preload = "auto";
       }
 
       this.audioElement.currentTime = 0;
@@ -149,7 +164,7 @@ class CustomRingtonePlayer {
       this.ringInterval = null;
     }
 
-    if (this.audioCtx) {
+    if (this.audioCtx && this.audioCtx.state !== "closed") {
       try {
         this.audioCtx.close();
       } catch (e) {}

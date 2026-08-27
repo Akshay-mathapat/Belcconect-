@@ -5,23 +5,39 @@ import {
   getActiveCallForBooking,
   getCallHistoryForUser,
   getUserRateLimitCount,
-  autoExpireStaleCalls
+  autoExpireStaleCalls,
+  checkUserBusy,
+  updateCallStatus
 } from "@/lib/calls";
+import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
+import { sendPushToUser } from "@/lib/pushNotifications";
 
 export async function POST(request: Request) {
   try {
-    // Auto-expire stale ringing or hanging calls older than 60s
-    const expired = await autoExpireStaleCalls(60);
-    expired.forEach((call) => {
-      callSignaling.emitCallEvent({ type: "call:missed", call, timestamp: Date.now() });
-    });
+    // 1. Fire-and-forget background cleanup of stale calls (non-blocking)
+    (async () => {
+      try {
+        const expired = await autoExpireStaleCalls(45);
+        for (const call of expired) {
+          sendCallSignal({ type: "call:missed", call }).catch((err) =>
+            console.error("[Call API] Missed call signal failed:", err)
+          );
+          callSignaling.emitCallEvent({ type: "call:missed", call, timestamp: Date.now() });
+        }
+      } catch (e) {
+        console.error("[Call API] Error in background autoExpireStaleCalls:", e);
+      }
+    })();
 
-    // 1. Authenticate user from JWT Session Token or x-user-id fallback
+    // 2. Authenticate user from JWT session token
     const authUser = getAuthenticatedUser(request);
     if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized: Invalid or missing authentication session" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized: Missing or invalid authentication token" },
+        { status: 401 }
+      );
     }
 
     const authenticatedUserId = authUser.userId;
@@ -32,9 +48,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
     }
 
-    // 2. Rate Limiting Check (Configured to 20 calls per hour in production, 1000 in dev)
     const maxCallsPerHour = process.env.NODE_ENV === "production" ? 20 : 1000;
-    const recentCallCount = await getUserRateLimitCount(authenticatedUserId, 1);
+
+    // 3. Parallel Execution: Rate limit count & Booking lookup DB queries
+    const [recentCallCount, bookingRes] = await Promise.all([
+      getUserRateLimitCount(authenticatedUserId, 1),
+      query(
+        `SELECT id, customer_id, provider_id, status, service_name
+         FROM bookings 
+         WHERE id = $1`,
+        [bookingId]
+      ).catch((e) => {
+        console.warn("Database booking lookup error:", e);
+        return { rows: [] };
+      })
+    ]);
+
     if (recentCallCount >= maxCallsPerHour) {
       return NextResponse.json(
         { error: `Call rate limit exceeded. Maximum ${maxCallsPerHour} call attempts per hour.` },
@@ -42,50 +71,61 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Look up booking from PostgreSQL with fallback for client/demo bookings
-    let booking = null;
-    try {
-      const bookingRes = await query(
-        `SELECT id, customer_id, provider_id, status, service_name
-         FROM bookings 
-         WHERE id = $1`,
-        [bookingId]
-      );
-      if (bookingRes.rows.length > 0) {
-        booking = bookingRes.rows[0];
-      }
-    } catch (e) {
-      console.warn("Database lookup failed, fallback to in-memory call context:", e);
-    }
+    let booking: any = bookingRes.rows.length > 0 ? bookingRes.rows[0] : null;
 
+    // Fallback for seed / demo booking IDs if not yet in DB
     if (!booking) {
-      const isCallerProvider =
-        authenticatedUserId === "provider-1" ||
-        authenticatedUserId.includes("provider") ||
-        authenticatedUserId.includes("prov") ||
-        authUser.role === "provider";
-
-      booking = {
-        id: bookingId,
-        customer_id: isCallerProvider ? "customer-1" : authenticatedUserId,
-        provider_id: isCallerProvider ? authenticatedUserId : "provider-1",
-        status: "Accepted",
-        service_name: "Service Booking"
-      };
+      if (bookingId === "B-1001" || bookingId.startsWith("B-")) {
+        const isProvider = authenticatedUserId === "provider-1" || authUser.role === "provider";
+        booking = {
+          id: bookingId,
+          customer_id: isProvider ? "customer-1" : authenticatedUserId,
+          provider_id: isProvider ? authenticatedUserId : "provider-1",
+          status: "Accepted",
+          service_name: "Service Booking"
+        };
+      } else {
+        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      }
     }
 
-    // 4. Determine caller and receiver (Supports Customer -> Provider & Provider -> Customer)
-    const effectiveCustomerId = booking.customer_id || "customer-1";
-    const effectiveProviderId = booking.provider_id || "provider-1";
+    // 4. Authorization Check: Flexible matching for customer, provider, role, or seed IDs
+    const isCustomer = authenticatedUserId === booking.customer_id ||
+                       booking.customer_id === "customer-1" ||
+                       authenticatedUserId === "customer-1" ||
+                       authenticatedUserId.startsWith("cust") ||
+                       authUser.role === "user";
 
-    const isProviderCaller =
-      authenticatedUserId === effectiveProviderId ||
-      authUser.role === "provider" ||
-      authenticatedUserId.includes("provider") ||
-      authenticatedUserId.includes("prov");
+    const isProvider = authenticatedUserId === booking.provider_id ||
+                       booking.provider_id === "provider-1" ||
+                       authenticatedUserId === "provider-1" ||
+                       authenticatedUserId.startsWith("prov") ||
+                       authUser.role === "provider";
 
-    const actualCallerId = isProviderCaller ? effectiveProviderId : (authenticatedUserId || effectiveCustomerId);
-    const receiverId = isProviderCaller ? effectiveCustomerId : effectiveProviderId;
+    if (!isCustomer && !isProvider) {
+      return NextResponse.json(
+        { error: "Forbidden: You are not authorized to make a call for this booking" },
+        { status: 403 }
+      );
+    }
+
+    const actualCallerId = authenticatedUserId;
+    
+    // Determine target receiver ID (ensure caller does not call themselves)
+    let receiverId = "";
+    if (authenticatedUserId === booking.provider_id || authUser.role === "provider" || authenticatedUserId.startsWith("prov") || authenticatedUserId === "provider-1") {
+      receiverId = (booking.customer_id && booking.customer_id !== actualCallerId) ? booking.customer_id : "customer-1";
+    } else {
+      receiverId = (booking.provider_id && booking.provider_id !== actualCallerId) ? booking.provider_id : "provider-1";
+    }
+
+    if (receiverId === actualCallerId) {
+      receiverId = actualCallerId.includes("provider") || actualCallerId.startsWith("prov") ? "customer-1" : "provider-1";
+    }
+
+    if (!receiverId) {
+      return NextResponse.json({ error: "Receiver not found for this booking" }, { status: 400 });
+    }
 
     // 5. Verify Booking Status
     const activeStatuses = [
@@ -105,8 +145,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Check if there is already an active call session for this booking
-    const existingCall = await getActiveCallForBooking(bookingId);
+    // 6. Parallel Execution: Receiver Busy Check & Existing Call Session Lookup
+    const [isReceiverBusy, existingCall] = await Promise.all([
+      checkUserBusy(receiverId),
+      getActiveCallForBooking(bookingId)
+    ]);
+
+    if (isReceiverBusy) {
+      const busyCallRecord = await createCallRecord(actualCallerId, receiverId, bookingId);
+      const updatedBusyCall = await updateCallStatus(busyCallRecord.id, "BUSY");
+      if (updatedBusyCall) {
+        sendCallSignal({ type: "call:busy", targetUserId: actualCallerId, call: updatedBusyCall }).catch((err) =>
+          console.error("[Call API] Busy signal dispatch error:", err)
+        );
+      }
+      return NextResponse.json(
+        { error: "User is currently on another call.", status: "BUSY" },
+        { status: 409 }
+      );
+    }
+
     if (existingCall) {
       return NextResponse.json({
         success: true,
@@ -115,24 +173,42 @@ export async function POST(request: Request) {
       });
     }
 
-    // 7. Create Call Record & Emit Signaling
+    // 7. Create Call Record & Transition to RINGING in Postgres
     const callRecord = await createCallRecord(actualCallerId, receiverId, bookingId);
+    const ringingCallRecord = (await updateCallStatus(callRecord.id, "RINGING")) || callRecord;
 
-    callSignaling.emitCallEvent({
-      type: "call:initiate",
-      call: callRecord,
-      timestamp: Date.now()
+    // 8. Fire-and-forget Socket.IO signaling broadcast (non-blocking)
+    sendCallSignal({
+      type: "call:ring",
+      targetUserId: receiverId,
+      call: ringingCallRecord
+    }).catch((err) => {
+      console.error("[Call API] Ring signal dispatch error:", err);
     });
 
     callSignaling.emitCallEvent({
       type: "call:ring",
-      call: callRecord,
+      call: ringingCallRecord,
       timestamp: Date.now()
     });
 
+    // 8b. Trigger Web Push Notification to receiver (non-blocking)
+    const callerName = isProvider ? (booking.provider_name || "Service Partner") : "Customer";
+    sendPushToUser(receiverId, {
+      title: "Incoming Voice Call 📞",
+      body: `Incoming call from ${callerName} for ${booking.service_name || "BelConnect Service"}`,
+      data: {
+        type: "call:incoming",
+        callId: ringingCallRecord.id,
+        bookingId,
+        url: `/?activeCall=true&callId=${ringingCallRecord.id}`
+      }
+    }).catch((err: any) => console.error("[Call API] Web Push dispatch error:", err));
+
+    // 9. Immediate response to caller client (<50ms)
     return NextResponse.json({
       success: true,
-      call: callRecord
+      call: ringingCallRecord
     });
   } catch (error: any) {
     console.error("Error initiating call:", error);

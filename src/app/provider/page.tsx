@@ -29,6 +29,7 @@ import { useEffect, useState } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
+import { ProviderChecklistCard } from "@/components/provider/ProviderChecklistCard";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -78,7 +79,7 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 }
 
 export default function ProviderDashboardPage() {
-  const { currentUser } = useAuthStore();
+  const { currentUser, restartTour } = useAuthStore();
   const { profile, bookings, services, updateBookingStatus, syncWithAuthUser, fetchProviderBookings, fetchProviderServices } = useProviderStore();
   const { t } = useTranslation();
   const [showAllServices, setShowAllServices] = useState(false);
@@ -95,10 +96,6 @@ export default function ProviderDashboardPage() {
     fetchProviderBookings();
     fetchProviderServices();
 
-    const intervalId = setInterval(() => {
-      fetchProviderBookings();
-    }, 3000);
-
     let syncChannel: BroadcastChannel | null = null;
     try {
       syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
@@ -110,7 +107,6 @@ export default function ProviderDashboardPage() {
     } catch (e) {}
 
     return () => {
-      clearInterval(intervalId);
       if (syncChannel) {
         try { syncChannel.close(); } catch (e) {}
       }
@@ -170,9 +166,20 @@ export default function ProviderDashboardPage() {
               <span>{t("serviceProvider.viewBookings")}</span>
               <ArrowUpRight className="h-4 w-4" />
             </Link>
+
+            <button
+              onClick={() => restartTour()}
+              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-semibold text-xs border border-white/20 backdrop-blur-sm transition-all cursor-pointer"
+            >
+              <Sparkles className="h-4 w-4 text-amber-300" />
+              <span>Restart Tour</span>
+            </button>
           </div>
         </div>
       </motion.div>
+
+      {/* ── 1.5. Getting Started Checklist ────────────────── */}
+      <ProviderChecklistCard />
 
       {/* ── 2. Recent Bookings ────── */}
       <motion.div 
@@ -198,10 +205,10 @@ export default function ProviderDashboardPage() {
           </Link>
         </div>
 
-        {bookings.filter((b) => b.status === "Requested").length > 0 ? (
+        {bookings.filter((b) => b.status !== "Completed" && b.status !== "ReviewSubmitted" && (b.status as any) !== "Rejected").length > 0 ? (
           <div className="space-y-3">
             {[...bookings]
-              .filter((b) => b.status === "Requested")
+              .filter((b) => b.status !== "Completed" && b.status !== "ReviewSubmitted" && (b.status as any) !== "Rejected")
               .sort((a, b) => {
                 const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                 const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -231,11 +238,7 @@ export default function ProviderDashboardPage() {
                         booking.status === "Rejected" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
                         "bg-muted text-muted-foreground border border-border"
                       }`}>
-                        {booking.status === "Requested" ? t("serviceProvider.requested") :
-                         booking.status === "Accepted" ? t("serviceProvider.accepted") :
-                         booking.status === "Started" ? t("serviceProvider.started") :
-                         booking.status === "Completed" || booking.status === "ReviewSubmitted" ? t("serviceProvider.completed") :
-                         booking.status}
+                        {t(`account.statuses.${booking.status}`) || booking.status}
                       </span>
                     </div>
 
@@ -247,7 +250,7 @@ export default function ProviderDashboardPage() {
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-0.5">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-blue-600" />
-                        {booking.date} at {booking.time}
+                        {booking.date} {t("common.at") || "at"} {booking.time}
                       </span>
                       {booking.customerPhone && (
                         <span className="flex items-center gap-1">

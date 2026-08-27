@@ -92,6 +92,7 @@ export function Hero() {
           <form 
             onSubmit={handleSearch}
             className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl sm:rounded-full bg-card border-2 border-primary/20 shadow-xl shadow-primary/5 hover:border-primary/40 transition-all"
+            suppressHydrationWarning
           >
             {/* Location Filter Dropdown (OLX Style) */}
             <div ref={dropdownRef} className="relative min-w-[200px] flex-shrink-0">
@@ -168,7 +169,7 @@ export function Hero() {
         </motion.div>
 
         {/* OLX-Style Category Tiles Grid — Immediate visual orientation */}
-        <div>
+        <div data-tour="browse-services">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-heading font-bold text-foreground">{t("nav.browseAllCategories")}</h2>
             <Link 

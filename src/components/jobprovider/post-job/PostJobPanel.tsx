@@ -163,7 +163,7 @@ export function PostJobPanel() {
               <label className={labelCls}>{t("jobprovider.salaryCompensation")}</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input type="text" className={`${inputCls} pl-9`} placeholder="e.g. ₹20,000–30,000/mo" />
+                <input type="text" className={`${inputCls} pl-9`} placeholder="e.g. Competitive / As per industry standards" />
               </div>
             </div>
           </div>

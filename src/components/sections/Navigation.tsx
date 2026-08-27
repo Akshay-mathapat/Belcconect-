@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, Search, Sun, Moon, Monitor, ArrowRight, Globe, User, LogOut, LayoutDashboard, Settings } from "lucide-react";
+import { Menu, X, Search, Sun, Moon, Monitor, ArrowRight, Globe, User, LogOut, LayoutDashboard, Settings, Video, Calendar } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { SITE_NAME, NAV_LINKS, SEARCH_SUGGESTIONS } from "@/constants/site";
 import Link from "next/link";
@@ -12,6 +12,8 @@ import { ChevronRight, Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors
 import { SERVICE_TAXONOMY, SERVICE_CATEGORIES } from "@/constants/site";
 import CategoryBar from "@/components/sections/CategoryBar";
 import { useAuthStore } from "@/store/useAuthStore";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { AppTour } from "@/components/onboarding/AppTour";
 
 const iconMap: Record<string, any> = {
   Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
@@ -142,7 +144,7 @@ export default function Navigation() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrollDirection, setScrollDirection] = useState<"up" | "down" | null>(null);
   const lastScrollY = useRef(0);
-  const { currentUser, logout } = useAuthStore();
+  const { currentUser, logout, restartTour } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
   const pathname = usePathname();
@@ -323,9 +325,12 @@ export default function Navigation() {
             />
           </div>
 
-          {/* Right actions — desktop (Sign In & Get Started removed as requested) */}
+          {/* Right actions — desktop */}
           <div className="hidden lg:flex items-center gap-3 flex-shrink-0 ml-auto">
             <div className="flex items-center gap-1">
+              {/* Notification Bell */}
+              <NotificationBell />
+
               {/* Language Switcher */}
               <div ref={langRef} className="relative">
                 <button
@@ -474,6 +479,19 @@ export default function Navigation() {
                       <button
                         type="button"
                         onClick={() => {
+                          setUserMenuOpen(false);
+                          restartTour();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-medium transition-colors cursor-pointer"
+                        suppressHydrationWarning
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        <span>{t("tour.takeProductTour")}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
                           logout();
                           setUserMenuOpen(false);
                           router.push("/");
@@ -493,6 +511,7 @@ export default function Navigation() {
               <div className="flex items-center gap-3 border-l border-border pl-3">
                 <Link
                   href="/login"
+                  data-tour="nav-login"
                   className="text-sm font-semibold text-foreground hover:text-blue-600 transition-colors focus:outline-none rounded-md px-3 py-1.5"
                 >
                   {t("nav.signIn")}
@@ -509,8 +528,9 @@ export default function Navigation() {
             )}
           </div>
 
-          {/* Mobile: search icon + hamburger */}
+          {/* Mobile: Notification Bell + search icon + hamburger */}
           <div className="flex items-center gap-2 lg:hidden ml-auto">
+            <NotificationBell />
             <button
               onClick={() => {
                 setMobileOpen(false);
@@ -527,6 +547,7 @@ export default function Navigation() {
             </button>
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
+              data-tour="mobile-menu"
               className="flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5F5B]"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
@@ -540,7 +561,7 @@ export default function Navigation() {
 
       {/* Category Bar — desktop only */}
       <motion.div
-        className={`fixed inset-x-0 top-16 z-40 ${scrollDirection === "down" && pathname !== "/" ? "pointer-events-none" : ""}`}
+        className={`fixed inset-x-0 top-16 z-40 ${pathname === "/" && scrollDirection !== "down" ? "" : "pointer-events-none"}`}
         initial={{ y: 0, opacity: 1 }}
         animate={{
           y: pathname === "/" ? 0 : scrollDirection === "down" ? -60 : 0,
@@ -748,6 +769,9 @@ export default function Navigation() {
           />
         )}
       </AnimatePresence>
+
+      {/* Onboarding Tour Engine */}
+      <AppTour />
     </>
   );
 }

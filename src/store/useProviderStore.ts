@@ -34,6 +34,7 @@ interface ProviderStoreState {
   // Actions
   toggleOnlineStatus: () => void;
   updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
+  deleteBooking: (id: string) => Promise<void>;
   fetchProviderBookings: () => Promise<void>;
   fetchProviderServices: () => Promise<void>;
   
@@ -152,36 +153,76 @@ export const useProviderStore = create<ProviderStoreState>()(
           set((state) => ({
             bookings: state.bookings.map((b) => b.id === id ? { ...b, status } : b)
           }));
+        } finally {
+          try {
+            const bc = new BroadcastChannel("cityconnect-bookings-sync");
+            bc.postMessage({ type: "REFRESH_BOOKINGS" });
+            bc.close();
+          } catch (e) {}
+        }
+      },
+
+      deleteBooking: async (id) => {
+        try {
+          await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+          set((state) => ({
+            bookings: state.bookings.filter((b) => b.id !== id)
+          }));
+          try {
+            const bc = new BroadcastChannel("cityconnect-bookings-sync");
+            bc.postMessage({ type: "REFRESH_BOOKINGS" });
+            bc.close();
+          } catch (e) {}
+        } catch (e) {
+          console.error(`Failed to delete booking ${id}:`, e);
+          set((state) => ({
+            bookings: state.bookings.filter((b) => b.id !== id)
+          }));
         }
       },
 
       fetchProviderBookings: async () => {
-        const providerId = useAuthStore.getState().currentUser?.id || "provider-1";
+        const currentUser = useAuthStore.getState().currentUser;
+        if (!currentUser || currentUser.role !== "provider") {
+          set({ bookings: [] });
+          return;
+        }
+        const providerId = currentUser.id;
         try {
           const res = await fetch("/api/bookings", {
-            headers: { "x-user-id": providerId }
+            headers: { "x-user-id": providerId },
+            cache: "no-store"
           });
           if (res.ok) {
             const dbBookings = await res.json();
-            set({ bookings: dbBookings });
+            if (Array.isArray(dbBookings)) {
+              set({ bookings: dbBookings });
+            }
           }
-        } catch (e) {
-          console.error("Failed to load provider bookings:", e);
+        } catch (e: any) {
+          console.warn("Provider bookings sync retry:", e?.message || e);
         }
       },
 
-
-
       fetchProviderServices: async () => {
-        const providerId = useAuthStore.getState().currentUser?.id || "provider-1";
+        const currentUser = useAuthStore.getState().currentUser;
+        if (!currentUser || currentUser.role !== "provider") {
+          set({ services: [] });
+          return;
+        }
+        const providerId = currentUser.id;
         try {
-          const res = await fetch(`/api/services?providerId=${providerId}`);
+          const res = await fetch(`/api/services?providerId=${providerId}`, {
+            cache: "no-store"
+          });
           if (res.ok) {
             const dbServices = await res.json();
-            set({ services: dbServices });
+            if (Array.isArray(dbServices)) {
+              set({ services: dbServices });
+            }
           }
-        } catch (e) {
-          console.error("Failed to load provider services:", e);
+        } catch (e: any) {
+          console.warn("Provider services sync retry:", e?.message || e);
         }
       },
 
@@ -322,15 +363,33 @@ export const useProviderStore = create<ProviderStoreState>()(
         profile: { ...state.profile, ...updated }
       })),
 
-      syncWithAuthUser: (user) => set((state) => ({
-        profile: {
-          ...state.profile,
-          name: user.name || state.profile.name,
-          email: user.email || state.profile.email,
-          phone: user.phone || state.profile.phone,
-          photo: user.avatar || state.profile.photo
+      syncWithAuthUser: (user) => set((state) => {
+        const isDifferentUser = !!(user.email && state.profile.email && user.email.toLowerCase() !== state.profile.email.toLowerCase());
+        if (isDifferentUser) {
+          return {
+            profile: {
+              ...initialProfile,
+              name: user.name || initialProfile.name,
+              email: user.email || initialProfile.email,
+              phone: user.phone || initialProfile.phone,
+              photo: user.avatar || initialProfile.photo
+            },
+            bookings: [],
+            services: [],
+            conversations: [],
+            notifications: []
+          };
         }
-      })),
+        return {
+          profile: {
+            ...state.profile,
+            name: user.name || state.profile.name,
+            email: user.email || state.profile.email,
+            phone: user.phone || state.profile.phone,
+            photo: user.avatar || state.profile.photo
+          }
+        };
+      }),
 
       clearAllData: () => set(() => ({
         bookings: [],

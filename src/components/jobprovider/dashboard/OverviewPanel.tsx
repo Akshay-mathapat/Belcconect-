@@ -67,9 +67,9 @@ export function OverviewPanel() {
   ];
 
   const activeJobListings = [
-    { id: "J-001", title: "Senior Electrician", location: "Belagavi", salary: "₹25,000–35,000/mo", applicants: 18, status: "Active" },
-    { id: "J-002", title: "Plumbing Supervisor", location: "Hubli", salary: "₹20,000–28,000/mo", applicants: 9, status: "Active" },
-    { id: "J-003", title: "HVAC Technician", location: "Dharwad", salary: "₹15,000–20,000/mo", applicants: 5, status: "Paused" },
+    { id: "J-001", title: "Senior Electrician", location: "Belagavi", salary: "Competitive", applicants: 18, status: "Active" },
+    { id: "J-002", title: "Plumbing Supervisor", location: "Hubli", salary: "As per standards", applicants: 9, status: "Active" },
+    { id: "J-003", title: "HVAC Technician", location: "Dharwad", salary: "Best in industry", applicants: 5, status: "Paused" },
   ];
 
   const upcomingInterviews = [

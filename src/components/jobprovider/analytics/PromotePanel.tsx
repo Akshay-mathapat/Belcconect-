@@ -13,7 +13,6 @@ export function PromotePanel() {
       title: "Featured Listing",
       desc: "Highlighted with a 'Featured' badge. Shown at the top of category search results.",
       duration: "7 days",
-      price: "₹299",
       color: "text-amber-500",
       bg: "bg-amber-500/10",
       border: "border-amber-500/30",
@@ -24,7 +23,6 @@ export function PromotePanel() {
       title: "Top of Search",
       desc: "Your job appears at position #1 across all relevant searches in your city.",
       duration: "7 days",
-      price: "₹599",
       color: "text-primary",
       bg: "bg-primary/10",
       border: "border-primary/30",
@@ -35,7 +33,6 @@ export function PromotePanel() {
       title: "Social Boost",
       desc: "We share your listing across our WhatsApp groups, Instagram & Facebook pages.",
       duration: "1 post",
-      price: "₹199",
       color: "text-violet-500",
       bg: "bg-violet-500/10",
       border: "border-violet-500/30",
@@ -64,8 +61,7 @@ export function PromotePanel() {
             <h4 className="font-bold text-foreground mb-2">{plan.title}</h4>
             <p className="text-sm text-muted-foreground flex-1 mb-4">{plan.desc}</p>
             <div className="flex items-baseline gap-1 mb-4">
-              <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-              <span className="text-sm text-muted-foreground">/ {plan.duration}</span>
+              <span className="text-sm font-bold text-primary">{plan.duration} promotion</span>
             </div>
             <button className={`w-full py-2.5 text-sm font-semibold rounded-xl transition-all ${plan.popular ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border bg-card text-foreground hover:bg-muted"}`}>
               {t("jobprovider.activateBoost")}

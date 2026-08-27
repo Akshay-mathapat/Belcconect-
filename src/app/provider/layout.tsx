@@ -21,7 +21,9 @@ import {
   Settings,
   LogOut,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Video
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -29,6 +31,8 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
 import { ProviderSearchDropdown } from "@/components/provider/layout/ProviderSearchDropdown";
+import { OnboardingTour } from "@/components/common/OnboardingTour";
+import { useTourStore } from "@/store/useTourStore";
 
 export default function ProviderLayout({
   children,
@@ -43,6 +47,20 @@ export default function ProviderLayout({
   const { currentUser, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
+  const { startTour, hasCompletedTour } = useTourStore();
+
+  // Auto-start provider tour on first visit
+  useEffect(() => {
+    if (currentUser && currentUser.role === "provider") {
+      const isCompleted = hasCompletedTour("provider");
+      if (!isCompleted) {
+        const timer = setTimeout(() => {
+          startTour("provider");
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentUser, startTour, hasCompletedTour]);
 
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,7 +82,7 @@ export default function ProviderLayout({
     return () => unsub();
   }, []);
 
-  // Poll bookings/reviews every 5 seconds for real-time updates
+  // Poll bookings/reviews every 10 seconds for real-time updates
   useEffect(() => {
     if (!currentUser || currentUser.role !== "provider") return;
 
@@ -75,7 +93,7 @@ export default function ProviderLayout({
     // Start interval
     const interval = setInterval(() => {
       fetchProviderBookings();
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [currentUser, fetchProviderBookings, fetchProviderServices]);
@@ -321,7 +339,7 @@ export default function ProviderLayout({
                             }`}
                         >
                           <opt.icon className="h-4 w-4" />
-                          {opt.label}
+                          {opt.value === "light" ? t("common.lightMode") : opt.value === "dark" ? t("common.darkMode") : t("common.systemMode")}
                         </button>
                       ))}
                     </motion.div>
@@ -398,6 +416,18 @@ export default function ProviderLayout({
                       <button
                         type="button"
                         onClick={() => {
+                          setUserMenuOpen(false);
+                          startTour("provider");
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-medium transition-colors cursor-pointer"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        <span>{t("tour.takeProductTour")}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
                           logout();
                           setUserMenuOpen(false);
                           router.push("/");
@@ -405,7 +435,7 @@ export default function ProviderLayout({
                         className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold transition-colors cursor-pointer"
                       >
                         <LogOut className="h-4 w-4" />
-                        <span>{t("jobprovider.signOut")}</span>
+                        <span>{t("common.signOut")}</span>
                       </button>
                     </motion.div>
                   )}
@@ -485,6 +515,8 @@ export default function ProviderLayout({
         })}
       </div>
 
+      {/* Onboarding Tour Engine */}
+      <OnboardingTour />
     </div>
   );
 }

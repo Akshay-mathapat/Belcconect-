@@ -91,10 +91,24 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
               const Icon = item.icon;
               const label = t(`serviceProvider.${item.key}`);
 
+              const tourAttr =
+                item.key === "addNewService"
+                  ? "add-service"
+                  : item.key === "availability"
+                  ? "provider-availability"
+                  : item.key === "calendar"
+                  ? "provider-calendar"
+                  : item.key === "bookings"
+                  ? "provider-bookings"
+                  : item.key === "dashboard"
+                  ? "provider-dashboard"
+                  : undefined;
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-tour={tourAttr}
                   className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
                     isActive
                       ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
@@ -123,7 +137,7 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
         </div>
 
         {/* Provider Profile Summary Footer */}
-        <div className="p-3 border-t border-border/50 bg-muted/20">
+        <div className="p-3 border-t border-border/50 bg-muted/20" id="tour-provider-kyc">
           <Link href="/provider/profile" className="flex items-center gap-3">
             <img
               src={profile.photo}
@@ -197,10 +211,24 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                     const Icon = item.icon;
                     const label = t(`serviceProvider.${item.key}`);
 
+                    const tourAttr =
+                      item.key === "addNewService"
+                        ? "add-service"
+                        : item.key === "availability"
+                        ? "provider-availability"
+                        : item.key === "calendar"
+                        ? "provider-calendar"
+                        : item.key === "bookings"
+                        ? "provider-bookings"
+                        : item.key === "dashboard"
+                        ? "provider-dashboard"
+                        : undefined;
+
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
+                        data-tour={tourAttr}
                         onClick={handleNavClick}
                         className={`relative flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
                           isActive
