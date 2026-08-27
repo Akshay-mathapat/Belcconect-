@@ -1,48 +1,71 @@
 import { NextResponse } from "next/server";
-import { query, hashPassword } from "@/lib/db";
+import { query, verifyPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { parseAndValidate, loginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  try {
-    const { email, password } = await request.json();
+  // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
+  const rateLimit = checkRateLimit(request, 5, 5 * 60 * 1000);
+  if (!rateLimit.isAllowed && rateLimit.response) {
+    return rateLimit.response;
+  }
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  try {
+    // 2. Strict Zod Schema Validation
+    const validation = await parseAndValidate(request, loginSchema);
+    if (validation.response) {
+      return validation.response;
     }
 
+    const { email, password } = validation.data;
     const cleanEmail = email.trim().toLowerCase();
-    const hashedPassword = hashPassword(password);
 
     let userObj: any = null;
 
     // 1. Check customers (role: user)
     const custRes = await query(
-      "SELECT id, email, name, phone, avatar FROM customers WHERE email = $1 AND password_hash = $2",
-      [cleanEmail, hashedPassword]
+      "SELECT id, email, name, phone, avatar, password_hash FROM customers WHERE email = $1",
+      [cleanEmail]
     );
     if (custRes.rows.length > 0) {
-      userObj = { ...custRes.rows[0], role: "user" };
+      const candidate = custRes.rows[0];
+      const isMatch = await verifyPassword(password, candidate.password_hash);
+      if (isMatch) {
+        userObj = { ...candidate, role: "user" };
+        delete userObj.password_hash;
+      }
     }
 
     // 2. Check service_providers (role: provider)
     if (!userObj) {
       const provRes = await query(
-        "SELECT id, email, name, phone, avatar FROM service_providers WHERE email = $1 AND password_hash = $2",
-        [cleanEmail, hashedPassword]
+        "SELECT id, email, name, phone, avatar, password_hash FROM service_providers WHERE email = $1",
+        [cleanEmail]
       );
       if (provRes.rows.length > 0) {
-        userObj = { ...provRes.rows[0], role: "provider" };
+        const candidate = provRes.rows[0];
+        const isMatch = await verifyPassword(password, candidate.password_hash);
+        if (isMatch) {
+          userObj = { ...candidate, role: "provider" };
+          delete userObj.password_hash;
+        }
       }
     }
 
     // 3. Check job_providers (role: job_provider)
     if (!userObj) {
       const empRes = await query(
-        "SELECT id, email, name, phone, avatar FROM job_providers WHERE email = $1 AND password_hash = $2",
-        [cleanEmail, hashedPassword]
+        "SELECT id, email, name, phone, avatar, password_hash FROM job_providers WHERE email = $1",
+        [cleanEmail]
       );
       if (empRes.rows.length > 0) {
-        userObj = { ...empRes.rows[0], role: "job_provider" };
+        const candidate = empRes.rows[0];
+        const isMatch = await verifyPassword(password, candidate.password_hash);
+        if (isMatch) {
+          userObj = { ...candidate, role: "job_provider" };
+          delete userObj.password_hash;
+        }
       }
     }
 

@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import crypto from "crypto";
+import argon2 from "argon2";
 
 const connectionString =
   process.env.DATABASE_URL ||
@@ -24,8 +25,22 @@ if (process.env.NODE_ENV !== "production") {
 let dbInitialized = false;
 let initPromise: Promise<void> | null = null;
 
-export function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password).digest("hex");
+export async function hashPassword(password: string): Promise<string> {
+  return argon2.hash(password, { type: argon2.argon2id });
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (!hash) return false;
+  if (hash.startsWith("$argon2id$") || hash.startsWith("$argon2i$") || hash.startsWith("$argon2d$")) {
+    try {
+      return await argon2.verify(hash, password);
+    } catch {
+      return false;
+    }
+  }
+  // Legacy SHA-256 fallback for seeded demo accounts
+  const legacyHash = crypto.createHash("sha256").update(password).digest("hex");
+  return legacyHash === hash;
 }
 
 export async function initDB() {
@@ -305,7 +320,7 @@ export async function initDB() {
         WHERE status IN ('INITIATED', 'RINGING', 'ACCEPTED', 'CONNECTED')
       `);
 
-      const defaultHash = hashPassword("password123");
+      const defaultHash = await hashPassword("password123");
 
       // Seed default customer
       await client.query(`

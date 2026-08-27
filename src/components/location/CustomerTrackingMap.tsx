@@ -72,6 +72,8 @@ export default function CustomerTrackingMap({
     lng: initialProviderLongitude || defaultProviderLng
   });
 
+  const hasRealGpsRef = useRef<boolean>(false);
+
   // 1. Join Socket.IO Room & listen for live location updates
   useEffect(() => {
     const socket = getSocket();
@@ -83,11 +85,20 @@ export default function CustomerTrackingMap({
       if (data && data.bookingId === bookingId && data.latitude && data.longitude) {
         const newLat = Number(data.latitude);
         const newLng = Number(data.longitude);
-        setProviderCoords({ lat: newLat, lng: newLng });
+        hasRealGpsRef.current = true;
 
-        if (typeof data.heading === "number" && !isNaN(data.heading)) {
-          setHeading(data.heading);
-        }
+        setProviderCoords((prevCoords) => {
+          if (typeof data.heading === "number" && !isNaN(data.heading) && data.heading !== 0) {
+            setHeading(data.heading);
+          } else if (prevCoords.lat !== newLat || prevCoords.lng !== newLng) {
+            const computedHeading = calculateBearing(prevCoords.lat, prevCoords.lng, newLat, newLng);
+            if (computedHeading !== 0) {
+              setHeading(computedHeading);
+            }
+          }
+          return { lat: newLat, lng: newLng };
+        });
+
         const ts = data.timestamp || Date.now();
         setLastPingTimestamp(ts);
       }
@@ -184,10 +195,13 @@ export default function CustomerTrackingMap({
     };
   }, [destinationLatitude, destinationLongitude]);
 
-  // 4. Continuous Route Movement Simulation Loop
+  // 4. Continuous Route Movement Simulation Loop (Fallback when no live GPS stream active)
   // Moves vehicle step-by-step along polyline towards destination
   useEffect(() => {
     const motionInterval = setInterval(() => {
+      // If live GPS stream is actively emitting real location data from provider device, pause fallback simulation
+      if (hasRealGpsRef.current) return;
+
       const coordsList = routeCoordinatesRef.current;
       if (!coordsList || coordsList.length < 2) return;
 

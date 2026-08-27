@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
 import { query, hashPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { parseAndValidate, registerSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  try {
-    const { email, password, name, phone, role, avatar } = await request.json();
+  // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
+  const rateLimit = checkRateLimit(request, 5, 5 * 60 * 1000);
+  if (!rateLimit.isAllowed && rateLimit.response) {
+    return rateLimit.response;
+  }
 
-    if (!email || !password || !role) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  try {
+    // 2. Strict Zod Schema Validation
+    const validation = await parseAndValidate(request, registerSchema);
+    if (validation.response) {
+      return validation.response;
     }
+
+    const { email, password, name, phone, role, avatar } = validation.data;
 
     const cleanEmail = email.trim().toLowerCase();
 
@@ -30,7 +40,7 @@ export async function POST(request: Request) {
     if (role === "job_provider") prefix = "emp";
 
     const userId = `${prefix}-${Date.now()}`;
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     const defaultAvatar = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name || cleanEmail)}`;
 
     let targetTable = "customers";

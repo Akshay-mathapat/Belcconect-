@@ -85,7 +85,7 @@ export function useLiveLocationBroadcast(
 
       setLastPosition(newPos);
 
-      // Throttling logic: send if moved >20m OR at least 10 seconds elapsed
+      // High-precision tracking broadcast: send if moved >3m OR at least 2.5 seconds elapsed
       let shouldSend = false;
 
       if (!lastSentPositionRef.current) {
@@ -99,7 +99,7 @@ export function useLiveLocationBroadcast(
           longitude
         );
 
-        if (distMeters >= 20 || timeElapsedMs >= 10000) {
+        if (distMeters >= 3 || timeElapsedMs >= 2500) {
           shouldSend = true;
         }
       }
