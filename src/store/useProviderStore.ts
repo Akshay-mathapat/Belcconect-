@@ -130,73 +130,100 @@ export const useProviderStore = create<ProviderStoreState>()(
 
       updateBookingStatus: async (id, status) => {
         try {
+          const token = typeof window !== "undefined"
+            ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
+            : null;
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
           const res = await fetch(`/api/bookings/${id}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({ status })
           });
+          
           if (res.ok) {
             const data = await res.json();
-            if (data.success) {
+            if (data.success && data.booking) {
               set((state) => ({
                 bookings: state.bookings.map((b) => b.id === id ? data.booking : b)
               }));
+              try {
+                const bc = new BroadcastChannel("cityconnect-bookings-sync");
+                bc.postMessage({ type: "REFRESH_BOOKINGS" });
+                bc.close();
+              } catch (e) {}
+              return;
             }
-          } else {
-            // Fallback local update if API fails
-            set((state) => ({
-              bookings: state.bookings.map((b) => b.id === id ? { ...b, status } : b)
-            }));
           }
-        } catch (e) {
+          const errBody = await res.json().catch(() => ({ error: "Failed to update status on server" }));
+          throw new Error(errBody.error || `Server returned ${res.status}`);
+        } catch (e: any) {
           console.error(`Failed to update booking status for ${id}:`, e);
-          set((state) => ({
-            bookings: state.bookings.map((b) => b.id === id ? { ...b, status } : b)
-          }));
-        } finally {
-          try {
-            const bc = new BroadcastChannel("cityconnect-bookings-sync");
-            bc.postMessage({ type: "REFRESH_BOOKINGS" });
-            bc.close();
-          } catch (e) {}
+          throw e;
         }
       },
 
       deleteBooking: async (id) => {
         try {
-          await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+          const token = typeof window !== "undefined"
+            ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
+            : null;
+          const headers: Record<string, string> = {};
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
+          const res = await fetch(`/api/bookings/${id}`, {
+            method: "DELETE",
+            headers
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: "Failed to delete booking on server" }));
+            throw new Error(errBody.error || `Server returned ${res.status}`);
+          }
+
           set((state) => ({
             bookings: state.bookings.filter((b) => b.id !== id)
           }));
+
           try {
             const bc = new BroadcastChannel("cityconnect-bookings-sync");
             bc.postMessage({ type: "REFRESH_BOOKINGS" });
             bc.close();
           } catch (e) {}
-        } catch (e) {
+        } catch (e: any) {
           console.error(`Failed to delete booking ${id}:`, e);
-          set((state) => ({
-            bookings: state.bookings.filter((b) => b.id !== id)
-          }));
+          throw e;
         }
       },
 
       fetchProviderBookings: async () => {
         const currentUser = useAuthStore.getState().currentUser;
         if (!currentUser || currentUser.role !== "provider") {
-          set({ bookings: [] });
+          if (get().bookings.length > 0) {
+            set({ bookings: [] });
+          }
           return;
         }
         const providerId = currentUser.id;
         try {
+          const token = typeof window !== "undefined"
+            ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
+            : null;
+          const headers: Record<string, string> = { "x-user-id": providerId };
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
           const res = await fetch("/api/bookings", {
-            headers: { "x-user-id": providerId },
+            headers,
             cache: "no-store"
           });
           if (res.ok) {
             const dbBookings = await res.json();
             if (Array.isArray(dbBookings)) {
-              set({ bookings: dbBookings });
+              const current = get().bookings;
+              if (JSON.stringify(current) !== JSON.stringify(dbBookings)) {
+                set({ bookings: dbBookings });
+              }
             }
           }
         } catch (e: any) {
@@ -207,7 +234,9 @@ export const useProviderStore = create<ProviderStoreState>()(
       fetchProviderServices: async () => {
         const currentUser = useAuthStore.getState().currentUser;
         if (!currentUser || currentUser.role !== "provider") {
-          set({ services: [] });
+          if (get().services.length > 0) {
+            set({ services: [] });
+          }
           return;
         }
         const providerId = currentUser.id;
@@ -218,7 +247,10 @@ export const useProviderStore = create<ProviderStoreState>()(
           if (res.ok) {
             const dbServices = await res.json();
             if (Array.isArray(dbServices)) {
-              set({ services: dbServices });
+              const current = get().services;
+              if (JSON.stringify(current) !== JSON.stringify(dbServices)) {
+                set({ services: dbServices });
+              }
             }
           }
         } catch (e: any) {
@@ -227,7 +259,11 @@ export const useProviderStore = create<ProviderStoreState>()(
       },
 
       addService: async (newSrv) => {
-        const providerId = useAuthStore.getState().currentUser?.id || "provider-1";
+        const providerId = useAuthStore.getState().currentUser?.id;
+        if (!providerId) {
+          console.error("Cannot add service: provider is not logged in.");
+          return;
+        }
         try {
           const res = await fetch("/api/services", {
             method: "POST",

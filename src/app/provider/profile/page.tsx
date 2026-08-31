@@ -260,11 +260,9 @@ export default function ProviderProfilePage() {
         {/* Top Info Banner */}
         <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-border">
           <div className="relative group">
-            <img
-              src={formData.photo || profile.photo}
-              alt={formData.name || profile.name}
-              className="w-24 h-24 rounded-3xl object-cover border-4 border-blue-600/30 shadow-lg shrink-0"
-            />
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-extrabold text-4xl flex items-center justify-center border-4 border-blue-600/30 shadow-lg shrink-0">
+              {profile.name ? profile.name.trim().charAt(0).toUpperCase() : "P"}
+            </div>
             {isEditing && (
               <label className="absolute inset-0 bg-black/50 rounded-3xl flex flex-col items-center justify-center text-white cursor-pointer opacity-90 group-hover:opacity-100 transition-opacity">
                 <Camera className="h-6 w-6" />

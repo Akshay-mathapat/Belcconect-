@@ -23,11 +23,9 @@ export async function POST(
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
-    // Authorization: call recipient or demo fallback
-    if (call.receiverId && call.receiverId !== authUser.userId) {
-      if (authUser.userId !== "customer-1" && authUser.userId !== "provider-1" && !authUser.userId.startsWith("cust") && !authUser.userId.startsWith("prov")) {
-        return NextResponse.json({ error: "Forbidden: Only the call receiver can accept this call" }, { status: 403 });
-      }
+    // Authorization: strict recipient match
+    if (!call.receiverId || call.receiverId !== authUser.userId) {
+      return NextResponse.json({ error: "Forbidden: Only the call receiver can accept this call" }, { status: 403 });
     }
 
     // Call status check: must be INITIATED or RINGING

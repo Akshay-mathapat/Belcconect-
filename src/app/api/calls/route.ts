@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const authUser = getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
-        { error: "Unauthorized: Missing or invalid authentication token" },
+        { error: "Please log in to start a voice call" },
         { status: 401 }
       );
     }
@@ -73,10 +73,9 @@ export async function POST(request: Request) {
 
     let booking: any = bookingRes.rows.length > 0 ? bookingRes.rows[0] : null;
 
-    // Fallback for seed / demo booking IDs if not yet in DB
     if (!booking) {
-      if (bookingId === "B-1001" || bookingId.startsWith("B-")) {
-        const isProvider = authenticatedUserId === "provider-1" || authUser.role === "provider";
+      if (process.env.DEMO_MODE === "true" && (bookingId === "B-1001" || bookingId.startsWith("B-"))) {
+        const isProvider = authUser.role === "provider";
         booking = {
           id: bookingId,
           customer_id: isProvider ? "customer-1" : authenticatedUserId,
@@ -89,18 +88,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Authorization Check: Flexible matching for customer, provider, role, or seed IDs
-    const isCustomer = authenticatedUserId === booking.customer_id ||
-                       booking.customer_id === "customer-1" ||
-                       authenticatedUserId === "customer-1" ||
-                       authenticatedUserId.startsWith("cust") ||
-                       authUser.role === "user";
-
-    const isProvider = authenticatedUserId === booking.provider_id ||
-                       booking.provider_id === "provider-1" ||
-                       authenticatedUserId === "provider-1" ||
-                       authenticatedUserId.startsWith("prov") ||
-                       authUser.role === "provider";
+    // 4. Authorization Check: Strict exact match with booking customer or provider ID
+    const isCustomer = authenticatedUserId === booking.customer_id;
+    const isProvider = authenticatedUserId === booking.provider_id;
 
     if (!isCustomer && !isProvider) {
       return NextResponse.json(
@@ -111,19 +101,10 @@ export async function POST(request: Request) {
 
     const actualCallerId = authenticatedUserId;
     
-    // Determine target receiver ID (ensure caller does not call themselves)
-    let receiverId = "";
-    if (authenticatedUserId === booking.provider_id || authUser.role === "provider" || authenticatedUserId.startsWith("prov") || authenticatedUserId === "provider-1") {
-      receiverId = (booking.customer_id && booking.customer_id !== actualCallerId) ? booking.customer_id : "customer-1";
-    } else {
-      receiverId = (booking.provider_id && booking.provider_id !== actualCallerId) ? booking.provider_id : "provider-1";
-    }
+    // Determine target receiver ID (the opposite participant in the booking)
+    const receiverId = isCustomer ? booking.provider_id : booking.customer_id;
 
-    if (receiverId === actualCallerId) {
-      receiverId = actualCallerId.includes("provider") || actualCallerId.startsWith("prov") ? "customer-1" : "provider-1";
-    }
-
-    if (!receiverId) {
+    if (!receiverId || receiverId === actualCallerId) {
       return NextResponse.json({ error: "Receiver not found for this booking" }, { status: 400 });
     }
 

@@ -20,7 +20,12 @@ export interface SocketSignalPayload {
 }
 
 const SIGNALING_SERVER_URL = process.env.SIGNALING_SERVER_URL || process.env.NEXT_PUBLIC_SIGNALING_URL || "http://localhost:4001";
-const SIGNALING_INTERNAL_SECRET = process.env.SIGNALING_INTERNAL_SECRET || "cityconnect_signaling_secret_key_2026";
+// DO NOT FALL BACK TO ANY DEFAULT VALUE, EMPTY STRING INCLUDED, FOR A SECRET USED IN AN AUTHORIZATION OR SIGNATURE CHECK — FAIL STARTUP INSTEAD.
+const SIGNALING_INTERNAL_SECRET = process.env.SIGNALING_INTERNAL_SECRET;
+
+if (!SIGNALING_INTERNAL_SECRET && typeof window === "undefined") {
+  throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing.");
+}
 
 /**
  * Non-blocking signaling relay to external Socket.IO signaling server.

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 // Helper to map DB row to frontend address object
 function mapRowToAddress(row: any) {
@@ -27,10 +28,11 @@ function mapRowToAddress(row: any) {
 
 export async function GET(request: Request) {
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = authUser.userId;
 
     const res = await query(
       "SELECT * FROM addresses WHERE user_id = $1 ORDER BY created_at DESC",
@@ -47,9 +49,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      userId,
+      userId: bodyUserId,
       type,
       text,
       latitude,
@@ -67,8 +74,10 @@ export async function POST(request: Request) {
       deliveryInstructions
     } = body;
 
-    if (!userId || !type) {
-      return NextResponse.json({ error: "userId and type are required" }, { status: 400 });
+    const userId = authUser.userId;
+
+    if (!type) {
+      return NextResponse.json({ error: "Address type is required" }, { status: 400 });
     }
 
     // Validate coordinates range if present

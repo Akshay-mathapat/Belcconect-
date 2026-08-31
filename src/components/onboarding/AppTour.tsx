@@ -1,19 +1,37 @@
 "use client";
 
-import { useAuthStore } from "@/store/useAuthStore";
-import { CustomerTour } from "./CustomerTour";
-import { ProviderTour } from "./ProviderTour";
+import React from "react";
+import { OnboardingProvider, useOnboardingTour } from "./OnboardingContext";
+import { TourOverlay } from "./TourOverlay";
+import { TourCard } from "./TourCard";
+import { WelcomeModal } from "./WelcomeModal";
+import { SkipConfirmationModal } from "./SkipConfirmationModal";
+
+function TourContent() {
+  const { currentStep, isOpen, isFinishedScreen } = useOnboardingTour();
+
+  return (
+    <>
+      <WelcomeModal />
+      <TourOverlay currentStep={currentStep} isOpen={isOpen} isFinishedScreen={isFinishedScreen} />
+      <TourCard />
+      <SkipConfirmationModal />
+    </>
+  );
+}
 
 export function AppTour() {
-  const { currentUser } = useAuthStore();
+  return (
+    <OnboardingProvider>
+      <TourContent />
+    </OnboardingProvider>
+  );
+}
 
-  if (!currentUser || currentUser.isFirstLogin === false) {
-    return null;
-  }
+export function CustomerTour() {
+  return <AppTour />;
+}
 
-  if (currentUser.role === "provider") {
-    return <ProviderTour />;
-  }
-
-  return <CustomerTour />;
+export function ProviderTour() {
+  return <AppTour />;
 }

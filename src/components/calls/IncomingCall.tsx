@@ -95,11 +95,9 @@ export default function IncomingCall({ call, onAccept, onReject }: IncomingCallP
         {/* Caller Avatar with Ringing Waves */}
         <div className="relative mb-6">
           <span className="absolute inset-0 rounded-full bg-emerald-500/40 animate-ping opacity-75" />
-          <img
-            src={callerAvatar}
-            alt={callerName}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-slate-800 shadow-2xl relative z-10"
-          />
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-extrabold text-4xl sm:text-5xl flex items-center justify-center border-4 border-slate-800 shadow-2xl relative z-10 shrink-0">
+            {callerName ? callerName.trim().charAt(0).toUpperCase() : "U"}
+          </div>
         </div>
 
         {/* Caller Meta */}

@@ -306,11 +306,9 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                   }}
                   className="flex items-center gap-2.5 p-1 rounded-full hover:bg-muted transition-colors focus:outline-none cursor-pointer"
                 >
-                  <img
-                    src={currentUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                    alt={currentUser.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-blue-600/40 shadow-sm"
-                  />
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border-2 border-blue-600/40 shadow-sm shrink-0">
+                    {currentUser.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
+                  </div>
                   <span className="text-xs font-bold text-foreground block max-w-[110px] truncate">
                     {currentUser.name}
                   </span>
@@ -438,11 +436,9 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
             {/* Profile Info Section */}
             <div className="pt-3 border-t border-border/40">
               <div className="flex items-center gap-3 px-1">
-                <img
-                  src={currentUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                  alt={currentUser?.name || "demo"}
-                  className="w-10 h-10 rounded-xl object-cover shrink-0 border border-border shadow-sm"
-                />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-border shadow-sm shrink-0">
+                  {currentUser?.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                     {currentUser?.name || "demo"}

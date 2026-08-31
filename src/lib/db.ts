@@ -2,9 +2,12 @@ import { Pool } from "pg";
 import crypto from "crypto";
 import argon2 from "argon2";
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  "postgresql://postgres:Akshay_a015@127.0.0.1:5432/cityconnect";
+// DO NOT REINTRODUCE HARDCODED FALLBACKS FOR SECRETS (JWT_SECRET, DATABASE_URL, SIGNALING_INTERNAL_SECRET, LIVEKIT_API_SECRET, VAPID_PRIVATE_KEY) UNDER ANY CIRCUMSTANCES, INCLUDING LOCAL DEV CONVENIENCE.
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString && typeof window === "undefined") {
+  throw new Error("FATAL: DATABASE_URL environment variable is missing.");
+}
 
 
 declare global {
@@ -179,6 +182,18 @@ export async function initDB() {
       await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_landmark TEXT`);
       await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS destination_instructions TEXT`);
       await client.query(`CREATE INDEX IF NOT EXISTS idx_bookings_dest_lat_lng ON bookings(destination_latitude, destination_longitude)`);
+
+      // Real-time provider and customer live tracking columns
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_current_latitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_current_longitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_location_updated_at TIMESTAMPTZ`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS provider_location_accuracy NUMERIC`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_current_latitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_current_longitude NUMERIC(10,7)`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_location_updated_at TIMESTAMPTZ`);
+      await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_location_accuracy NUMERIC`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_bookings_provider_loc ON bookings(provider_location_updated_at)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_bookings_customer_loc ON bookings(customer_location_updated_at)`);
 
       await client.query(`
         ALTER TABLE services DROP COLUMN IF EXISTS base_price

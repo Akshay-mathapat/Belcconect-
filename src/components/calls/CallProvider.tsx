@@ -41,19 +41,21 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuthStore();
 
   const currentUserId = useMemo(() => {
+    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
     const isProviderPortal = pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider");
     if (currentUser?.id) {
       return currentUser.id;
     }
-    return isProviderPortal ? "provider-1" : "customer-1";
+    return isDemo ? (isProviderPortal ? "provider-1" : "customer-1") : "";
   }, [pathname, currentUser]);
 
   const userToken = currentUser?.token;
 
   const getHeaders = useCallback(() => {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (userToken) {
-      headers["Authorization"] = `Bearer ${userToken}`;
+    const token = userToken || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
     if (currentUserId) {
       headers["x-user-id"] = currentUserId;
@@ -285,9 +287,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   // Start Call (Caller side) - Optimistic UI update
   const startCall = useCallback(async (bookingId: string) => {
+    if (!currentUserId) {
+      alert("Please log in to initiate a voice call.");
+      return;
+    }
+    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
     const isProviderPortal = pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider");
     const isUserProvider = currentUserId ? (currentUserId.includes("prov") || currentUserId === "provider-1") : isProviderPortal;
-    const tempReceiverId = isUserProvider ? "customer-1" : "provider-1";
+    const tempReceiverId = isUserProvider ? (isDemo ? "customer-1" : "") : (isDemo ? "provider-1" : "");
 
     const tempCall: CallRecord = {
       id: `temp-${Date.now()}`,

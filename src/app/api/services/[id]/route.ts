@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function PATCH(
   request: Request,
@@ -7,6 +8,11 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, category, subcategory, description, isAvailable } = body;
 
@@ -14,6 +20,14 @@ export async function PATCH(
     const checkRes = await query("SELECT * FROM services WHERE id = $1", [id]);
     if (checkRes.rows.length === 0) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    }
+
+    const service = checkRes.rows[0];
+    if (service.provider_id !== authUser.userId && authUser.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden: You are not authorized to update this service" },
+        { status: 403 }
+      );
     }
 
     let updateFields: string[] = [];
@@ -94,10 +108,23 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
+    }
+
     // Check if service exists
     const checkRes = await query("SELECT * FROM services WHERE id = $1", [id]);
     if (checkRes.rows.length === 0) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    }
+
+    const service = checkRes.rows[0];
+    if (service.provider_id !== authUser.userId && authUser.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden: You are not authorized to delete this service" },
+        { status: 403 }
+      );
     }
 
     await query("DELETE FROM services WHERE id = $1", [id]);

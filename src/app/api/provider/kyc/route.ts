@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function GET(request: Request) {
   try {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const headerUserId = request.headers.get("x-user-id");
-    const providerId = searchParams.get("providerId") || headerUserId || "provider-1";
+    const paramProviderId = searchParams.get("providerId");
+    const providerId = authUser.userId;
+
+    if (paramProviderId && paramProviderId !== providerId && authUser.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden: You can only view your own KYC details" }, { status: 403 });
+    }
 
     const res = await query(
       `SELECT 
@@ -54,9 +64,22 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+    }
+
+    if (authUser.role !== "provider" && authUser.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden: Provider account required for KYC submission" }, { status: 403 });
+    }
+
     const body = await request.json();
-    const headerUserId = request.headers.get("x-user-id");
-    const providerId = body.providerId || headerUserId || "provider-1";
+    const bodyProviderId = body.providerId;
+    const providerId = authUser.userId;
+
+    if (bodyProviderId && bodyProviderId !== providerId && authUser.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden: You can only submit KYC for your own account" }, { status: 403 });
+    }
 
     const {
       documentType,
@@ -80,8 +103,8 @@ export async function POST(request: Request) {
          kyc_document_type = $2,
          kyc_document_number = $3,
          kyc_document_photo = COALESCE(NULLIF($4, ''), kyc_document_photo),
-         kyc_status = 'Verified',
-         is_verified = TRUE,
+         kyc_status = 'Pending',
+         is_verified = FALSE,
          pan_number = COALESCE($5, pan_number),
          aadhaar_number = COALESCE($6, aadhaar_number)
        WHERE id = $7
@@ -109,7 +132,7 @@ export async function POST(request: Request) {
           id, name, email, phone, kyc_document_type, kyc_document_number, 
           kyc_document_photo, kyc_status, is_verified, pan_number, aadhaar_number
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, 'Verified', TRUE, $8, $9
+          $1, $2, $3, $4, $5, $6, $7, 'Pending', FALSE, $8, $9
         )
         RETURNING 
           id, name, email, phone, 

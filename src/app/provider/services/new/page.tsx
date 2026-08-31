@@ -89,7 +89,7 @@ export default function NewServicePage() {
           </p>
         </motion.div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form data-tour="add-service" onSubmit={handleSubmit} className="space-y-8">
           
           {/* Section 1: Basic Info */}
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">

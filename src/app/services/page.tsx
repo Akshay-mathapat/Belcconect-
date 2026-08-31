@@ -4,17 +4,27 @@ import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { Search, Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { SERVICE_CATEGORIES, SERVICE_TAXONOMY } from "@/constants/site";
 
 const iconMap: Record<string, any> = {
   Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
 };
 
-export default function ServicesPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+function ServicesContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") || "";
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const queryFromUrl = searchParams.get("q");
+    if (queryFromUrl !== null) {
+      setSearchQuery(queryFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -267,5 +277,17 @@ export default function ServicesPage() {
 
       <Footer />
     </main>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   );
 }

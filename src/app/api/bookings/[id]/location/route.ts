@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
-const ACTIVE_TRACKING_STATUSES = ["Accepted", "OnTheWay", "Started"];
+// DEPRECATED: Legacy generic endpoint. Applications should use /api/bookings/:id/provider-location or /api/bookings/:id/customer-location.
+const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Started"];
 
 export async function POST(
   request: Request,
@@ -9,24 +11,38 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
+    // 1. Authenticate user from session token
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing or invalid authentication token" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { latitude, longitude } = body;
 
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
     if (
-      typeof latitude !== "number" ||
-      typeof longitude !== "number" ||
-      isNaN(latitude) ||
-      isNaN(longitude)
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
     ) {
       return NextResponse.json(
-        { error: "Invalid latitude or longitude" },
+        { error: "Invalid latitude or longitude coordinate values" },
         { status: 400 }
       );
     }
 
     // Retrieve booking to validate existence & status
     const bookingRes = await query(
-      "SELECT id, status, provider_id FROM bookings WHERE id = $1 LIMIT 1",
+      "SELECT id, status, customer_id, provider_id FROM bookings WHERE id = $1 LIMIT 1",
       [id]
     );
 
@@ -35,6 +51,17 @@ export async function POST(
     }
 
     const booking = bookingRes.rows[0];
+
+    // 2. Authorize: authenticated user ID must match assigned provider_id or customer_id strictly
+    const isAssignedProvider = authUser.userId === booking.provider_id;
+    const isAssignedCustomer = authUser.userId === booking.customer_id;
+
+    if (!isAssignedProvider && !isAssignedCustomer) {
+      return NextResponse.json(
+        { error: "Forbidden: You are not an authorized participant in this booking" },
+        { status: 403 }
+      );
+    }
 
     // Validate that booking is in active tracking window
     if (!ACTIVE_TRACKING_STATUSES.includes(booking.status)) {
@@ -47,32 +74,38 @@ export async function POST(
       );
     }
 
-    // Optional provider authentication check
-    const userIdHeader = request.headers.get("x-user-id");
-    if (userIdHeader && booking.provider_id) {
-      const lowerUser = userIdHeader.toLowerCase();
-      const lowerProv = booking.provider_id.toLowerCase();
-      // Allow provider match or fallback demo provider
-      if (lowerUser !== lowerProv && !lowerUser.startsWith("prov")) {
-        return NextResponse.json({ error: "Unauthorized provider" }, { status: 403 });
-      }
-    }
+    const accValue = typeof body.accuracy === "number" && !isNaN(body.accuracy) ? body.accuracy : null;
 
-    // Fast asynchronous update of provider location
-    await query(
-      `UPDATE bookings 
-       SET provider_current_latitude = $1,
-           provider_current_longitude = $2,
-           provider_location_updated_at = NOW()
-       WHERE id = $3`,
-      [latitude, longitude, id]
-    );
+    if (isAssignedProvider) {
+      // Fast asynchronous update of provider location
+      await query(
+        `UPDATE bookings 
+         SET provider_current_latitude = $1,
+             provider_current_longitude = $2,
+             provider_location_updated_at = NOW(),
+             provider_location_accuracy = $3
+         WHERE id = $4`,
+        [lat, lng, accValue, id]
+      );
+    } else {
+      // Fast asynchronous update of customer live location
+      await query(
+        `UPDATE bookings 
+         SET customer_current_latitude = $1,
+             customer_current_longitude = $2,
+             customer_location_updated_at = NOW(),
+             customer_location_accuracy = $3
+         WHERE id = $4`,
+        [lat, lng, accValue, id]
+      );
+    }
 
     return NextResponse.json({
       success: true,
       bookingId: id,
       latitude,
       longitude,
+      role: isAssignedProvider ? "provider" : "customer",
       updatedAt: new Date().toISOString()
     });
   } catch (error: any) {

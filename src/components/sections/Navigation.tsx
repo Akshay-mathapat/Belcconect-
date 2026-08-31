@@ -282,7 +282,7 @@ export default function Navigation() {
           </Link>
 
           {/* ═══════ Clean Simple Search Bar ═══════ */}
-          <div ref={searchRef} className="hidden lg:block flex-1 max-w-2xl relative">
+          <div ref={searchRef} data-tour="search-bar" className="hidden lg:block flex-1 max-w-2xl relative">
             <div className={`relative flex items-center rounded-full border-2 transition-all duration-200 ${searchFocused
               ? "border-primary bg-card shadow-lg shadow-primary/10"
               : "border-border bg-muted/50 hover:border-primary/40 hover:bg-card hover:shadow-md"
@@ -332,7 +332,7 @@ export default function Navigation() {
               <NotificationBell />
 
               {/* Language Switcher */}
-              <div ref={langRef} className="relative">
+              <div ref={langRef} className="relative" data-tour="language-switcher">
                 <button
                   onClick={() => {
                     const next = !langOpen;
@@ -426,6 +426,7 @@ export default function Navigation() {
               <div ref={userMenuRef} className="relative border-l border-border pl-3">
                 <button
                   type="button"
+                  data-tour="nav-user-menu"
                   onClick={() => {
                     const next = !userMenuOpen;
                     setUserMenuOpen(next);
@@ -438,11 +439,9 @@ export default function Navigation() {
                   className="flex items-center gap-2.5 p-1 rounded-full hover:bg-muted transition-colors focus:outline-none cursor-pointer"
                   suppressHydrationWarning
                 >
-                  <img
-                    src={currentUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                    alt={currentUser.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-blue-600/40 shadow-sm"
-                  />
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border-2 border-blue-600/40 shadow-sm shrink-0">
+                    {currentUser.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
+                  </div>
                   <span className="text-xs font-bold text-foreground hidden xl:block max-w-[110px] truncate">
                     {currentUser.name}
                   </span>
@@ -467,6 +466,7 @@ export default function Navigation() {
 
                       <Link
                         href={currentUser.role === "provider" ? "/provider" : currentUser.role === "job_provider" ? "/jobprovider" : "/account"}
+                        data-tour="my-bookings"
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl text-foreground hover:bg-muted font-medium transition-colors"
                       >
@@ -699,11 +699,9 @@ export default function Navigation() {
                 {currentUser ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/50 border border-border">
-                      <img
-                        src={currentUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                        alt={currentUser.name}
-                        className="w-10 h-10 rounded-full object-cover border-2 border-blue-600/40"
-                      />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border-2 border-blue-600/40 shadow-sm shrink-0">
+                        {currentUser.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
+                      </div>
                       <div className="overflow-hidden">
                         <p className="text-sm font-bold text-foreground truncate">{currentUser.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{currentUser.email}</p>

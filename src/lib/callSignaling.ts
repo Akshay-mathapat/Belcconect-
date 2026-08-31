@@ -60,22 +60,17 @@ class CallSignalingManager extends EventEmitter {
     if (!event || !event.call) return;
     const { callerId, receiverId } = event.call;
 
-    // Send to both caller and receiver IDs
+    // Send strictly to both caller and receiver IDs
     this.broadcastToUser(callerId, event);
     this.broadcastToUser(receiverId, event);
 
-    // Also broadcast to demo user aliases if needed for local cross-tab testing
-    if (callerId.includes("cust") || callerId === "customer-1") {
-      this.broadcastToUser("customer-1", event);
-    }
-    if (receiverId.includes("prov") || receiverId === "provider-1") {
-      this.broadcastToUser("provider-1", event);
-    }
-    if (callerId.includes("prov") || callerId === "provider-1") {
-      this.broadcastToUser("provider-1", event);
-    }
-    if (receiverId.includes("cust") || receiverId === "customer-1") {
-      this.broadcastToUser("customer-1", event);
+    if (process.env.DEMO_MODE === "true") {
+      if (callerId.includes("cust") || callerId === "customer-1") {
+        this.broadcastToUser("customer-1", event);
+      }
+      if (receiverId.includes("prov") || receiverId === "provider-1") {
+        this.broadcastToUser("provider-1", event);
+      }
     }
   }
 }

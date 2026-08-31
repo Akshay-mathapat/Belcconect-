@@ -39,11 +39,9 @@ export default function OutgoingCall({ call, onCancel }: OutgoingCallProps) {
         {/* Receiver Avatar with Ringing Animation */}
         <div className="relative mb-6">
           <span className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping opacity-75" />
-          <img
-            src={receiverAvatar}
-            alt={receiverName}
-            className="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-2xl relative z-10"
-          />
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-extrabold text-4xl flex items-center justify-center border-4 border-slate-800 shadow-2xl relative z-10 shrink-0">
+            {receiverName ? receiverName.trim().charAt(0).toUpperCase() : "U"}
+          </div>
         </div>
 
         {/* Receiver Meta */}

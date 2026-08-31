@@ -544,7 +544,21 @@
     "fullNameCompany": "Full Name / Company Name",
     "fullNameBusiness": "Full Name / Business Name",
     "phoneNumber": "Phone Number",
-    "emailAddress": "Email Address"
+    "emailAddress": "Email Address",
+    "loginRequiredTitle": "Login to Continue",
+    "loginRequiredDesc": "Sign in to book this service, chat, or connect with verified service providers.",
+    "loginToBookDesc": "Sign in to proceed with booking this service.",
+    "loginToChatDesc": "Sign in to chat directly with this service provider.",
+    "loginToCallDesc": "Sign in to start a voice call with this provider.",
+    "loginToSaveDesc": "Sign in to save this provider to your favourites.",
+    "loginToReviewDesc": "Sign in to submit a service review.",
+    "loginToTrackDesc": "Sign in to view live booking location tracking.",
+    "login": "Log In",
+    "createAccount": "Create Account",
+    "cancel": "Cancel",
+    "providerNotSelected": "Service provider not selected.",
+    "customerAccountRequired": "Customer account required for this action.",
+    "sessionExpired": "Session expired. Please log in again."
   },
   "account": {
     "myBookings": "My Bookings",
@@ -648,5 +662,29 @@
     "watchVideoGuide": "Watch Video Guide",
     "videoGuideTitle": "Video Walkthrough & Tutorials",
     "videoGuideDesc": "Watch step-by-step video guides for BelConnect platform."
+  },
+  "location": {
+    "live": "Live location",
+    "updating": "Location updating...",
+    "unavailable": "Provider location temporarily unavailable",
+    "lastUpdated": "Last updated {time}",
+    "lastKnown": "Last known location shown",
+    "routeUnavailable": "Route temporarily unavailable",
+    "estimatedEta": "Estimated ETA ~{eta} min",
+    "customerIsHere": "Customer is here",
+    "customerNearby": "Customer nearby",
+    "serviceDestination": "Service Destination",
+    "serviceSpot": "Service Spot",
+    "customerLive": "Customer Live",
+    "providerOnTheWay": "Provider is on the way",
+    "waitingProvider": "Waiting for provider's live location...",
+    "arrivingIn": "Arriving in ~{eta} min ({dist})",
+    "openGoogleMaps": "Open in Google Maps",
+    "navigateGoogleMaps": "Navigate in Google Maps",
+    "privacyNotice": "Strictly privacy-protected live tracking window.",
+    "destinationUnavailable": "Exact service location unavailable",
+    "navigationActive": "Navigation active",
+    "you": "You",
+    "customerLiveAvailable": "Customer live location available"
   }
 }

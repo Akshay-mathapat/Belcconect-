@@ -4,8 +4,9 @@ import { useState } from "react";
 import { MessageSquare, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import ChatWindow from "./ChatWindow";
-
 import { useTranslation } from "@/lib/i18n";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthRequiredDialog } from "@/components/auth/AuthRequiredDialog";
 
 interface ChatButtonProps {
   customerId?: string;
@@ -32,14 +33,18 @@ export default function ChatButton({
 }: ChatButtonProps) {
   const { currentUser } = useAuthStore();
   const { t } = useTranslation();
+  const { requireAuth, authDialogProps } = useRequireAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
 
-  const activeUserId = currentUser?.id || "customer-1";
-  const targetCustId = customerId || (activeUserId.startsWith("customer") ? activeUserId : "customer-1");
-  const targetProvId = providerId || (activeUserId.startsWith("provider") ? activeUserId : "provider-1");
-  const targetPeerName = peerName || (activeUserId.startsWith("provider") ? "Customer" : "Verified Provider");
+  const activeUserId = currentUser?.id || "";
+  const activeUserLower = activeUserId.toLowerCase();
+  const isProviderRole = currentUser?.role === "provider" || currentUser?.role === "job_provider" || activeUserLower.includes("provider") || activeUserLower.includes("prov");
+
+  const targetCustId = customerId || (!isProviderRole ? activeUserId : "");
+  const targetProvId = providerId || (isProviderRole ? activeUserId : "");
+  const targetPeerName = peerName || (isProviderRole ? "Customer" : "Verified Provider");
   const targetPeerId = activeUserId === targetCustId ? targetProvId : targetCustId;
 
   const displayTitle = title
@@ -50,12 +55,21 @@ export default function ChatButton({
           : title)
     : t("common.chat");
 
-  const handleOpenChat = async () => {
+  const startChatSession = async () => {
+    if (!targetCustId || !targetProvId) {
+      alert("Chat session cannot be initiated because participant identity is missing.");
+      return;
+    }
     try {
       setLoading(true);
+      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (activeUserId) headers["x-user-id"] = activeUserId;
+
       const res = await fetch("/api/chat/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           customerId: targetCustId,
           providerId: targetProvId,
@@ -74,6 +88,16 @@ export default function ChatButton({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenChat = () => {
+    const returnToUrl = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/";
+    requireAuth({
+      action: startChatSession,
+      returnTo: returnToUrl,
+      title: "Log In to Chat",
+      description: "Sign in to send direct messages and communicate with verified service providers."
+    });
   };
 
   return (
@@ -106,6 +130,8 @@ export default function ChatButton({
           </div>
         </div>
       )}
+
+      <AuthRequiredDialog {...authDialogProps} />
     </>
   );
 }

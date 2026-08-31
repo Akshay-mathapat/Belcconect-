@@ -242,6 +242,48 @@ export default function TimeSlotPicker({
 
   const totalAvailableCount = slotData.morning.length + slotData.afternoon.length + slotData.evening.length;
 
+  // Compute current today string for date comparison
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  const getEmptySlotMessage = () => {
+    const isPastDate = Boolean(selectedDate && selectedDate < todayStr);
+    const isToday = Boolean(selectedDate && selectedDate === todayStr);
+
+    if (isPastDate) {
+      return {
+        title: "Selected Date Has Passed",
+        description: `The selected date (${selectedDayObj.displayTitle}) is in the past. Please choose today or an upcoming date to view available time slots.`,
+        variant: "amber" as const,
+      };
+    }
+
+    if (isToday && slotData.totalPassed > 0 && slotData.totalBooked === 0) {
+      return {
+        title: "Today's Time Slots Have Passed",
+        description: `All time slots for today (${selectedDayObj.displayTitle}) have already passed. Please select tomorrow or another upcoming date to book your service.`,
+        variant: "amber" as const,
+      };
+    }
+
+    if (slotData.totalPassed > 0 && slotData.totalBooked > 0) {
+      return {
+        title: "No Available Slots For Today",
+        description: `Time slots for today (${selectedDayObj.displayTitle}) are either fully booked or have already passed. Please choose another date.`,
+        variant: "rose" as const,
+      };
+    }
+
+    return {
+      title: "All Slots Fully Booked",
+      description: `All time slots on ${selectedDayObj.displayTitle} have already been booked by other customers. Please choose another date.`,
+      variant: "rose" as const,
+    };
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Date Selection Header & Chips */}
@@ -295,6 +337,7 @@ export default function TimeSlotPicker({
           <span className="text-[11px] text-muted-foreground font-medium">Or pick another date:</span>
           <input
             type="date"
+            min={todayStr}
             value={selectedDate}
             onChange={(e) => {
               if (e.target.value) {
@@ -312,23 +355,31 @@ export default function TimeSlotPicker({
         <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
           <div>
-            <p className="font-bold">Provider Off Duty</p>
+            <p className="font-bold text-sm text-foreground">Provider Off Duty</p>
             <p className="text-[11px] opacity-90 mt-0.5">
               The service provider is not on duty on {selectedDayObj.fullDayName}s according to their weekly availability. Please choose another date.
             </p>
           </div>
         </div>
-      ) : totalAvailableCount === 0 ? (
-        <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
-          <div>
-            <p className="font-bold">All Slots Fully Booked</p>
-            <p className="text-[11px] opacity-90 mt-0.5">
-              All time slots on {selectedDayObj.displayTitle} have already been booked by other customers. Please choose another date.
-            </p>
+      ) : totalAvailableCount === 0 ? (() => {
+        const emptyInfo = getEmptySlotMessage();
+        const isAmber = emptyInfo.variant === "amber";
+        return (
+          <div className={`p-5 rounded-2xl text-xs font-semibold flex items-start gap-3 border ${
+            isAmber
+              ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+              : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+          }`}>
+            <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isAmber ? "text-amber-500" : "text-rose-500"}`} />
+            <div>
+              <p className="font-bold text-sm text-foreground">{emptyInfo.title}</p>
+              <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
+                {emptyInfo.description}
+              </p>
+            </div>
           </div>
-        </div>
-      ) : (
+        );
+      })() : (
         <div className="space-y-5 border-t border-border/80 pt-5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">

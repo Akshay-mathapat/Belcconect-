@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCallReport, getCallById } from "@/lib/calls";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function POST(
   request: Request,
@@ -7,13 +8,17 @@ export async function POST(
 ) {
   try {
     const { id: callId } = await params;
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
-    const headerUserId = request.headers.get("x-user-id");
-    const reporterId = body.reporterId || headerUserId;
+    const reporterId = authUser.userId;
     const { reason } = body;
 
-    if (!reporterId || !reason) {
-      return NextResponse.json({ error: "reporterId and reason are required" }, { status: 400 });
+    if (!reason) {
+      return NextResponse.json({ error: "reason is required" }, { status: 400 });
     }
 
     const call = await getCallById(callId);

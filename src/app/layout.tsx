@@ -47,6 +47,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
+import { AppTour } from "@/components/onboarding/AppTour";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -64,6 +66,7 @@ export default function RootLayout({
           <ThemeProvider>
             <CallProvider>
               <Navigation />
+              <AppTour />
               {children}
             </CallProvider>
           </ThemeProvider>

@@ -21,16 +21,20 @@ import {
   Sparkles,
   ArrowRight,
   Radio,
-  X
+  X,
+  HelpCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
+import { LanguageSelector } from "@/components/common/LanguageSelector";
 import CallButton from "@/components/calls/CallButton";
 import ChatButton from "@/components/chat/ChatButton";
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import LocationPicker, { ConfirmedLocationData } from "@/components/location/LocationPicker";
+import { DashboardHelpCard } from "@/components/onboarding/DashboardHelpCard";
+import { useOnboardingTour } from "@/components/onboarding/OnboardingContext";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -81,42 +85,45 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings, restartTour } = useAuthStore();
+  const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings } = useAuthStore();
+  const { restartTour: restartQuickGuide } = useOnboardingTour();
   const [activeTab, setActiveTab] = useState<"bookings" | "addresses" | "profile">("bookings");
   const { t } = useTranslation();
 
   useEffect(() => {
-    if (currentUser) {
-      // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
-      if (currentUser.id.startsWith("user-") && currentUser.id !== "customer-1") {
-        logout();
-        router.push("/login");
-        return;
-      }
+    if (!currentUser) {
+      router.push("/auth?mode=login&returnTo=/account");
+      return;
+    }
+    // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
+    if (currentUser.id.startsWith("user-") && currentUser.id !== "customer-1") {
+      logout();
+      router.push("/auth?mode=login&returnTo=/account");
+      return;
+    }
+    fetchUserBookings().catch(() => {});
+
+    const intervalId = setInterval(() => {
       fetchUserBookings().catch(() => {});
+    }, 5000);
 
-      const intervalId = setInterval(() => {
-        fetchUserBookings().catch(() => {});
-      }, 5000);
-
-      let syncChannel: BroadcastChannel | null = null;
-      try {
-        syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
-        syncChannel.onmessage = (event) => {
-          if (event.data?.type === "REFRESH_BOOKINGS") {
-            fetchUserBookings().catch(() => {});
-          }
-        };
-      } catch (e) {}
-
-      return () => {
-        clearInterval(intervalId);
-        if (syncChannel) {
-          try { syncChannel.close(); } catch (e) {}
+    let syncChannel: BroadcastChannel | null = null;
+    try {
+      syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
+      syncChannel.onmessage = (event) => {
+        if (event.data?.type === "REFRESH_BOOKINGS") {
+          fetchUserBookings().catch(() => {});
         }
       };
-    }
-  }, [fetchUserBookings, currentUser?.id, router, logout]);
+    } catch (e) {}
+
+    return () => {
+      clearInterval(intervalId);
+      if (syncChannel) {
+        try { syncChannel.close(); } catch (e) {}
+      }
+    };
+  }, [fetchUserBookings, currentUser, router, logout]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
@@ -353,11 +360,9 @@ export default function AccountPage() {
               {/* Reduced Blue Profile Card */}
               <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl flex flex-col items-center text-center gap-3">
                 <div className="relative">
-                  <img
-                    src={activeUser.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                    alt={activeUser.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-white/30 shadow-md"
-                  />
+                  <div className="w-16 h-16 rounded-full bg-white/20 text-white font-bold text-2xl flex items-center justify-center border-2 border-white/30 shadow-md shrink-0">
+                    {activeUser.name ? activeUser.name.trim().charAt(0).toUpperCase() : "U"}
+                  </div>
                 </div>
                 <div className="overflow-hidden w-full">
                   <h2 className="text-lg font-bold font-heading truncate">
@@ -430,17 +435,20 @@ export default function AccountPage() {
 
                 <button
                   type="button"
-                  onClick={() => restartTour()}
-                  className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-all cursor-pointer mt-1"
+                  onClick={() => restartQuickGuide()}
+                  className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-semibold text-primary hover:bg-primary/10 transition-all cursor-pointer mt-1"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  <span>Restart Product Tour</span>
+                  <HelpCircle className="h-4 w-4 text-primary" />
+                  <span>❓ Quick Guide</span>
                 </button>
               </div>
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 min-w-0">
+              {/* Optional Dismissible Dashboard Quick Guide Card */}
+              <DashboardHelpCard />
+
               {/* TAB 1: MY BOOKINGS */}
               {activeTab === "bookings" && (
                 <div className="space-y-6">
@@ -840,6 +848,15 @@ export default function AccountPage() {
                         </button>
                       </div>
                     </form>
+
+                    {/* Global App Language Selection */}
+                    <div className="pt-6 border-t border-border/60 space-y-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground">🌐 App Language Preference</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">Select your preferred language. Changes apply globally across all pages instantly.</p>
+                      </div>
+                      <LanguageSelector variant="full" />
+                    </div>
 
                     {/* Clean Logout Section Inside Profile Settings */}
                     <div className="pt-6 border-t border-border/60">

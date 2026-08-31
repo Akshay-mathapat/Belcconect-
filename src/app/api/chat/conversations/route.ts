@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { verifyJwtToken } from "@/lib/jwt";
+import { getAuthenticatedUser, verifyJwtToken } from "@/lib/jwt";
 
 export async function GET(req: Request) {
   try {
+    const authUser = getAuthenticatedUser(req);
     const { searchParams } = new URL(req.url);
-    let userId = searchParams.get("userId");
+    const requestedUserId = searchParams.get("userId");
 
-    // Try extracting from authorization header if not passed as param
+    let userId = authUser?.userId;
+
     if (!userId) {
       const authHeader = req.headers.get("authorization");
       if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -17,7 +19,15 @@ export async function GET(req: Request) {
     }
 
     if (!userId) {
-      userId = "customer-1"; // Fallback default demo user
+      if (process.env.DEMO_MODE === "true") {
+        userId = "customer-1";
+      } else {
+        return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+      }
+    }
+
+    if (requestedUserId && requestedUserId !== userId && process.env.DEMO_MODE !== "true") {
+      return NextResponse.json({ error: "Forbidden: You can only fetch your own conversations" }, { status: 403 });
     }
 
     const conversationsResult = await query(
@@ -88,11 +98,30 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const authUser = getAuthenticatedUser(req);
+    if (!authUser && process.env.DEMO_MODE !== "true") {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+    }
+
     const body = await req.json();
-    const { customerId, providerId, bookingId } = body;
+    let { customerId, providerId, bookingId } = body;
+
+    // Auto-resolve participant IDs from booking record if available
+    if (bookingId) {
+      const bRes = await query(`SELECT customer_id, provider_id FROM bookings WHERE id = $1`, [bookingId]);
+      if (bRes.rows.length > 0) {
+        const row = bRes.rows[0];
+        if (!customerId || (process.env.DEMO_MODE !== "true" && customerId === "customer-1")) customerId = row.customer_id;
+        if (!providerId || (process.env.DEMO_MODE !== "true" && providerId === "provider-1")) providerId = row.provider_id;
+      }
+    }
 
     if (!customerId || !providerId) {
       return NextResponse.json({ error: "customerId and providerId are required" }, { status: 400 });
+    }
+
+    if (authUser && authUser.userId !== customerId && authUser.userId !== providerId && process.env.DEMO_MODE !== "true") {
+      return NextResponse.json({ error: "Forbidden: You must be a participant to start this conversation" }, { status: 403 });
     }
 
     // 1. When a specific bookingId is provided, strictly lookup or create conversation for THIS booking

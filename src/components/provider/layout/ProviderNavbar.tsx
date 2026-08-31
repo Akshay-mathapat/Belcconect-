@@ -350,17 +350,12 @@ export function ProviderNavbar({ collapsed }: ProviderNavbarProps) {
                       {n.title.toLowerCase().includes("booking") && (
                         <button
                           onClick={() => {
-                            if (bookings.length > 0 && bookings[0].status === "Requested") {
-                              updateBookingStatus(bookings[0].id, "Accepted");
-                              setShowNotifPopover(false);
-                            } else {
-                              router.push("/provider/bookings");
-                              setShowNotifPopover(false);
-                            }
+                            router.push(n.link || "/provider/bookings");
+                            setShowNotifPopover(false);
                           }}
                           className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold shadow-xs cursor-pointer ml-auto"
                         >
-                          Accept Booking
+                          View Booking
                         </button>
                       )}
                     </div>
@@ -383,11 +378,9 @@ export function ProviderNavbar({ collapsed }: ProviderNavbarProps) {
 
         {/* Profile Avatar */}
         <Link href="/provider/profile" className="flex items-center gap-2 pl-2">
-          <img
-            src={profile.photo}
-            alt={profile.name}
-            className="w-9 h-9 rounded-full object-cover border-2 border-blue-600/30"
-          />
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border-2 border-blue-600/30 shadow-sm shrink-0">
+            {profile.name ? profile.name.trim().charAt(0).toUpperCase() : "P"}
+          </div>
         </Link>
       </div>
     </header>

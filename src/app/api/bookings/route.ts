@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
+import { getAuthenticatedUser } from "@/lib/jwt";
+
 // Helper to map DB row to Frontend Booking type
 function mapRowToBooking(row: any) {
   return {
@@ -15,19 +17,19 @@ function mapRowToBooking(row: any) {
     address: row.destination_address || row.address || "No address provided",
     status: row.status,
     providerName: row.provider_name || "Verified Expert",
-    providerId: row.provider_id || "provider-1",
+    providerId: row.provider_id || (process.env.DEMO_MODE === "true" ? "provider-1" : null),
     uploadedImages: [],
     rating: row.rating,
     reviewComment: row.review_comment || "",
     serviceAddressId: row.service_address_id || null,
-    destinationLatitude: row.destination_latitude ? parseFloat(row.destination_latitude) : null,
-    destinationLongitude: row.destination_longitude ? parseFloat(row.destination_longitude) : null,
+    destinationLatitude: row.destination_latitude != null ? parseFloat(row.destination_latitude) : null,
+    destinationLongitude: row.destination_longitude != null ? parseFloat(row.destination_longitude) : null,
     destinationPlaceId: row.destination_place_id || null,
     destinationAddress: row.destination_address || null,
     destinationLandmark: row.destination_landmark || null,
     destinationInstructions: row.destination_instructions || null,
-    providerCurrentLatitude: row.provider_current_latitude ? parseFloat(row.provider_current_latitude) : null,
-    providerCurrentLongitude: row.provider_current_longitude ? parseFloat(row.provider_current_longitude) : null,
+    providerCurrentLatitude: row.provider_current_latitude != null ? parseFloat(row.provider_current_latitude) : null,
+    providerCurrentLongitude: row.provider_current_longitude != null ? parseFloat(row.provider_current_longitude) : null,
     providerLocationUpdatedAt: row.provider_location_updated_at ? new Date(row.provider_location_updated_at).toISOString() : null,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
   };
@@ -35,13 +37,11 @@ function mapRowToBooking(row: any) {
 
 export async function GET(request: Request) {
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const lowerId = userId.toLowerCase();
-    const isProvider = lowerId.startsWith("prov") || lowerId.startsWith("emp") || lowerId === "provider-1";
+    const userId = authUser.userId;
 
     // Retrieve bookings strictly for this specific customer or provider
     const bookingsRes = await query(
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
         FROM addresses 
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
-      WHERE ${isProvider ? "b.provider_id = $1" : "b.customer_id = $1"}
+      WHERE b.customer_id = $1 OR b.provider_id = $1
       ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
       [userId]
     );
@@ -94,6 +94,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // 1. Authenticate requester exclusively using centralized auth helper
+    const authUser = getAuthenticatedUser(request);
+
+    if (!authUser) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const requesterId = authUser.userId;
+
     const body = await request.json();
     const {
       customerId,
@@ -113,29 +125,56 @@ export async function POST(request: Request) {
       destinationInstructions
     } = body;
 
-    if (!customerId || !providerId || !serviceName || !date) {
+    // Enforce that authenticated user ID is used as customer_id (cannot spoof customerId)
+    const validCustomerId = requesterId;
+
+    if (customerId && customerId !== requesterId && authUser?.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden: Cannot create a booking on behalf of another customer" },
+        { status: 403 }
+      );
+    }
+
+    if (!providerId || !serviceName || !date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Ensure customerId and providerId exist in DB to prevent Foreign Key constraint errors
-    let validCustomerId = customerId;
-    try {
-      const custCheck = await query("SELECT id FROM customers WHERE id = $1 LIMIT 1", [customerId]);
-      if (custCheck.rows.length === 0) {
-        validCustomerId = "customer-1";
-      }
-    } catch (e) {
-      validCustomerId = "customer-1";
-    }
-
+    // Verify providerId existence in DB
     let validProviderId = providerId;
     try {
       const proCheck = await query("SELECT id FROM service_providers WHERE id = $1 LIMIT 1", [providerId]);
       if (proCheck.rows.length === 0) {
-        validProviderId = "provider-1";
+        if (process.env.DEMO_MODE === "true") {
+          validProviderId = "provider-1";
+        } else {
+          return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
+        }
       }
     } catch (e) {
+      if (process.env.DEMO_MODE !== "true") {
+        return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
+      }
       validProviderId = "provider-1";
+    }
+
+    // Validate destination coordinates strictly if supplied (-90 <= lat <= 90, -180 <= lng <= 180)
+    let validDestLat: number | null = null;
+    let validDestLng: number | null = null;
+
+    if (destinationLatitude !== undefined && destinationLatitude !== null && destinationLatitude !== "") {
+      const nLat = Number(destinationLatitude);
+      if (!Number.isFinite(nLat) || nLat < -90 || nLat > 90) {
+        return NextResponse.json({ error: "Invalid destination latitude coordinate (-90 to 90)" }, { status: 400 });
+      }
+      validDestLat = nLat;
+    }
+
+    if (destinationLongitude !== undefined && destinationLongitude !== null && destinationLongitude !== "") {
+      const nLng = Number(destinationLongitude);
+      if (!Number.isFinite(nLng) || nLng < -180 || nLng > 180) {
+        return NextResponse.json({ error: "Invalid destination longitude coordinate (-180 to 180)" }, { status: 400 });
+      }
+      validDestLng = nLng;
     }
 
     // Check if the requested time slot is already booked for this date & provider
@@ -206,8 +245,8 @@ export async function POST(request: Request) {
         time || "10:00 AM",
         "Requested",
         serviceAddressId || null,
-        destinationLatitude ?? null,
-        destinationLongitude ?? null,
+        validDestLat,
+        validDestLng,
         destinationPlaceId || null,
         finalDestAddress,
         destinationLandmark || null,

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, User, Wrench, Briefcase } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { registerAndSubscribeUser } from "@/lib/registerSW";
+import { getSafeReturnUrl } from "@/lib/urlUtils";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -17,6 +18,10 @@ interface LoginFormProps {
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawReturnTo = searchParams?.get("returnTo");
+  const safeReturnTo = getSafeReturnUrl(rawReturnTo);
+
   const { loginUser, currentUser } = useAuthStore();
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -55,7 +60,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         } else if (userRole === "job_provider") {
           router.push("/jobprovider");
         } else {
-          router.push("/");
+          router.push(safeReturnTo);
         }
       }, 800);
     } catch (err) {
@@ -67,7 +72,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const getRedirectPath = () => {
     if (currentUser?.role === "provider") return "/provider";
     if (currentUser?.role === "job_provider") return "/jobprovider";
-    return "/";
+    return safeReturnTo;
   };
 
   if (isSubmitted) {

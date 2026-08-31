@@ -63,7 +63,12 @@ export default function ChatWindow({
 
     const syncMessages = async () => {
       try {
-        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`);
+        const token = typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null;
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        if (currentUserId) headers["x-user-id"] = currentUserId;
+
+        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, { headers });
         if (res.ok) {
           const data = await res.json();
           if (isMounted && Array.isArray(data)) {
@@ -263,9 +268,14 @@ export default function ChatWindow({
       });
     } else {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        if (currentUserId) headers["x-user-id"] = currentUserId;
+
         const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             senderId: currentUserId,
             text,
@@ -310,11 +320,9 @@ export default function ChatWindow({
       <div className="p-4 bg-card border-b border-border flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative">
-            <img
-              src={peerAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-              alt={peerName}
-              className="w-10 h-10 rounded-full object-cover border border-border shadow-sm"
-            />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-border shadow-sm shrink-0">
+              {peerName ? peerName.trim().charAt(0).toUpperCase() : "U"}
+            </div>
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-card rounded-full" />
           </div>
 

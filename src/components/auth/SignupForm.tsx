@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { ArrowRight, Briefcase, Building2, Check, Eye, EyeOff, Lock, Mail, Phone, User, Wrench } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
 import { PasswordStrength } from "./PasswordStrength";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
+import { getSafeReturnUrl } from "@/lib/urlUtils";
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
@@ -17,6 +18,10 @@ interface SignupFormProps {
 export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawReturnTo = searchParams?.get("returnTo");
+  const safeReturnTo = getSafeReturnUrl(rawReturnTo);
+
   const { registerUser } = useAuthStore();
   const [signupRole, setSignupRole] = useState<UserRole>("user");
   const [fullName, setFullName] = useState("");
@@ -68,7 +73,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         } else if (signupRole === "job_provider") {
           router.push("/jobprovider");
         } else {
-          router.push("/");
+          router.push(safeReturnTo);
         }
       }, 800);
     } catch (err) {
@@ -102,7 +107,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const getTargetUrl = () => {
     if (signupRole === "provider") return "/provider";
     if (signupRole === "job_provider") return "/jobprovider";
-    return "/";
+    return safeReturnTo;
   };
 
   if (isSubmitted) {

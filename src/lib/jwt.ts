@@ -1,11 +1,16 @@
 import crypto from "crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.LIVEKIT_API_SECRET || "cityconnect-secure-jwt-secret-key-2026";
+// DO NOT REINTRODUCE HARDCODED FALLBACKS FOR SECRETS (JWT_SECRET, DATABASE_URL, SIGNALING_INTERNAL_SECRET, LIVEKIT_API_SECRET, VAPID_PRIVATE_KEY) UNDER ANY CIRCUMSTANCES, INCLUDING LOCAL DEV CONVENIENCE.
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+if (!JWT_SECRET && typeof window === "undefined") {
+  throw new Error("FATAL: JWT_SECRET environment variable is missing.");
+}
 
 export interface SessionPayload {
   userId: string;
   email: string;
-  role: "user" | "provider" | "job_provider";
+  role: "user" | "provider" | "job_provider" | "admin";
   name?: string;
   iat?: number;
   exp?: number;
@@ -98,9 +103,9 @@ export function getAuthenticatedUser(request: Request): SessionPayload | null {
       }
     }
 
-    // 3. Fallback: x-user-id header for unauthenticated / demo sessions
+    // 3. Fallback: x-user-id header for unauthenticated / demo sessions (active in development or DEMO_MODE)
     const xUserId = request.headers.get("x-user-id");
-    if (xUserId && xUserId.trim().length > 0) {
+    if (xUserId && (process.env.NODE_ENV !== "production" || process.env.DEMO_MODE === "true") && xUserId.trim().length > 0) {
       const trimmedId = xUserId.trim();
       const isProvider = trimmedId.includes("provider") || trimmedId.includes("prov");
       return {

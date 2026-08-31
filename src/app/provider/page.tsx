@@ -221,15 +221,13 @@ export default function ProviderDashboardPage() {
                 key={booking.id}
                 className="rounded-xl border border-border/80 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card hover:bg-muted/30 transition-all shadow-xs"
               >
-                <div className="flex items-start gap-3.5">
-                  <img
-                    src={booking.customerPhoto}
-                    alt={booking.customerName}
-                    className="w-11 h-11 rounded-full object-cover border border-border shrink-0 shadow-xs"
-                  />
-                  <div className="space-y-1">
+                <Link href={`/provider/bookings/${booking.id}`} className="flex items-start gap-3.5 flex-1 min-w-0 group cursor-pointer">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-border shrink-0 shadow-xs">
+                    {booking.customerName ? booking.customerName.trim().charAt(0).toUpperCase() : "C"}
+                  </div>
+                  <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-foreground text-xs">{booking.customerName}</span>
+                      <span className="font-bold text-foreground text-xs group-hover:text-blue-600 transition-colors">{booking.customerName}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
                         booking.status === "Requested" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
                         booking.status === "Accepted" ? "bg-sky-500/10 text-sky-600 border border-sky-500/20" :
@@ -242,10 +240,10 @@ export default function ProviderDashboardPage() {
                       </span>
                     </div>
 
-                    <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400">{booking.serviceName}</h4>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:underline">{booking.serviceName}</h4>
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
                       <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/70" />
-                      <span>{booking.address}</span>
+                      <span className="truncate">{booking.address}</span>
                     </p>
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-0.5">
                       <span className="flex items-center gap-1">
@@ -260,7 +258,7 @@ export default function ProviderDashboardPage() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3 self-end md:self-center shrink-0">
@@ -309,6 +307,14 @@ export default function ProviderDashboardPage() {
                       {t("serviceProvider.completed")}
                     </span>
                   )}
+
+                  <Link
+                    href={`/provider/bookings/${booking.id}`}
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <span>{t("serviceProvider.details") || "Details"}</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </div>
             ))}

@@ -33,10 +33,9 @@ export async function POST(request: Request) {
 
     let booking: any = bookingRes.rows.length > 0 ? bookingRes.rows[0] : null;
 
-    // Fallback for seed / demo booking IDs if not yet in DB
     if (!booking) {
-      if (bookingId === "B-1001" || bookingId.startsWith("B-")) {
-        const isProvider = authUser.userId === "provider-1" || authUser.role === "provider";
+      if (process.env.DEMO_MODE === "true" && (bookingId === "B-1001" || bookingId.startsWith("B-"))) {
+        const isProvider = authUser.role === "provider";
         booking = {
           id: bookingId,
           customer_id: isProvider ? "customer-1" : authUser.userId,

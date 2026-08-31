@@ -6,8 +6,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { secret, userId, title, body: pushBody, icon, data } = body;
 
-    const internalSecret = process.env.INTERNAL_API_SECRET || "cityconnect_internal_secret_key_2026";
-    if (secret !== internalSecret) {
+    // DO NOT FALL BACK TO ANY DEFAULT VALUE, EMPTY STRING INCLUDED, FOR A SECRET USED IN AN AUTHORIZATION OR SIGNATURE CHECK — FAIL STARTUP INSTEAD.
+    const internalSecret = process.env.SIGNALING_INTERNAL_SECRET || process.env.INTERNAL_API_SECRET;
+    if (!internalSecret && typeof window === "undefined") {
+      throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing.");
+    }
+    if (!secret || secret !== internalSecret) {
       return NextResponse.json({ error: "Forbidden: Invalid internal secret" }, { status: 403 });
     }
 

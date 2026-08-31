@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { getAuthenticatedUser } from "@/lib/jwt";
+// NOTE FOR STAGING & PRODUCTION: Current file upload uses local disk storage (/public/uploads). 
+// For multi-instance cloud or serverless production deployments, replace with S3 / Cloudinary object storage.
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
+  // 1. Rate Limiting Check (Max 10 upload attempts per 15 minutes)
+  const rateLimit = checkRateLimit(req, 10, 15 * 60 * 1000);
+  if (!rateLimit.isAllowed && rateLimit.response) {
+    return rateLimit.response;
+  }
+
+  // 2. Authentication Check: Reject unauthenticated requests
+  const authUser = getAuthenticatedUser(req);
+  if (!authUser && process.env.DEMO_MODE !== "true") {
+    return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { userId, subscription } = body;
+    const authUser = getAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
+    }
 
-    if (!userId || !subscription || !subscription.endpoint || !subscription.keys) {
+    const body = await req.json();
+    const { subscription } = body;
+    const userId = authUser.userId;
+
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
       return NextResponse.json(
-        { error: "userId and valid push subscription object are required" },
+        { error: "Valid push subscription object is required" },
         { status: 400 }
       );
     }

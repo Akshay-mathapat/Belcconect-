@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function GET(request: Request) {
   try {
@@ -65,11 +66,21 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { providerId, name, category, subcategory, description } = body;
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
+    }
 
-    if (!providerId || !name || !category) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (authUser.role !== "provider" && authUser.role !== "admin") {
+      return NextResponse.json({ error: "Provider account required" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { name, category, subcategory, description } = body;
+    const providerId = authUser.userId;
+
+    if (!name || !category) {
+      return NextResponse.json({ error: "Service name and category are required" }, { status: 400 });
     }
 
     const serviceId = `SRV-${Date.now()}`;

@@ -10,6 +10,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useProviderStore } from "@/store/useProviderStore";
 import ProviderMapView from "@/components/location/ProviderMapView";
 import BookingStatusStepper from "@/components/location/BookingStatusStepper";
+import ProviderForegroundNoticeModal from "@/components/location/ProviderForegroundNoticeModal";
+import ProviderTrackingStatusBar from "@/components/location/ProviderTrackingStatusBar";
 import CallButton from "@/components/calls/CallButton";
 import ChatButton from "@/components/chat/ChatButton";
 import { useLiveLocationBroadcast } from "@/hooks/useLiveLocationBroadcast";
@@ -55,10 +57,25 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     };
   }, [id, fetchProviderBookings]);
 
-  const booking = bookings.find((b) => b.id === id) || bookings[0];
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const booking = bookings.find((b) => b.id === id);
 
   // Broadcast Provider GPS location
-  const { isTracking, lastPosition } = useLiveLocationBroadcast(booking?.id, booking?.status);
+  const {
+    isTracking,
+    lastPosition,
+    accuracy,
+    isBackground,
+    isOffline,
+    lastTxTimestamp,
+    showNoticeModal,
+    dismissNoticeModal,
+    triggerNoticeModal,
+    wakeLockSupported,
+    wakeLockActive,
+    toggleWakeLock
+  } = useLiveLocationBroadcast(booking?.id, booking?.status);
 
   if (!booking) {
     return (
@@ -73,6 +90,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
 
   const handleStatusChange = async (newStatus: BookingStatus) => {
     setLoading(true);
+    setStatusError(null);
     try {
       await updateBookingStatus(booking.id, newStatus);
       // Emit real-time status update to socket room so customer view updates instantly!
@@ -83,8 +101,9 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
           status: newStatus
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating status:", err);
+      setStatusError(err.message || "Failed to update status on server.");
     } finally {
       setLoading(false);
     }
@@ -107,8 +126,35 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
         </span>
       </div>
 
+      {/* Status Update Error Alert */}
+      {statusError && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center justify-between">
+          <span>{statusError}</span>
+          <button onClick={() => setStatusError(null)} className="font-bold underline hover:no-underline">Dismiss</button>
+        </div>
+      )}
+
       {/* Unified Status Stepper (Domino's Progress Tracker) */}
       <BookingStatusStepper status={booking.status as BookingStatus} />
+
+      {/* Persistent Status Bar for Active Location Sharing */}
+      <ProviderTrackingStatusBar
+        isTracking={isTracking}
+        isBackground={isBackground}
+        isOffline={isOffline}
+        accuracy={accuracy}
+        lastTxTimestamp={lastTxTimestamp}
+        wakeLockSupported={wakeLockSupported}
+        wakeLockActive={wakeLockActive}
+        onToggleWakeLock={toggleWakeLock}
+        onShowNoticeModal={triggerNoticeModal}
+      />
+
+      {/* Mobile-Friendly Foreground Guidance Notice Modal */}
+      <ProviderForegroundNoticeModal
+        isOpen={showNoticeModal}
+        onGotIt={dismissNoticeModal}
+      />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,11 +166,9 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6 pb-6 border-b border-border">
               <div className="flex items-center gap-4">
-                <img
-                  src={booking.customerPhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                  alt={booking.customerName}
-                  className="w-16 h-16 rounded-2xl object-cover border border-border shrink-0 shadow-md"
-                />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-extrabold text-2xl flex items-center justify-center border border-border shrink-0 shadow-md">
+                  {booking.customerName ? booking.customerName.trim().charAt(0).toUpperCase() : "C"}
+                </div>
                 <div>
                   <h1 className="font-heading text-xl font-bold text-foreground">{booking.customerName}</h1>
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
@@ -205,10 +249,10 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
           {/* Synchronized Map View */}
           <ProviderMapView
             bookingId={booking.id}
-            latitude={booking.destinationLatitude || 15.8497}
-            longitude={booking.destinationLongitude || 74.4977}
-            providerLatitude={lastPosition?.latitude || booking.providerCurrentLatitude}
-            providerLongitude={lastPosition?.longitude || booking.providerCurrentLongitude}
+            latitude={booking.destinationLatitude ?? null}
+            longitude={booking.destinationLongitude ?? null}
+            providerLatitude={lastPosition?.latitude ?? booking.providerCurrentLatitude}
+            providerLongitude={lastPosition?.longitude ?? booking.providerCurrentLongitude}
             address={booking.destinationAddress || booking.address}
             landmark={booking.destinationLandmark}
             instructions={booking.destinationInstructions}

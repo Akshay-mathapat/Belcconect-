@@ -78,13 +78,22 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
   // Initialize client-side Leaflet Map
   useEffect(() => {
     let isMounted = true;
+    let resizeObserver: ResizeObserver | null = null;
 
     async function initLeaflet() {
       if (typeof window === "undefined" || !mapContainerRef.current) return;
 
       const L = (await import("leaflet")).default;
 
-      // Ensure leaflet CSS is present
+      // Fix default Leaflet icon paths in Next.js
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
+
+      // Ensure leaflet CSS link element is present
       if (!document.getElementById("leaflet-css")) {
         const link = document.createElement("link");
         link.id = "leaflet-css";
@@ -98,7 +107,8 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
         leafletMapRef.current = null;
       }
 
-      const map = L.map(mapContainerRef.current, {
+      const mapContainer = mapContainerRef.current;
+      const map = L.map(mapContainer, {
         center: [lat, lng],
         zoom: 16,
         zoomControl: true
@@ -108,10 +118,13 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
 
       // Set initial Tile Layer
       const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        maxZoom: 19,
+        subdomains: ["a", "b", "c"],
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       });
 
       const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 19,
         attribution: "Tiles &copy; Esri"
       });
 
@@ -167,6 +180,23 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
         }
       });
 
+      // Invalidate map size after container settles in modal
+      setTimeout(() => {
+        if (isMounted && leafletMapRef.current) {
+          leafletMapRef.current.invalidateSize();
+        }
+      }, 300);
+
+      // Attach ResizeObserver to keep tile layout synced on container resize/animation
+      if (typeof ResizeObserver !== "undefined" && mapContainer) {
+        resizeObserver = new ResizeObserver(() => {
+          if (isMounted && leafletMapRef.current) {
+            leafletMapRef.current.invalidateSize();
+          }
+        });
+        resizeObserver.observe(mapContainer);
+      }
+
       // Initial Reverse Geocode
       triggerReverseGeocode(lat, lng);
     }
@@ -175,6 +205,9 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
 
     return () => {
       isMounted = false;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (leafletMapRef.current) {
         try {
           leafletMapRef.current.remove();
@@ -197,11 +230,14 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
 
       if (mapTileType === "satellite") {
         L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom: 19,
           attribution: "Tiles &copy; Esri"
         }).addTo(map);
       } else {
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          maxZoom: 19,
+          subdomains: ["a", "b", "c"],
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
       }
     });

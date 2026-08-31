@@ -15,12 +15,15 @@ import {
   User, 
   ShieldCheck,
   X,
-  Plus
+  Plus,
+  HelpCircle
 } from "lucide-react";
 import { useEffect } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
+import { LanguageSelector } from "@/components/common/LanguageSelector";
+import { useOnboardingTour } from "@/components/onboarding/OnboardingContext";
 
 interface ProviderSidebarProps {
   collapsed?: boolean;
@@ -49,10 +52,11 @@ const navItems: NavItem[] = [
   { key: "profile", href: "/provider/profile", icon: User },
 ];
 
-export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
+export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
   const pathname = usePathname();
   const { currentUser } = useAuthStore();
   const { profile, syncWithAuthUser } = useProviderStore();
+  const { restartTour: restartQuickGuide } = useOnboardingTour();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -94,14 +98,10 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
               const tourAttr =
                 item.key === "addNewService"
                   ? "add-service"
-                  : item.key === "availability"
-                  ? "provider-availability"
-                  : item.key === "calendar"
-                  ? "provider-calendar"
+                  : item.key === "myServices"
+                  ? "provider-services"
                   : item.key === "bookings"
                   ? "provider-bookings"
-                  : item.key === "dashboard"
-                  ? "provider-dashboard"
                   : undefined;
 
               return (
@@ -133,17 +133,33 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
                 </Link>
               );
             })}
+
+            {/* Quick Guide Replay Entry Point */}
+            <button
+              type="button"
+              onClick={() => restartQuickGuide("provider")}
+              className="w-full relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-all cursor-pointer mt-2 border border-primary/20"
+            >
+              <HelpCircle className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate font-bold">❓ Quick Guide</span>
+            </button>
           </nav>
         </div>
+
+        {/* Language Selection Bar in Sidebar */}
+        {!collapsed && (
+          <div className="px-3 py-2 border-t border-border/40 bg-muted/10 flex items-center justify-between text-xs">
+            <span className="text-[11px] font-bold text-muted-foreground">🌐 Language</span>
+            <LanguageSelector variant="header" />
+          </div>
+        )}
 
         {/* Provider Profile Summary Footer */}
         <div className="p-3 border-t border-border/50 bg-muted/20" id="tour-provider-kyc">
           <Link href="/provider/profile" className="flex items-center gap-3">
-            <img
-              src={profile.photo}
-              alt={profile.name}
-              className="w-9 h-9 rounded-full object-cover border border-blue-600/30 shrink-0"
-            />
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border border-blue-600/30 shrink-0">
+              {profile.name ? profile.name.trim().charAt(0).toUpperCase() : "P"}
+            </div>
             <div className="overflow-hidden">
               <div className="flex items-center gap-1">
                 <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>
@@ -253,11 +269,9 @@ export function ProviderSidebar({ mobileOpen = false, setMobileOpen }: ProviderS
 
               <div className="p-3 border-t border-border/50 bg-muted/20">
                 <Link href="/provider/profile" onClick={handleNavClick} className="flex items-center gap-3">
-                  <img
-                    src={profile.photo}
-                    alt={profile.name}
-                    className="w-10 h-10 rounded-full object-cover border border-blue-600/30 shrink-0"
-                  />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-blue-600/30 shrink-0">
+                    {profile.name ? profile.name.trim().charAt(0).toUpperCase() : "P"}
+                  </div>
                   <div className="overflow-hidden">
                     <div className="flex items-center gap-1">
                       <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>

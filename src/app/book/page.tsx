@@ -92,11 +92,24 @@ function BookingFlow() {
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
-      const customerId = currentUser?.id || "customer-1";
-      const customerName = currentUser?.name || "Akshay Mathapati";
-      const customerPhone = currentUser?.phone || "+91 98765 43210";
+      const customerId = currentUser?.id;
+      const customerName = currentUser?.name;
+      const customerPhone = currentUser?.phone;
       const customerPhoto = currentUser?.avatar || "";
-      const resolvedProviderId = proId || "provider-1";
+      const resolvedProviderId = proId;
+
+      if (!customerId) {
+        const currentPath = `/book?${searchParams.toString()}`;
+        router.push(`/auth?mode=login&returnTo=${encodeURIComponent(currentPath)}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!resolvedProviderId) {
+        alert("Service provider not selected. Please browse services and select a provider first.");
+        setIsSubmitting(false);
+        return;
+      }
 
       let finalServiceAddressId: string | null = null;
       let finalDestLat: number | null = null;

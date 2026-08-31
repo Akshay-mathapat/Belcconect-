@@ -223,11 +223,9 @@ export function OverviewPanel() {
                   onClick={() => router.push("/jobprovider/candidates")}
                   className="flex items-center gap-3.5 px-4 sm:px-5 py-3.5 sm:py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                 >
-                  <img
-                    src={app.avatar}
-                    alt={app.name}
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700"
-                  />
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                    {app.name ? app.name.trim().charAt(0).toUpperCase() : "A"}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">

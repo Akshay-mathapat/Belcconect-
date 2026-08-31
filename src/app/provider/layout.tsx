@@ -364,11 +364,9 @@ export default function ProviderLayout({
                   }}
                   className="flex items-center gap-2.5 p-1 rounded-full hover:bg-muted transition-colors focus:outline-none cursor-pointer"
                 >
-                  <img
-                    src={currentUser?.avatar || profile.photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                    alt={currentUser?.name || profile.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-blue-600/40 shadow-sm"
-                  />
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border-2 border-blue-600/40 shadow-sm shrink-0">
+                    {(currentUser?.name || profile.name) ? (currentUser?.name || profile.name).trim().charAt(0).toUpperCase() : "P"}
+                  </div>
                   <span className="text-xs font-bold text-foreground hidden xl:block max-w-[110px] truncate">
                     {currentUser?.name || profile.name}
                   </span>

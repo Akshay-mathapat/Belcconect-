@@ -23,9 +23,7 @@ export async function GET(
     }
 
     if (userId !== call.callerId && userId !== call.receiverId) {
-      if (userId !== "customer-1" && userId !== "provider-1" && !userId.startsWith("cust") && !userId.startsWith("prov")) {
-        return NextResponse.json({ error: "Forbidden: You are not authorized to view this call" }, { status: 403 });
-      }
+      return NextResponse.json({ error: "Forbidden: You are not authorized to view this call" }, { status: 403 });
     }
 
     let livekit = null;

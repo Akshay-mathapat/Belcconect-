@@ -90,6 +90,7 @@ export function Hero() {
           className="max-w-4xl mx-auto mb-12 sm:mb-16"
         >
           <form 
+            data-tour="customer-search"
             onSubmit={handleSearch}
             className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl sm:rounded-full bg-card border-2 border-primary/20 shadow-xl shadow-primary/5 hover:border-primary/40 transition-all"
             suppressHydrationWarning

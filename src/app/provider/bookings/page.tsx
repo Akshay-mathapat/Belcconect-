@@ -222,11 +222,9 @@ export default function BookingsManagementPage() {
                 
                 {/* Left: Customer & Service Meta */}
                 <div className="flex items-start gap-4 flex-1">
-                  <img
-                    src={b.customerPhoto}
-                    alt={b.customerName}
-                    className="w-14 h-14 rounded-2xl object-cover border border-border shrink-0 shadow-sm"
-                  />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center border border-border shrink-0 shadow-sm">
+                    {b.customerName ? b.customerName.trim().charAt(0).toUpperCase() : "C"}
+                  </div>
 
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">

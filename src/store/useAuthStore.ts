@@ -47,6 +47,7 @@ export interface AuthUser {
   addresses?: SavedAddress[];
   bookings?: BookingItem[];
   isFirstLogin?: boolean;
+  preferred_language?: string;
 }
 
 interface AuthState {

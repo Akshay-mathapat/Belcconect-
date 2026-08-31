@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthRequiredDialog } from "@/components/auth/AuthRequiredDialog";
 import { 
   Star, 
   Phone, 
@@ -50,10 +52,22 @@ export default function ProviderProfilePage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const { requireAuth, authDialogProps } = useRequireAuth();
 
   const [data, setData] = useState<ProviderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleBookService = (srvName: string) => {
+    if (!data?.provider?.id) return;
+    const bookingPath = `/book?pro=${data.provider.id}&service=${encodeURIComponent(srvName)}&proName=${encodeURIComponent(data.provider.name)}`;
+    requireAuth({
+      action: () => router.push(bookingPath),
+      returnTo: bookingPath,
+      title: "Log In to Book Service",
+      description: `Sign in to book ${srvName} with ${data.provider.name}.`
+    });
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -196,13 +210,14 @@ export default function ProviderProfilePage() {
                         </div>
 
                         <div className="mt-4 pt-3 border-t border-border/60">
-                          <Link 
-                            href={`/book?pro=${provider.id}&service=${encodeURIComponent(srv.name)}`}
+                          <button 
+                            type="button"
+                            onClick={() => handleBookService(srv.name)}
                             data-tour="book-service"
-                            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1"
+                            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1 cursor-pointer"
                           >
                             Book Service
-                          </Link>
+                          </button>
                         </div>
                       </div>
                     ))
@@ -220,6 +235,7 @@ export default function ProviderProfilePage() {
         </div>
       </div>
       <Footer />
+      <AuthRequiredDialog {...authDialogProps} />
     </main>
   );
 }

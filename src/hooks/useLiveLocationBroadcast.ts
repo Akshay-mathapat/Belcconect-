@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { BookingStatus } from "@/types/provider";
 import { getSocket } from "@/lib/socket";
 
-const ACTIVE_TRACKING_STATUSES: (BookingStatus | string)[] = ["Accepted", "OnTheWay", "Started"];
+const ACTIVE_TRACKING_STATUSES: (BookingStatus | string)[] = ["OnTheWay", "Started"];
 
 // Haversine formula to compute distance in meters between two lat/lng pairs
 function getHaversineDistanceMeters(
@@ -30,6 +30,7 @@ function getHaversineDistanceMeters(
 export interface LiveLocationPosition {
   latitude: number;
   longitude: number;
+  accuracy?: number | null;
   heading?: number | null;
   speed?: number | null;
   timestamp: number;
@@ -37,26 +38,121 @@ export interface LiveLocationPosition {
 
 export function useLiveLocationBroadcast(
   bookingId: string | null | undefined,
-  status: BookingStatus | string | null | undefined
+  status: BookingStatus | string | null | undefined,
+  role: "provider" | "customer" = "provider",
+  enabled: boolean = true
 ) {
   const [isTracking, setIsTracking] = useState(false);
   const [lastPosition, setLastPosition] = useState<LiveLocationPosition | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const lastSentPositionRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
-  const watchIdRef = useRef<number | null>(null);
+  // Background & Online UX Statuses
+  const [isBackground, setIsBackground] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [lastTxTimestamp, setLastTxTimestamp] = useState<number | null>(null);
 
+  // Screen Wake Lock API state
+  const [wakeLockSupported, setWakeLockSupported] = useState(false);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
+  const [wakeLockRequested, setWakeLockRequested] = useState(false);
+  const wakeLockSentinelRef = useRef<any>(null);
+
+  // Foreground notice dialog visibility state
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const prevStatusRef = useRef<string | null>(null);
+
+  const lastSentPositionRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
+  const lastDbSavedPositionRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Check Wake Lock support
   useEffect(() => {
+    if (typeof window !== "undefined" && "wakeLock" in navigator) {
+      setWakeLockSupported(true);
+    }
+  }, []);
+
+  // Notice Trigger: When status transitions to OnTheWay or Started (e.g. Start Travel)
+  useEffect(() => {
+    if (
+      role === "provider" &&
+      status &&
+      ACTIVE_TRACKING_STATUSES.includes(status) &&
+      prevStatusRef.current !== status
+    ) {
+      setShowNoticeModal(true);
+    }
+    prevStatusRef.current = status ?? null;
+  }, [status, role]);
+
+  const dismissNoticeModal = useCallback(() => {
+    setShowNoticeModal(false);
+  }, []);
+
+  const triggerNoticeModal = useCallback(() => {
+    setShowNoticeModal(true);
+  }, []);
+
+  // Wake Lock Request & Release Management
+  const requestWakeLock = useCallback(async () => {
+    if (typeof window === "undefined" || !("wakeLock" in navigator)) return;
+    try {
+      if (wakeLockSentinelRef.current) return;
+      const sentinel = await (navigator as any).wakeLock.request("screen");
+      wakeLockSentinelRef.current = sentinel;
+      setWakeLockActive(true);
+      setWakeLockRequested(true);
+
+      sentinel.addEventListener("release", () => {
+        wakeLockSentinelRef.current = null;
+        setWakeLockActive(false);
+      });
+    } catch (err) {
+      console.warn("[Wake Lock] Failed to acquire screen wake lock:", err);
+      setWakeLockActive(false);
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockSentinelRef.current) {
+      try {
+        await wakeLockSentinelRef.current.release();
+      } catch (e) {}
+      wakeLockSentinelRef.current = null;
+    }
+    setWakeLockActive(false);
+    setWakeLockRequested(false);
+  }, []);
+
+  const toggleWakeLock = useCallback(() => {
+    if (wakeLockActive) {
+      releaseWakeLock();
+    } else {
+      requestWakeLock();
+    }
+  }, [wakeLockActive, requestWakeLock, releaseWakeLock]);
+
+  // Main Tracking Effect
+  useEffect(() => {
+    isMountedRef.current = true;
     const isWindowActive = Boolean(
-      bookingId && status && ACTIVE_TRACKING_STATUSES.includes(status)
+      enabled && bookingId && status && ACTIVE_TRACKING_STATUSES.includes(status)
     );
 
-    // Stop tracking immediately if outside active window
-    if (!isWindowActive) {
+    // Helper to safely clear watch
+    const stopWatch = () => {
       if (watchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+    };
+
+    // Stop tracking immediately if disabled or outside active tracking window
+    if (!isWindowActive) {
+      stopWatch();
+      releaseWakeLock();
       setIsTracking(false);
       return;
     }
@@ -70,14 +166,40 @@ export function useLiveLocationBroadcast(
     setError(null);
 
     const socket = getSocket();
+    if (socket && socket.connected) {
+      socket.emit("booking:subscribe", { bookingId });
+    }
 
+    // Broadcast Real Position handler
     const handleSuccess = (pos: GeolocationPosition) => {
-      const { latitude, longitude, heading, speed } = pos.coords;
+      const { latitude, longitude, heading, speed, accuracy: rawAccuracy } = pos.coords;
       const now = Date.now();
+
+      // Validate numeric ranges strictly
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        console.warn(`[Location Broadcast] Out-of-bounds coordinates rejected: lat=${latitude}, lng=${longitude}`);
+        return;
+      }
+
+      setAccuracy(rawAccuracy ?? null);
+
+      // Ignore extremely inaccurate reading (> 150m) to prevent erratic marker jumps
+      if (typeof rawAccuracy === "number" && rawAccuracy > 150) {
+        console.warn(`[Location Broadcast] Inaccurate reading rejected (${rawAccuracy}m accuracy)`);
+        return;
+      }
 
       const newPos: LiveLocationPosition = {
         latitude,
         longitude,
+        accuracy: rawAccuracy ?? null,
         heading: heading ?? null,
         speed: speed ?? null,
         timestamp: now
@@ -85,11 +207,11 @@ export function useLiveLocationBroadcast(
 
       setLastPosition(newPos);
 
-      // High-precision tracking broadcast: send if moved >3m OR at least 2.5 seconds elapsed
-      let shouldSend = false;
+      // Throttled tracking broadcast: send Socket.IO if moved >= 5m OR at least 3.0 seconds elapsed
+      let shouldSendSocket = false;
 
       if (!lastSentPositionRef.current) {
-        shouldSend = true;
+        shouldSendSocket = true;
       } else {
         const timeElapsedMs = now - lastSentPositionRef.current.time;
         const distMeters = getHaversineDistanceMeters(
@@ -99,61 +221,214 @@ export function useLiveLocationBroadcast(
           longitude
         );
 
-        if (distMeters >= 3 || timeElapsedMs >= 2500) {
-          shouldSend = true;
+        if (distMeters >= 5 || timeElapsedMs >= 3000) {
+          shouldSendSocket = true;
         }
       }
 
-      if (shouldSend) {
+      if (shouldSendSocket) {
         lastSentPositionRef.current = { lat: latitude, lng: longitude, time: now };
+        setLastTxTimestamp(now);
 
-        // (a) Emit Socket.IO event for real-time customer tracking
-        if (socket && socket.connected) {
-          socket.emit("location:update", {
-            bookingId,
-            latitude,
-            longitude,
-            heading: heading ?? null,
-            speed: speed ?? null,
-            timestamp: now
-          });
+        const payload = {
+          bookingId,
+          latitude,
+          longitude,
+          accuracy: rawAccuracy ?? null,
+          heading: heading ?? null,
+          speed: speed ?? null,
+          timestamp: now
+        };
+
+        // Emit Socket.IO event for real-time tracking (single authoritative event)
+        const curSocket = getSocket();
+        if (curSocket && curSocket.connected) {
+          if (role === "provider") {
+            curSocket.emit("provider:location:update", payload);
+          } else {
+            curSocket.emit("customer:location:update", payload);
+          }
         }
+      }
 
-        // (b) REST POST to persist last-known position fire-and-forget
-        fetch(`/api/bookings/${bookingId}/location`, {
+      // Throttled PostgreSQL DB persistence: REST POST every ~12 seconds OR if moved >= 25 meters
+      let shouldSaveDb = false;
+      if (!lastDbSavedPositionRef.current) {
+        shouldSaveDb = true;
+      } else {
+        const dbTimeElapsedMs = now - lastDbSavedPositionRef.current.time;
+        const dbDistMeters = getHaversineDistanceMeters(
+          lastDbSavedPositionRef.current.lat,
+          lastDbSavedPositionRef.current.lng,
+          latitude,
+          longitude
+        );
+        if (dbDistMeters >= 25 || dbTimeElapsedMs >= 12000) {
+          shouldSaveDb = true;
+        }
+      }
+
+      if (shouldSaveDb) {
+        lastDbSavedPositionRef.current = { lat: latitude, lng: longitude, time: now };
+
+        const token = typeof window !== "undefined"
+          ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
+          : null;
+        const userId = typeof window !== "undefined"
+          ? (localStorage.getItem("cityconnect_user_id") || localStorage.getItem("user_id"))
+          : null;
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json"
+        };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        if (userId) headers["x-user-id"] = userId;
+
+        const endpoint = role === "provider" 
+          ? `/api/bookings/${bookingId}/provider-location` 
+          : `/api/bookings/${bookingId}/customer-location`;
+
+        fetch(endpoint, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-id": typeof window !== "undefined" ? localStorage.getItem("cityconnect_user_id") || "provider-1" : "provider-1"
-          },
-          body: JSON.stringify({ latitude, longitude })
+          headers,
+          body: JSON.stringify({ latitude, longitude, accuracy: rawAccuracy ?? null })
         }).catch((err) => console.warn("[Location Broadcast] REST POST error:", err));
       }
     };
 
     const handleError = (err: GeolocationPositionError) => {
       console.warn(`[Location Broadcast] Geolocation error (${err.code}): ${err.message}`);
-      setError(err.message);
+      let userMsg = err.message;
+      if (err.code === err.PERMISSION_DENIED) {
+        userMsg = "Location permission denied. Please allow location access to share your live location.";
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        userMsg = "Unable to determine your current location. Please check device GPS settings.";
+      } else if (err.code === err.TIMEOUT) {
+        userMsg = "Location request timed out. Retrying...";
+      }
+      setError(userMsg);
     };
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      handleSuccess,
-      handleError,
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 5000
+    const startWatch = () => {
+      if (watchIdRef.current !== null) return;
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        handleSuccess,
+        handleError,
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000
+        }
+      );
+    };
+
+    startWatch();
+
+    // Restoration routine when returning from background / reconnecting
+    const restoreTrackingSession = () => {
+      if (!isMountedRef.current) return;
+
+      // 1. Check network online status
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setIsOffline(true);
+        return;
       }
-    );
+      setIsOffline(false);
+
+      // 2. Restart watchPosition if lost or cleared
+      if (watchIdRef.current === null && navigator.geolocation) {
+        startWatch();
+      }
+
+      // 3. Reconnect & resubscribe Socket.IO if disconnected
+      const curSocket = getSocket();
+      if (curSocket) {
+        if (!curSocket.connected) {
+          curSocket.connect();
+        }
+        curSocket.emit("booking:subscribe", { bookingId });
+      }
+
+      // 4. Force a single high-accuracy getCurrentPosition to send next REAL reading immediately
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          handleSuccess,
+          (err) => console.warn("[Location Broadcast] Quick resume position check:", err.message),
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      }
+
+      // 5. Reacquire wake lock if requested previously
+      if (wakeLockRequested && !wakeLockSentinelRef.current) {
+        requestWakeLock();
+      }
+    };
+
+    // Page Visibility API handler
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        setIsBackground(true);
+        // Do NOT stop tracking intentionally, let OS handle suspension
+      } else {
+        setIsBackground(false);
+        restoreTrackingSession();
+      }
+    };
+
+    // Online & Focus Event handlers
+    const handleOnline = () => {
+      setIsOffline(false);
+      restoreTrackingSession();
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+
+    const handleFocusOrPageshow = () => {
+      restoreTrackingSession();
+    };
+
+    // Attach Lifecycle Listeners safely
+    if (typeof window !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      window.addEventListener("focus", handleFocusOrPageshow);
+      window.addEventListener("pageshow", handleFocusOrPageshow);
+
+      // Initial offline check
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setIsOffline(true);
+      }
+    }
 
     return () => {
-      if (watchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
+      isMountedRef.current = false;
+      stopWatch();
+      if (typeof window !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+        window.removeEventListener("focus", handleFocusOrPageshow);
+        window.removeEventListener("pageshow", handleFocusOrPageshow);
       }
-      setIsTracking(false);
     };
-  }, [bookingId, status]);
+  }, [bookingId, status, role, enabled, wakeLockRequested, requestWakeLock, releaseWakeLock]);
 
-  return { isTracking, lastPosition, error };
+  return {
+    isTracking,
+    lastPosition,
+    accuracy,
+    error,
+    isBackground,
+    isOffline,
+    lastTxTimestamp,
+    showNoticeModal,
+    dismissNoticeModal,
+    triggerNoticeModal,
+    wakeLockSupported,
+    wakeLockActive,
+    toggleWakeLock,
+    requestWakeLock
+  };
 }

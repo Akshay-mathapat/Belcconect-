@@ -4,13 +4,16 @@ import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { ArrowLeft, Star, Search, User, UserX, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthRequiredDialog } from "@/components/auth/AuthRequiredDialog";
+import { useRouter, useParams } from "next/navigation";
 
 import { SERVICE_CATEGORIES } from "@/constants/site";
 
 export default function ServicesCategoryPage() {
   const params = useParams();
+  const router = useRouter();
   const categoryId = params.category as string;
   const category = SERVICE_CATEGORIES.find(c => c.id === categoryId) || {
     name: "Services",
@@ -18,10 +21,21 @@ export default function ServicesCategoryPage() {
     startingPrice: 199
   };
 
+  const { requireAuth, authDialogProps } = useRequireAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("Recommended");
   const [dbPros, setDbPros] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleBookNow = (pro: any) => {
+    const bookingPath = `/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&proName=${encodeURIComponent(pro.name)}`;
+    requireAuth({
+      action: () => router.push(bookingPath),
+      returnTo: bookingPath,
+      title: "Log In to Book Service",
+      description: `Sign in to confirm your booking request with ${pro.name} for ${pro.serviceName}.`
+    });
+  };
 
   useEffect(() => {
     const fetchCategoryServices = async () => {
@@ -164,6 +178,7 @@ export default function ServicesCategoryPage() {
                 filteredPros.map((pro, index) => (
                   <motion.div
                     key={pro.id}
+                    data-tour={index === 0 ? "provider-card" : undefined}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
@@ -206,12 +221,14 @@ export default function ServicesCategoryPage() {
                       </p>
 
                       <div className="flex items-center gap-3">
-                        <Link
-                          href={`/book?pro=${pro.providerId}&service=${encodeURIComponent(pro.serviceName)}&proName=${encodeURIComponent(pro.name)}`}
-                          className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"
+                        <button
+                          type="button"
+                          data-tour={index === 0 ? "book-now" : undefined}
+                          onClick={() => handleBookNow(pro)}
+                          className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md cursor-pointer"
                         >
                           Book Now
-                        </Link>
+                        </button>
                         <Link
                           href={`/provider-profile/${pro.providerId}`}
                           className="inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted"
@@ -230,6 +247,7 @@ export default function ServicesCategoryPage() {
       </div>
 
       <Footer />
+      <AuthRequiredDialog {...authDialogProps} />
     </main>
   );
 }
