@@ -30,7 +30,7 @@ interface ConversationMeta {
 export default function MessagesPage() {
   const { currentUser } = useAuthStore();
   const { t } = useTranslation();
-  const providerId = currentUser?.id || "provider-1";
+  const providerId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "");
 
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [loading, setLoading] = useState(true);

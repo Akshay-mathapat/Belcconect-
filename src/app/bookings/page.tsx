@@ -29,7 +29,7 @@ export default function CustomerBookingsPage() {
   useEffect(() => {
     async function fetchBookings() {
       try {
-        const userId = typeof window !== "undefined" ? localStorage.getItem("cityconnect_user_id") || "customer-1" : "customer-1";
+        const userId = typeof window !== "undefined" ? localStorage.getItem("cityconnect_user_id") || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "") : "customer-1";
         const res = await fetch("/api/bookings", {
           headers: { "x-user-id": userId }
         });

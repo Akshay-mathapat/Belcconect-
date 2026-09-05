@@ -318,9 +318,14 @@ export default function CustomerTrackingMap({
 
     async function fetchOsrmRoute() {
       if (!providerCoords) return;
+      const hasValidDest = isValidCoord(destinationLatitude, destinationLongitude);
+      if (!hasValidDest) {
+        setRouteAvailable(false);
+        return;
+      }
       try {
-        const destLat = destinationLatitude ?? 15.8497;
-        const destLng = destinationLongitude ?? 74.4977;
+        const destLat = Number(destinationLatitude);
+        const destLng = Number(destinationLongitude);
         const pLat = providerCoords.lat;
         const pLng = providerCoords.lng;
         const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${destLng},${destLat}?overview=full&geometries=geojson`;
@@ -358,8 +363,7 @@ export default function CustomerTrackingMap({
               routePolylineRef.current = L.polyline(polylinePoints, {
                 color: "#2563eb",
                 weight: 5,
-                opacity: 0.85,
-                dashArray: "8, 8"
+                opacity: 0.85
               }).addTo(leafletMapRef.current);
             }
           }
@@ -421,7 +425,7 @@ export default function CustomerTrackingMap({
           ? [destLat!, destLng!]
           : providerCoords
           ? [providerCoords.lat, providerCoords.lng]
-          : [15.8497, 74.4977];
+          : [0, 0]; // Default handled gracefully if both missing
 
         const map = L.map(container, {
           center: initialCenter,
@@ -577,10 +581,7 @@ export default function CustomerTrackingMap({
         iconAnchor: [70, 61]
       });
 
-      const destLat = destinationLatitude ?? 15.8497;
-      const destLng = destinationLongitude ?? 74.4977;
-
-      const bounds = L.latLngBounds([destLat, destLng], [targetLat, targetLng]);
+      const hasValidDest = isValidCoord(destinationLatitude, destinationLongitude);
 
       if (!providerMarkerRef.current) {
         providerMarkerRef.current = L.marker([targetLat, targetLng], { icon: provIcon })
@@ -588,7 +589,6 @@ export default function CustomerTrackingMap({
           .bindPopup(popupHtml);
         currentMarkerCoords.current = { lat: targetLat, lng: targetLng };
 
-        const hasValidDest = isValidCoord(destinationLatitude, destinationLongitude);
         if (hasValidDest) {
           const bounds = L.latLngBounds([Number(destinationLatitude), Number(destinationLongitude)], [targetLat, targetLng]);
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
@@ -646,12 +646,22 @@ export default function CustomerTrackingMap({
     return () => {
       if (leafletMapRef.current) {
         try {
+          if (providerMarkerRef.current) {
+            providerMarkerRef.current.remove();
+            providerMarkerRef.current = null;
+          }
+          if (destinationMarkerRef.current) {
+            destinationMarkerRef.current.remove();
+            destinationMarkerRef.current = null;
+          }
+          if (routePolylineRef.current) {
+            routePolylineRef.current.remove();
+            routePolylineRef.current = null;
+          }
+          leafletMapRef.current.off();
           leafletMapRef.current.remove();
         } catch (e) {}
         leafletMapRef.current = null;
-        destinationMarkerRef.current = null;
-        providerMarkerRef.current = null;
-        routePolylineRef.current = null;
       }
     };
   }, []);

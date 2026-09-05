@@ -18,9 +18,9 @@ export function WelcomeModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-modal-title"
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 pointer-events-auto select-none"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-transparent animate-in fade-in duration-200 pointer-events-auto select-none"
     >
-      <div className="relative w-full max-w-sm rounded-3xl border border-primary/20 bg-card p-6 shadow-2xl shadow-black/50 ring-1 ring-white/10 flex flex-col items-center text-center gap-4">
+      <div className="relative w-full max-w-sm rounded-3xl border border-primary/20 bg-card p-6 shadow-[0_0_50px_rgba(0,0,0,0.6)] ring-1 ring-white/10 flex flex-col items-center text-center gap-4">
         
         {/* Dismiss Icon */}
         <button

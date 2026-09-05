@@ -262,8 +262,8 @@ export default function BookingsManagementPage() {
                     />
 
                     <ChatButton
-                      customerId={b.customerId || "customer-1"}
-                      providerId={b.providerId || "provider-1"}
+                      customerId={b.customerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "")}
+                      providerId={b.providerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
                       bookingId={b.id}
                       peerName={b.customerName}
                       serviceName={b.serviceName}

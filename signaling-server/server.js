@@ -5,13 +5,12 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
-
-// NOTE: Both the Next.js app and the Signaling Server MUST read JWT_SECRET from the exact same environment variable value across deployments (e.g. Vercel + Render).
 const JWT_SECRET = process.env.JWT_SECRET;
 const SIGNALING_SECRET = process.env.SIGNALING_INTERNAL_SECRET;
 const DATABASE_URL = process.env.DATABASE_URL;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
 const PORT = process.env.PORT || process.env.SIGNALING_PORT || 4001;
+const NODE_ENV = process.env.NODE_ENV || "development";
 
 // Validate essential environment variables on startup
 if (!JWT_SECRET) {
@@ -24,19 +23,35 @@ if (!DATABASE_URL) {
   throw new Error("FATAL: DATABASE_URL environment variable is missing.");
 }
 
+const getCorsOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  
+  const allowedOrigins = ALLOWED_ORIGIN.split(",").map((o) => o.trim());
+  if (allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+  
+  if (origin.includes("devtunnels.ms") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    return callback(null, true);
+  }
+  
+  callback(new Error("Not allowed by CORS"));
+};
+
 const app = express();
-app.use(cors({ origin: ALLOWED_ORIGIN }));
+app.use(cors({ origin: getCorsOrigin, credentials: true }));
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ALLOWED_ORIGIN.includes(",")
-      ? ALLOWED_ORIGIN.split(",").map((o) => o.trim())
-      : ALLOWED_ORIGIN,
+    origin: getCorsOrigin,
     methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
-  }
+  },
+  allowEIO3: true,
+  transports: ["polling", "websocket"]
 });
 
 // Socket.IO Middleware for Authentication - Strict JWT Verification (NO FALLBACK)
@@ -82,17 +97,6 @@ io.on("connection", (socket) => {
       socket.join(callRoom);
       console.log(`[Signaling Server] User ${userId} joined room ${callRoom}`);
     }
-  });
-
-  // Client-to-client relay for call events
-  socket.on("call:signal", (data) => {
-    if (!data || !data.targetUserId) return;
-    const targetRoom = `user:${data.targetUserId}`;
-    io.to(targetRoom).emit("call:signal", {
-      ...data,
-      fromUserId: userId,
-      timestamp: Date.now()
-    });
   });
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
@@ -502,6 +506,17 @@ app.post("/api/chat/broadcast", (req, res) => {
   return res.json({ success: true });
 });
 
+app.post("/api/location/broadcast", (req, res) => {
+  const { secret, bookingId, event, payload } = req.body;
+  if (secret !== SIGNALING_SECRET) {
+    return res.status(403).json({ error: "Forbidden: Invalid internal secret" });
+  }
+  if (bookingId && event && payload) {
+    io.to(`booking:${bookingId}`).emit(event, payload);
+  }
+  return res.json({ success: true });
+});
+
 // REST API for Next.js backend to push call signaling events
 app.post("/api/signal", (req, res) => {
   const { secret, type, targetUserId, targetUserIds, call, livekit, timestamp } = req.body;
@@ -537,12 +552,23 @@ app.post("/api/signal", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", service: "CityConnect Signaling Server", timestamp: new Date().toISOString() });
+  res.json({ 
+    status: "ok", 
+    service: "CityConnect Signaling Server", 
+    signaling: true,
+    timestamp: new Date().toISOString() 
+  });
 });
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`=======================================================`);
   console.log(`CityConnect Signaling Server running on port ${PORT} (0.0.0.0)`);
-  console.log(`Socket.IO Endpoint: http://0.0.0.0:${PORT}`);
+  console.log(`Local health check: http://localhost:${PORT}/health`);
+  console.log(`For physical-phone testing, expose this port via Dev Tunnel`);
+  console.log(`Then set: NEXT_PUBLIC_SIGNALING_URL=https://<tunnel-id>-${PORT}.inc1.devtunnels.ms`);
   console.log(`=======================================================`);
+});
+
+server.on("error", (err) => {
+  console.error("[Signaling Server] Server error:", err);
 });

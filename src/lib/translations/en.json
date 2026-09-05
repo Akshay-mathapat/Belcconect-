@@ -113,16 +113,28 @@
     "message": "Message"
   },
   "location": {
-    "useCurrentLocation": "Use My Current Location",
-    "customerDestination": "Customer Destination",
-    "navigateToCustomer": "Navigate to Customer (Google Maps)",
-    "confirmedAddress": "Confirmed Address",
-    "landmark": "Landmark",
-    "instructions": "Instructions",
-    "pinnedLocation": "Exact GPS Pin",
-    "textAddress": "Text Address",
-    "searchAddressPlaceholder": "Search address or drag pin on map...",
-    "pinOnMap": "Pin Location on Map"
+    "live": "Live location",
+    "updating": "Location updating...",
+    "unavailable": "Provider location temporarily unavailable",
+    "lastUpdated": "Last updated {time}",
+    "lastKnown": "Last known location shown",
+    "routeUnavailable": "Route temporarily unavailable",
+    "estimatedEta": "Estimated ETA ~{eta} min",
+    "customerIsHere": "Customer is here",
+    "customerNearby": "Customer nearby",
+    "serviceDestination": "Service Destination",
+    "serviceSpot": "Service Spot",
+    "customerLive": "Customer Live",
+    "providerOnTheWay": "Provider is on the way",
+    "waitingProvider": "Waiting for provider's live location...",
+    "arrivingIn": "Arriving in ~{eta} min ({dist})",
+    "openGoogleMaps": "Open in Google Maps",
+    "navigateGoogleMaps": "Navigate in Google Maps",
+    "privacyNotice": "Strictly privacy-protected live tracking window.",
+    "destinationUnavailable": "Exact service location unavailable",
+    "navigationActive": "Navigation active",
+    "you": "You",
+    "customerLiveAvailable": "Customer live location available"
   },
   "trust": {
     "bookings": "Bookings",
@@ -638,8 +650,8 @@
     "finish": "Got it!",
     "stepOf": "Step {current} of {total}",
     "customer": {
-      "searchTitle": "Find Local Professionals",
-      "searchDesc": "Search for plumbers, electricians, tutors, painters, and more across Belagavi.",
+      "searchTitle": "Find a Service",
+      "searchDesc": "Choose what help you need.",
       "categoryTitle": "Browse Service Categories",
       "categoryDesc": "Explore on-demand services categorized for home repairs, lifestyle, and emergency needs.",
       "langTitle": "4 Regional Languages",
@@ -647,7 +659,8 @@
       "callTitle": "Private & Safe Calling",
       "callDesc": "Call verified service providers directly in-app without revealing your personal phone number.",
       "menuTitle": "Account & Bookings",
-      "menuDesc": "View active bookings, manage saved addresses, and update your profile."
+      "menuDesc": "View active bookings, manage saved addresses, and update your profile.",
+      "searchExamples": "Electrician,Plumber,Cleaning,AC Repair"
     },
     "provider": {
       "dashboardTitle": "Provider Workspace",
@@ -661,30 +674,105 @@
     },
     "watchVideoGuide": "Watch Video Guide",
     "videoGuideTitle": "Video Walkthrough & Tutorials",
-    "videoGuideDesc": "Watch step-by-step video guides for BelConnect platform."
+    "videoGuideDesc": "Watch step-by-step video guides for BelConnect platform.",
+    "quickGuide": "Quick Guide",
+    "listen": "Listen",
+    "stop": "Stop"
   },
-  "location": {
-    "live": "Live location",
-    "updating": "Location updating...",
-    "unavailable": "Provider location temporarily unavailable",
-    "lastUpdated": "Last updated {time}",
-    "lastKnown": "Last known location shown",
-    "routeUnavailable": "Route temporarily unavailable",
-    "estimatedEta": "Estimated ETA ~{eta} min",
-    "customerIsHere": "Customer is here",
-    "customerNearby": "Customer nearby",
-    "serviceDestination": "Service Destination",
-    "serviceSpot": "Service Spot",
-    "customerLive": "Customer Live",
-    "providerOnTheWay": "Provider is on the way",
-    "waitingProvider": "Waiting for provider's live location...",
-    "arrivingIn": "Arriving in ~{eta} min ({dist})",
-    "openGoogleMaps": "Open in Google Maps",
-    "navigateGoogleMaps": "Navigate in Google Maps",
-    "privacyNotice": "Strictly privacy-protected live tracking window.",
-    "destinationUnavailable": "Exact service location unavailable",
-    "navigationActive": "Navigation active",
-    "you": "You",
-    "customerLiveAvailable": "Customer live location available"
+  "quickGuide": {
+    "title": "Quick Guide",
+    "listen": "Listen",
+    "speaking": "Speaking...",
+    "stop": "Stop",
+    "next": "Next",
+    "back": "Back",
+    "skip": "Skip",
+    "done": "Done",
+    "close": "Close",
+    "stepOf": "Step {current} of {total}",
+    "tip": "Quick Tip",
+    "noSpeechSupport": "A {language} voice is not available on this device. Please install the {language} text-to-speech voice in your device settings.",
+    "customer": {
+      "findService": {
+        "title": "Find a Service",
+        "description": "Choose what help you need.",
+        "tip": "Use the search bar or category tiles at the top to explore top-rated local experts."
+      },
+      "chooseProvider": {
+        "title": "Choose a Provider",
+        "description": "See their service and rating.",
+        "tip": "Compare customer ratings and experience for verified professionals."
+      },
+      "bookService": {
+        "title": "Book the Service",
+        "description": "Choose the service and tap Book Now.",
+        "tip": "Select your preferred date, time slot, and tap Book Now to reserve your service."
+      },
+      "confirmLocation": {
+        "title": "Confirm Your Location",
+        "description": "Pin where you want the service.",
+        "tip": "Select your saved home address or pinpoint your exact location on the interactive map."
+      },
+      "trackProvider": {
+        "title": "Track Your Provider",
+        "description": "When the provider starts travelling, you can see their live location.",
+        "privacyNote": "Live tracking starts when the provider clicks Start Travel.",
+        "tip": "Real-time movement will appear on your booking map as soon as your provider is on the way."
+      },
+      "chatCall": {
+        "title": "Need Help?",
+        "description": "Chat or call your service provider from the booking page.",
+        "tip": "Connect with your assigned provider via end-to-end encrypted messaging or direct voice calls."
+      },
+      "finish": {
+        "title": "You're Ready!",
+        "description": "Choose a service and make your first booking.",
+        "action": "Find a Service"
+      }
+    },
+    "provider": {
+      "addService": {
+        "title": "Add Your Service",
+        "description": "Tell customers what work you provide.",
+        "tip": "Go to My Services to manage all your offered skills and hourly or per-job service packages."
+      },
+      "addServiceDetails": {
+        "title": "Add Service Details",
+        "description": "Add your service details and availability.",
+        "tip": "Specify your service title, category, and service description."
+      },
+      "receiveBookings": {
+        "title": "Receive Bookings",
+        "description": "New customer requests will appear here.",
+        "tip": "All incoming customer service requests in your area will show up on your Bookings tab."
+      },
+      "acceptBooking": {
+        "title": "Accept the Job",
+        "description": "Check the booking and accept it when you're available.",
+        "tip": "Review job schedule, customer address, and tap Accept Booking when ready."
+      },
+      "startTravel": {
+        "title": "Start Travel",
+        "description": "Tap this when you leave for the customer's location.",
+        "privacyNote": "Your live location is shared only while the job is active.",
+        "tip": "Tap Start Travel when leaving. Your live location will then be safely shared with the customer."
+      },
+      "startCompleteWork": {
+        "title": "Start & Complete Work",
+        "description": "Start the job when you arrive. Tap Complete when the work is finished.",
+        "tip": "Tap Start Work upon arrival, and tap Mark Job Completed when work is finished."
+      },
+      "finish": {
+        "title": "You're Ready!",
+        "description": "Add your service and start receiving bookings.",
+        "action": "Go to My Services"
+      }
+    }
+  },
+  "service": {
+    "electrician": "Electrician",
+    "plumber": "Plumber",
+    "cleaning": "Cleaning",
+    "acRepair": "AC Repair"
   }
 }

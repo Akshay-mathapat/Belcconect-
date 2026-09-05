@@ -13,7 +13,6 @@ import { SERVICE_TAXONOMY, SERVICE_CATEGORIES } from "@/constants/site";
 import CategoryBar from "@/components/sections/CategoryBar";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotificationBell from "@/components/notifications/NotificationBell";
-import { AppTour } from "@/components/onboarding/AppTour";
 
 const iconMap: Record<string, any> = {
   Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
@@ -479,19 +478,6 @@ export default function Navigation() {
                       <button
                         type="button"
                         onClick={() => {
-                          setUserMenuOpen(false);
-                          restartTour();
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-medium transition-colors cursor-pointer"
-                        suppressHydrationWarning
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        <span>{t("tour.takeProductTour")}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
                           logout();
                           setUserMenuOpen(false);
                           router.push("/");
@@ -767,9 +753,6 @@ export default function Navigation() {
           />
         )}
       </AnimatePresence>
-
-      {/* Onboarding Tour Engine */}
-      <AppTour />
     </>
   );
 }

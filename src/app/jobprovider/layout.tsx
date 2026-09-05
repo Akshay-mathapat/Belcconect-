@@ -83,8 +83,18 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
     };
   }, []);
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(useAuthStore.persist.hasHydrated());
+    const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
+    return () => unsub();
+  }, []);
+
   // Redirect unauthorized roles
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!currentUser) {
       router.push("/login");
       return;
@@ -92,7 +102,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
     if (currentUser.role !== "job_provider") {
       router.push("/");
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, isHydrated]);
 
   const themeOptions = [
     { value: "light" as const, icon: Sun, label: "Light" },

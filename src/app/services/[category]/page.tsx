@@ -138,7 +138,7 @@ export default function ServicesCategoryPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Sidebar Filters */}
             <div className="lg:col-span-1 space-y-6">
-              <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="rounded-2xl border border-border bg-card p-5" data-tour="sort-by">
                 <h3 className="font-semibold text-foreground mb-4">Sort By</h3>
                 <div className="space-y-3">
                   {["Recommended", "Rating: High to Low", "Most Experienced"].map((sort, i) => (
@@ -161,7 +161,7 @@ export default function ServicesCategoryPage() {
             </div>
 
             {/* Real Database Professionals List */}
-            <div className="lg:col-span-3 space-y-4">
+            <div className="lg:col-span-3 space-y-4" data-tour="providers-list">
               {isLoading ? (
                 <div className="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center gap-3">
                   <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -178,11 +178,11 @@ export default function ServicesCategoryPage() {
                 filteredPros.map((pro, index) => (
                   <motion.div
                     key={pro.id}
-                    data-tour={index === 0 ? "provider-card" : undefined}
+                    data-tour-provider-card="true"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="rounded-2xl border border-border bg-card p-5 sm:p-6 transition-all hover:shadow-lg hover:border-primary/30 flex flex-col sm:flex-row gap-5"
+                    className="rounded-2xl border border-border bg-card p-5 sm:p-6 transition-all hover:shadow-lg hover:border-primary/30 flex flex-col sm:flex-row gap-5 relative"
                   >
                     <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                       <User className="h-8 w-8 text-muted-foreground" />
@@ -223,7 +223,7 @@ export default function ServicesCategoryPage() {
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
-                          data-tour={index === 0 ? "book-now" : undefined}
+                          data-tour-book-button="true"
                           onClick={() => handleBookNow(pro)}
                           className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md cursor-pointer"
                         >

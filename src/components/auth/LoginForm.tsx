@@ -13,9 +13,10 @@ import { getSafeReturnUrl } from "@/lib/urlUtils";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
+  onForgotPassword?: () => void;
 }
 
-export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
+export function LoginForm({ onSwitchToSignup, onForgotPassword }: LoginFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -151,16 +152,18 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             <label className="block text-sm font-medium text-foreground">
               {t("auth.password")}
             </label>
-            <a
-              href="#"
+            <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
-                alert("Password reset instructions sent.");
+                if (onForgotPassword) {
+                  onForgotPassword();
+                }
               }}
-              className="text-xs text-blue-600 hover:underline font-semibold"
+              className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
             >
               {t("auth.forgotPassword")}
-            </a>
+            </button>
           </div>
           <div className="relative">
             <Lock className="w-5 h-5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

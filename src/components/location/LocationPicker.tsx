@@ -103,7 +103,14 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
       }
 
       if (leafletMapRef.current) {
-        leafletMapRef.current.remove();
+        try {
+          if (markerRef.current) {
+            markerRef.current.remove();
+            markerRef.current = null;
+          }
+          leafletMapRef.current.off();
+          leafletMapRef.current.remove();
+        } catch (e) {}
         leafletMapRef.current = null;
       }
 
@@ -210,6 +217,11 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
       }
       if (leafletMapRef.current) {
         try {
+          if (markerRef.current) {
+            markerRef.current.remove();
+            markerRef.current = null;
+          }
+          leafletMapRef.current.off();
           leafletMapRef.current.remove();
         } catch (e) {}
         leafletMapRef.current = null;
@@ -358,7 +370,7 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
   };
 
   return (
-    <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-2xl flex flex-col max-w-2xl w-full mx-auto">
+    <div data-location-modal-open="true" className="bg-card border border-border rounded-3xl overflow-hidden shadow-2xl flex flex-col max-w-2xl w-full mx-auto">
       {/* Header */}
       <div className="p-4 sm:p-5 border-b border-border/70 flex items-center justify-between bg-muted/20">
         <div className="flex items-center gap-2.5">

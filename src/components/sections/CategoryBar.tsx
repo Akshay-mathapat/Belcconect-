@@ -93,7 +93,7 @@ export default function CategoryBar() {
   const quickCategories = SERVICE_CATEGORIES;
 
   return (
-    <div className="hidden lg:block w-full border-b border-border bg-card/80 backdrop-blur-sm relative z-40" id="tour-category-grid" data-tour="browse-services">
+    <div className="hidden lg:block w-full border-b border-border bg-card/80 backdrop-blur-sm relative z-40" id="tour-category-grid">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 h-12">
           
@@ -270,6 +270,7 @@ export default function CategoryBar() {
                   <Link
                     key={category.id}
                     href={`/services/${category.id}`}
+                    data-tour-category={category.id}
                     className="group flex-shrink-0 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200 whitespace-nowrap"
                   >
                     <IconComponent className={`h-3.5 w-3.5 ${category.iconColor} opacity-70 group-hover:opacity-100 transition-opacity`} />

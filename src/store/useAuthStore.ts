@@ -54,6 +54,7 @@ interface AuthState {
   currentUser: AuthUser | null;
   usersList: AuthUser[];
 
+  setAuthUser: (user: AuthUser) => void;
   registerUser: (data: {
     email: string;
     password?: string;
@@ -143,6 +144,16 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       currentUser: null,
       usersList: INITIAL_USERS,
+
+      setAuthUser: (user: AuthUser) => {
+        set((state) => {
+          const exists = state.usersList.some((u) => u.id === user.id);
+          const list = exists
+            ? state.usersList.map((u) => (u.id === user.id ? user : u))
+            : [...state.usersList, user];
+          return { currentUser: user, usersList: list };
+        });
+      },
 
       registerUser: async ({ email, password, name, phone, role }) => {
         try {

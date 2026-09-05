@@ -25,7 +25,7 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const userId = currentUser?.id || "customer-1";
+  const userId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "");
 
   const fetchNotifications = async () => {
     try {

@@ -9,14 +9,15 @@ import { useTranslation } from "@/lib/i18n";
 import { LeftBrandPanel } from "./LeftBrandPanel";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
+import { ForgotPasswordModal } from "./ForgotPasswordModal";
 
 interface AuthLayoutProps {
-  initialMode?: "login" | "signup";
+  initialMode?: "login" | "signup" | "forgot";
 }
 
 export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
   const { t } = useTranslation();
-  const [authMode, setAuthMode] = useState<"login" | "signup">(initialMode);
+  const [authMode, setAuthMode] = useState<"login" | "signup" | "forgot">(initialMode);
 
   useEffect(() => {
     // Save original styles
@@ -85,9 +86,14 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
               className="w-full"
             >
               {authMode === "login" ? (
-                <LoginForm onSwitchToSignup={() => setAuthMode("signup")} />
-              ) : (
+                <LoginForm
+                  onSwitchToSignup={() => setAuthMode("signup")}
+                  onForgotPassword={() => setAuthMode("forgot")}
+                />
+              ) : authMode === "signup" ? (
                 <SignupForm onSwitchToLogin={() => setAuthMode("login")} />
+              ) : (
+                <ForgotPasswordModal onBackToLogin={() => setAuthMode("login")} />
               )}
             </motion.div>
           </AnimatePresence>

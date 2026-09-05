@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BookingStatus } from "@/types/provider";
 import { getSocket } from "@/lib/socket";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+const ProviderLocationPlugin = registerPlugin<any>("ProviderLocation");
 
 const ACTIVE_TRACKING_STATUSES: (BookingStatus | string)[] = ["OnTheWay", "Started"];
 
@@ -134,6 +137,15 @@ export function useLiveLocationBroadcast(
     }
   }, [wakeLockActive, requestWakeLock, releaseWakeLock]);
 
+  // Stop native tracking explicitly when booking status is no longer active
+  useEffect(() => {
+    if (Capacitor.isNativePlatform() && status) {
+      if (!ACTIVE_TRACKING_STATUSES.includes(status)) {
+        ProviderLocationPlugin.stopTracking().catch(console.error);
+      }
+    }
+  }, [status]);
+
   // Main Tracking Effect
   useEffect(() => {
     isMountedRef.current = true;
@@ -151,19 +163,51 @@ export function useLiveLocationBroadcast(
 
     // Stop tracking immediately if disabled or outside active tracking window
     if (!isWindowActive) {
-      stopWatch();
+      if (!Capacitor.isNativePlatform()) {
+        stopWatch();
+      }
       releaseWakeLock();
       setIsTracking(false);
       return;
     }
 
+    setIsTracking(true);
+    setError(null);
+
+    // Capacitor Native Android Background Location Service
+    if (Capacitor.isNativePlatform()) {
+      const token = localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") || "";
+      
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      if (!apiUrl && typeof window !== "undefined") {
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          apiUrl = window.location.origin + "/api";
+        } else {
+          apiUrl = "http://10.0.2.2:3000/api";
+        }
+      }
+      if (!apiUrl.endsWith("/api")) {
+          apiUrl += "/api";
+      }
+      
+      ProviderLocationPlugin.startTracking({
+        bookingId: bookingId!,
+        token,
+        apiUrl
+      }).catch((err: any) => {
+        console.error("Native tracking failed to start", err);
+        setError("Native background location service failed to start.");
+      });
+      
+      // Native service is NOT stopped on component unmount
+      return;
+    }
+
+    // --- Web Browser Fallback ---
     if (typeof window === "undefined" || !navigator.geolocation) {
       setError("Geolocation is not supported by this browser");
       return;
     }
-
-    setIsTracking(true);
-    setError(null);
 
     const socket = getSocket();
     if (socket && socket.connected) {
@@ -174,6 +218,11 @@ export function useLiveLocationBroadcast(
     const handleSuccess = (pos: GeolocationPosition) => {
       const { latitude, longitude, heading, speed, accuracy: rawAccuracy } = pos.coords;
       const now = Date.now();
+
+      // Throttle React state updates to max 1Hz to prevent Chromium watchPosition spam bug
+      if (lastSentPositionRef.current && (now - lastSentPositionRef.current.time < 1000)) {
+        return;
+      }
 
       // Validate numeric ranges strictly
       if (
@@ -188,13 +237,13 @@ export function useLiveLocationBroadcast(
         return;
       }
 
-      setAccuracy(rawAccuracy ?? null);
-
       // Ignore extremely inaccurate reading (> 150m) to prevent erratic marker jumps
       if (typeof rawAccuracy === "number" && rawAccuracy > 150) {
         console.warn(`[Location Broadcast] Inaccurate reading rejected (${rawAccuracy}m accuracy)`);
         return;
       }
+
+      setAccuracy(rawAccuracy ?? null);
 
       const newPos: LiveLocationPosition = {
         latitude,

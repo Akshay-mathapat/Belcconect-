@@ -8,11 +8,14 @@ export interface TourStep {
   i18nTitleKey?: string;
   i18nDescKey?: string;
   examples?: string[];
-  icon: string;
+  icon?: string;
   actionText?: string;
   actionRoute?: string;
   fallbackExplanation?: string;
   privacyNote?: string;
+  allowTargetInteraction?: boolean;
+  advanceOnTargetClick?: boolean;
+  hideStickyCard?: boolean;
 }
 
 export interface TourState {
@@ -21,6 +24,5 @@ export interface TourState {
   skipConfirmOpen: boolean;
   currentStepIndex: number;
   role: TourRole;
-  isVoiceActive: boolean;
   hasCompletedOrSkipped: boolean;
 }

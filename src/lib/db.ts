@@ -65,9 +65,11 @@ export async function initDB() {
           phone VARCHAR(50),
           avatar TEXT,
           password_hash VARCHAR(255),
+          google_id VARCHAR(255) UNIQUE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      await client.query(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE`);
 
       // 2. Create Service Providers table
       await client.query(`
@@ -78,9 +80,11 @@ export async function initDB() {
           phone VARCHAR(50),
           avatar TEXT,
           password_hash VARCHAR(255),
+          google_id VARCHAR(255) UNIQUE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE`);
 
       // Migration columns for KYC verification documents
       await client.query(`ALTER TABLE service_providers ADD COLUMN IF NOT EXISTS kyc_document_type VARCHAR(100)`);
@@ -100,9 +104,11 @@ export async function initDB() {
           phone VARCHAR(50),
           avatar TEXT,
           password_hash VARCHAR(255),
+          google_id VARCHAR(255) UNIQUE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      await client.query(`ALTER TABLE job_providers ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE`);
 
       // 4. Create Addresses table (references customers)
       await client.query(`
@@ -306,6 +312,37 @@ export async function initDB() {
           created_at TIMESTAMPTZ DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+      `);
+
+      // 13. Create Password Reset OTPs and Password Reset Sessions tables
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS password_reset_otps (
+          id VARCHAR(100) PRIMARY KEY,
+          user_id VARCHAR(100) NOT NULL,
+          user_table VARCHAR(50) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          otp_hash TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          verified_at TIMESTAMPTZ,
+          used_at TIMESTAMPTZ,
+          attempt_count INTEGER DEFAULT 0,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_pw_reset_otps_user ON password_reset_otps(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pw_reset_otps_email ON password_reset_otps(email);
+        CREATE INDEX IF NOT EXISTS idx_pw_reset_otps_expires ON password_reset_otps(expires_at);
+
+        CREATE TABLE IF NOT EXISTS password_reset_sessions (
+          id VARCHAR(100) PRIMARY KEY,
+          user_id VARCHAR(100) NOT NULL,
+          user_table VARCHAR(50) NOT NULL,
+          token_hash TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          used_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_pw_reset_sess_user ON password_reset_sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pw_reset_sess_expires ON password_reset_sessions(expires_at);
       `);
 
       // 13. Create Notification Logs table for SMS & Push idempotency tracking

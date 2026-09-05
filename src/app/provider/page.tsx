@@ -30,6 +30,7 @@ import { useProviderStore } from "@/store/useProviderStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { ProviderChecklistCard } from "@/components/provider/ProviderChecklistCard";
+import { useOnboardingTour } from "@/components/onboarding/OnboardingContext";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
   try {
@@ -79,7 +80,8 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 }
 
 export default function ProviderDashboardPage() {
-  const { currentUser, restartTour } = useAuthStore();
+  const { currentUser } = useAuthStore();
+  const { replayTour } = useOnboardingTour();
   const { profile, bookings, services, updateBookingStatus, syncWithAuthUser, fetchProviderBookings, fetchProviderServices } = useProviderStore();
   const { t } = useTranslation();
   const [showAllServices, setShowAllServices] = useState(false);
@@ -168,11 +170,11 @@ export default function ProviderDashboardPage() {
             </Link>
 
             <button
-              onClick={() => restartTour()}
+              onClick={() => replayTour("provider")}
               className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-semibold text-xs border border-white/20 backdrop-blur-sm transition-all cursor-pointer"
             >
               <Sparkles className="h-4 w-4 text-amber-300" />
-              <span>Restart Tour</span>
+              <span>Guide Tour</span>
             </button>
           </div>
         </div>

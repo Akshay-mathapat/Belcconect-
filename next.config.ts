@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(self), microphone=(self), geolocation=(self)",
+            value: "camera=(self), geolocation=(self), microphone=(self)",
           },
           {
             key: "Content-Security-Policy",
@@ -50,7 +50,8 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
               "font-src 'self' https://fonts.gstatic.com data:",
               "img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com https://unpkg.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.openstreetmap.org",
-              "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://router.project-osrm.org https://*.livekit.cloud wss://*.livekit.cloud",
+              // connect-src: allows connections to local ports, OSRM, LiveKit, and Dev Tunnels (for signaling)
+              "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://router.project-osrm.org https://*.livekit.cloud wss://*.livekit.cloud https://*.devtunnels.ms wss://*.devtunnels.ms",
               "media-src 'self' blob:",
               "object-src 'none'",
               "frame-ancestors 'none'"

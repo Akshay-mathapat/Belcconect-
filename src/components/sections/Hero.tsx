@@ -195,6 +195,7 @@ export function Hero() {
                 >
                   <Link
                     href={`/services/${category.id}`}
+                    data-tour-category={category.id}
                     className="group flex flex-col items-center justify-center p-4 rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 text-center h-full"
                   >
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${category.gradient} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>

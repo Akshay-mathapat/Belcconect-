@@ -31,8 +31,6 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
 import { ProviderSearchDropdown } from "@/components/provider/layout/ProviderSearchDropdown";
-import { OnboardingTour } from "@/components/common/OnboardingTour";
-import { useTourStore } from "@/store/useTourStore";
 
 export default function ProviderLayout({
   children,
@@ -47,20 +45,6 @@ export default function ProviderLayout({
   const { currentUser, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
-  const { startTour, hasCompletedTour } = useTourStore();
-
-  // Auto-start provider tour on first visit
-  useEffect(() => {
-    if (currentUser && currentUser.role === "provider") {
-      const isCompleted = hasCompletedTour("provider");
-      if (!isCompleted) {
-        const timer = setTimeout(() => {
-          startTour("provider");
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [currentUser, startTour, hasCompletedTour]);
 
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -414,18 +398,6 @@ export default function ProviderLayout({
                       <button
                         type="button"
                         onClick={() => {
-                          setUserMenuOpen(false);
-                          startTour("provider");
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-medium transition-colors cursor-pointer"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        <span>{t("tour.takeProductTour")}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
                           logout();
                           setUserMenuOpen(false);
                           router.push("/");
@@ -512,9 +484,6 @@ export default function ProviderLayout({
           );
         })}
       </div>
-
-      {/* Onboarding Tour Engine */}
-      <OnboardingTour />
     </div>
   );
 }

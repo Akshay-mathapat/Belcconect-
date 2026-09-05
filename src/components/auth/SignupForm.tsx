@@ -243,8 +243,14 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               type="tel"
               required
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                if (val.length <= 10) {
+                  setPhone(val);
+                }
+              }}
+              maxLength={10}
+              placeholder="9876543210"
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
               suppressHydrationWarning
             />

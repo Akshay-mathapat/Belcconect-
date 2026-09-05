@@ -7,6 +7,8 @@ import { customerTourSteps, customerFinishContent } from "./customerTourSteps";
 import { providerTourSteps, providerFinishContent } from "./providerTourSteps";
 import { usePathname, useRouter } from "next/navigation";
 
+export const TOUR_VERSION = "v1";
+
 interface OnboardingContextType {
   isOpen: boolean;
   welcomeOpen: boolean;
@@ -17,7 +19,6 @@ interface OnboardingContextType {
   steps: TourStep[];
   currentStep: TourStep | null;
   finishContent: typeof customerFinishContent;
-  isVoiceActive: boolean;
   hasUserCompletedOrSkipped: boolean;
 
   startTour: (overrideRole?: TourRole) => void;
@@ -28,7 +29,7 @@ interface OnboardingContextType {
   cancelSkip: () => void;
   completeTour: () => void;
   restartTour: (overrideRole?: TourRole) => void;
-  toggleVoice: () => void;
+  replayTour: (overrideRole?: TourRole) => void;
   dismissHelpCard: () => void;
   showHelpCard: boolean;
 }
@@ -46,27 +47,39 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [isFinishedScreen, setIsFinishedScreen] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [role, setRole] = useState<TourRole>("customer");
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [hasUserCompletedOrSkipped, setHasUserCompletedOrSkipped] = useState(true);
   const [showHelpCard, setShowHelpCard] = useState(false);
+  const [isAuthHydrated, setIsAuthHydrated] = useState(() =>
+    typeof window !== "undefined" && useAuthStore.persist?.hasHydrated?.() === true
+  );
 
   const prevFocusRef = useRef<HTMLElement | null>(null);
+  const automaticTourCheckedRef = useRef<string | null>(null);
 
-  // Helper to determine storage key per user ID & role
   const getStorageKey = useCallback((r: TourRole, uid: string) => {
-    return `cityconnect:onboarding:${r}:${uid}`;
+    return `belconnect_tour:${TOUR_VERSION}:${r}:${uid}`;
   }, []);
 
-  // Determine current steps list & finish content
   const steps = role === "provider" ? providerTourSteps : customerTourSteps;
   const finishContent = role === "provider" ? providerFinishContent : customerFinishContent;
   const currentStep = isFinishedScreen ? null : steps[currentStepIndex] || null;
 
-  // Check tour completion status on mount / currentUser change
   useEffect(() => {
-    if (!currentUser || !currentUser.id) {
+    const unsubscribe = useAuthStore.persist.onFinishHydration(() => setIsAuthHydrated(true));
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthHydrated || !currentUser?.id) {
       setHasUserCompletedOrSkipped(true);
       setShowHelpCard(false);
+      if (!currentUser) {
+        automaticTourCheckedRef.current = null;
+        setWelcomeOpen(false);
+        setIsOpen(false);
+        setIsFinishedScreen(false);
+        setCurrentStepIndex(0);
+      }
       return;
     }
 
@@ -74,13 +87,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setRole(userRole);
 
     const storageKey = getStorageKey(userRole, currentUser.id);
+    const checkKey = `${userRole}:${currentUser.id}:${TOUR_VERSION}`;
+    if (automaticTourCheckedRef.current === checkKey) return;
+
+    const dashboardReady = userRole === "provider"
+      ? pathname.startsWith("/provider")
+      : pathname === "/" || pathname === "/account";
+    if (!dashboardReady) return;
+
+    automaticTourCheckedRef.current = checkKey;
     const storedStatus = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
 
     const isCompleted = storedStatus === "completed" || storedStatus === "skipped";
     setHasUserCompletedOrSkipped(isCompleted);
     setShowHelpCard(!isCompleted);
 
-    // Development / URL debug override: ?tour=customer or ?tour=provider
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tourQuery = params.get("tour");
@@ -91,62 +112,20 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       }
     }
 
-    // Auto-trigger welcome modal ONLY for new users (isFirstLogin true or no stored key)
-    if (!isCompleted && (currentUser.isFirstLogin || !storedStatus)) {
+    if (!isCompleted) {
       const timer = setTimeout(() => {
         prevFocusRef.current = document.activeElement as HTMLElement;
         setWelcomeOpen(true);
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [currentUser, getStorageKey]);
-
-  // Voice speech synthesis helper
-  const speakCurrentStep = useCallback((step: TourStep | null, finished: boolean) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-    window.speechSynthesis.cancel(); // Stop current speech
-
-    let textToSpeak = "";
-    if (finished) {
-      textToSpeak = `${finishContent.title}. ${finishContent.description}`;
-    } else if (step) {
-      textToSpeak = `${step.title}. ${step.description}`;
-      if (step.privacyNote) {
-        textToSpeak += `. Note: ${step.privacyNote}`;
-      }
-    }
-
-    if (textToSpeak) {
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.rate = 0.95; // Slightly slower for low-literacy clarity
-      utterance.onend = () => setIsVoiceActive(false);
-      utterance.onerror = () => setIsVoiceActive(false);
-      window.speechSynthesis.speak(utterance);
-      setIsVoiceActive(true);
-    }
-  }, [finishContent]);
-
-  const toggleVoice = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (isVoiceActive) {
-      window.speechSynthesis.cancel();
-      setIsVoiceActive(false);
-    } else {
-      speakCurrentStep(currentStep, isFinishedScreen);
-    }
-  }, [isVoiceActive, currentStep, isFinishedScreen, speakCurrentStep]);
-
-  // Stop voice on step changes unless active
-  useEffect(() => {
-    if (isVoiceActive) {
-      speakCurrentStep(currentStep, isFinishedScreen);
-    }
-  }, [currentStepIndex, isFinishedScreen, isVoiceActive, currentStep, speakCurrentStep]);
+  }, [currentUser, getStorageKey, isAuthHydrated, pathname]);
 
   const startTour = useCallback((overrideRole?: TourRole) => {
     const activeRole = overrideRole || (currentUser?.role === "provider" ? "provider" : "customer");
+    prevFocusRef.current = document.activeElement as HTMLElement;
     setRole(activeRole);
+    setSkipConfirmOpen(false);
     setWelcomeOpen(false);
     setIsOpen(true);
     setIsFinishedScreen(false);
@@ -170,10 +149,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     }
   }, [isFinishedScreen, currentStepIndex, steps.length]);
 
-  const requestSkip = useCallback(() => {
-    setSkipConfirmOpen(true);
-  }, []);
-
   const saveStatus = useCallback((status: "completed" | "skipped") => {
     if (currentUser?.id) {
       const key = getStorageKey(role, currentUser.id);
@@ -185,15 +160,23 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setShowHelpCard(false);
   }, [currentUser, getStorageKey, role]);
 
+  const requestSkip = useCallback(() => {
+    setSkipConfirmOpen(false);
+    setIsOpen(false);
+    setWelcomeOpen(false);
+    setIsFinishedScreen(false);
+    saveStatus("skipped");
+
+    if (prevFocusRef.current) {
+      prevFocusRef.current.focus();
+    }
+  }, [saveStatus]);
+
   const confirmSkip = useCallback(() => {
     setSkipConfirmOpen(false);
     setIsOpen(false);
     setWelcomeOpen(false);
     setIsFinishedScreen(false);
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsVoiceActive(false);
     saveStatus("skipped");
 
     if (prevFocusRef.current) {
@@ -209,10 +192,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setIsOpen(false);
     setWelcomeOpen(false);
     setIsFinishedScreen(false);
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsVoiceActive(false);
     saveStatus("completed");
 
     if (finishContent.actionRoute) {
@@ -226,19 +205,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const restartTour = useCallback((overrideRole?: TourRole) => {
     const activeRole = overrideRole || (currentUser?.role === "provider" ? "provider" : "customer");
+    prevFocusRef.current = document.activeElement as HTMLElement;
     setRole(activeRole);
     setSkipConfirmOpen(false);
-    setWelcomeOpen(true);
-    setIsOpen(false);
+    setWelcomeOpen(false);
+    setIsOpen(true);
     setIsFinishedScreen(false);
     setCurrentStepIndex(0);
   }, [currentUser]);
+
+  const replayTour = restartTour;
 
   const dismissHelpCard = useCallback(() => {
     setShowHelpCard(false);
   }, []);
 
-  // Keyboard accessibility: Escape key listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -247,13 +228,19 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         } else if (isOpen) {
           requestSkip();
         } else if (welcomeOpen) {
-          setWelcomeOpen(false);
+          requestSkip();
+        }
+      } else if (isOpen && !skipConfirmOpen) {
+        if (e.key === "ArrowRight") {
+          nextStep();
+        } else if (e.key === "ArrowLeft") {
+          previousStep();
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, welcomeOpen, skipConfirmOpen, requestSkip, cancelSkip]);
+  }, [isOpen, welcomeOpen, skipConfirmOpen, requestSkip, cancelSkip, nextStep, previousStep]);
 
   return (
     <OnboardingContext.Provider
@@ -267,7 +254,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         steps,
         currentStep,
         finishContent,
-        isVoiceActive,
         hasUserCompletedOrSkipped,
         startTour,
         nextStep,
@@ -277,7 +263,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         cancelSkip,
         completeTour,
         restartTour,
-        toggleVoice,
+        replayTour,
         dismissHelpCard,
         showHelpCard
       }}
@@ -300,7 +286,6 @@ export function useOnboardingTour() {
       steps: customerTourSteps,
       currentStep: null,
       finishContent: customerFinishContent,
-      isVoiceActive: false,
       hasUserCompletedOrSkipped: true,
       startTour: () => {},
       nextStep: () => {},
@@ -310,7 +295,7 @@ export function useOnboardingTour() {
       cancelSkip: () => {},
       completeTour: () => {},
       restartTour: () => {},
-      toggleVoice: () => {},
+      replayTour: () => {},
       dismissHelpCard: () => {},
       showHelpCard: false
     };

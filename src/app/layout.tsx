@@ -60,7 +60,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("h-full antialiased", inter.variable, outfit.variable)}
     >
-      <head />
+      <head>
+        <script src="https://accounts.google.com/gsi/client" async defer />
+      </head>
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <I18nProvider>
           <ThemeProvider>

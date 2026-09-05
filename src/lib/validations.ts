@@ -13,7 +13,10 @@ export const loginSchema = z.object({
     .min(1, "Password is required")
     .max(100, "Password exceeds maximum length"),
 });
-
+export const googleAuthSchema = z.object({
+  credential: z.string().min(10, "Google credential ID token is required"),
+  role: z.enum(["user", "provider", "job_provider"]).optional(),
+});
 export const registerSchema = z.object({
   email: z
     .string()
@@ -38,6 +41,46 @@ export const registerSchema = z.object({
     .optional(),
   role: z.enum(["user", "provider", "job_provider"]),
   avatar: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Invalid email format")
+    .max(255, "Email is too long"),
+});
+
+export const verifyResetOtpSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Invalid email format")
+    .max(255, "Email is too long"),
+  otp: z
+    .string()
+    .trim()
+    .length(6, "Verification code must be 6 digits")
+    .regex(/^\d+$/, "Verification code must be numeric"),
+});
+
+export const resetPasswordSchema = z.object({
+  resetToken: z
+    .string()
+    .trim()
+    .min(10, "Reset token is required"),
+  newPassword: z
+    .string()
+    .min(6, "Password must be at least 6 characters long")
+    .max(100, "Password exceeds maximum length"),
+  confirmPassword: z
+    .string()
+    .min(6, "Password confirmation is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 export const createBookingSchema = z.object({

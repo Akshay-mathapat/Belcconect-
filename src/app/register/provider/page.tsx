@@ -80,11 +80,17 @@ export default function ProviderRegisterPage() {
                         <input
                           type="tel"
                           required
+                          maxLength={10}
                           pattern="[0-9]{10}"
                           value={mobile}
-                          onChange={(e) => setMobile(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            if (val.length <= 10) {
+                              setMobile(val);
+                            }
+                          }}
                           className="block w-full pl-12 pr-3 py-3 border border-border rounded-xl bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm text-foreground placeholder-muted-foreground"
-                          placeholder="98765 43210"
+                          placeholder="9876543210"
                         />
                       </div>
                     </div>

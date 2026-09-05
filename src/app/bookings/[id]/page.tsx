@@ -28,12 +28,21 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   const [error, setError] = useState<string | null>(null);
   const [shareLiveLocation, setShareLiveLocation] = useState(false);
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(useAuthStore.persist.hasHydrated());
+    const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
+    return () => unsub();
+  }, []);
+
   // Auth Guard
   useEffect(() => {
+    if (!isHydrated) return;
     if (!currentUser) {
       router.push(`/auth?mode=login&returnTo=/bookings/${id}`);
     }
-  }, [currentUser, router, id]);
+  }, [currentUser, router, id, isHydrated]);
 
   // Activate Customer Live GPS Broadcast when booking tracking window is active and customer grants permission
   const { isTracking: isCustomerBroadcasting, error: gpsError } = useLiveLocationBroadcast(
@@ -107,11 +116,11 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
           <p className="text-xs">{error || "Unable to retrieve tracking data for this booking ID."}</p>
         </div>
         <Link
-          href="/bookings"
+          href="/account"
           className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:underline"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to My Bookings
+          Back to My Account
         </Link>
       </div>
     );
@@ -126,11 +135,11 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
         {/* Header Link */}
         <div className="flex items-center justify-between">
           <Link
-            href="/bookings"
+            href="/account"
             className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to All Bookings</span>
+            <span>Back to My Account</span>
           </Link>
 
           <span className="text-xs font-mono font-bold text-muted-foreground uppercase">
@@ -278,8 +287,8 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
                       className="w-full"
                     />
                     <ChatButton
-                      customerId={booking.customerId || "customer-1"}
-                      providerId={booking.providerId || "provider-1"}
+                      customerId={booking.customerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "")}
+                      providerId={booking.providerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
                       bookingId={booking.id}
                       peerName={booking.providerName || "Service Expert"}
                       serviceName={booking.serviceName}
@@ -357,10 +366,10 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
             </div>
 
             <Link
-              href="/bookings"
+              href="/account"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all"
             >
-              <span>View All Bookings</span>
+              <span>Go to My Account</span>
             </Link>
           </div>
         )}

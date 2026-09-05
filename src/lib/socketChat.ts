@@ -5,20 +5,18 @@ import { getAuthToken } from "@/lib/jwt";
 
 let chatSocket: Socket | null = null;
 
+// Use NEXT_PUBLIC_SIGNALING_URL as the single source of truth.
+// Falls back to localhost:4001 ONLY when browser is also on localhost (desktop dev).
 export const getSignalingUrl = (): string => {
-  if (typeof window !== "undefined") {
-    if (
-      process.env.NEXT_PUBLIC_SIGNALING_URL &&
-      !process.env.NEXT_PUBLIC_SIGNALING_URL.includes("localhost") &&
-      !process.env.NEXT_PUBLIC_SIGNALING_URL.includes("127.0.0.1")
-    ) {
-      return process.env.NEXT_PUBLIC_SIGNALING_URL;
-    }
-    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-    const hostname = window.location.hostname || "localhost";
-    return `${protocol}//${hostname}:4001`;
+  const envUrl = process.env.NEXT_PUBLIC_SIGNALING_URL?.trim();
+  if (envUrl && envUrl.length > 0) {
+    return envUrl;
   }
-  return process.env.NEXT_PUBLIC_SIGNALING_URL || "http://localhost:4001";
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "http://127.0.0.1:4001";
+  }
+  // No env var + not localhost = misconfigured; caller must handle
+  return "http://127.0.0.1:4001";
 };
 
 export const getChatSocket = (userId?: string): Socket => {

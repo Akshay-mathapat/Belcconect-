@@ -224,8 +224,7 @@ export default function ProviderMapView({
             routePolylineRef.current = L.polyline(latLngs, {
               color: "#2563eb",
               weight: 5,
-              opacity: 0.85,
-              dashArray: "8, 8"
+              opacity: 0.85
             }).addTo(leafletMapRef.current);
           }
         }
@@ -279,8 +278,8 @@ export default function ProviderMapView({
       const container = mapContainerRef.current;
       if (!container) return;
 
-      const destLat = hasCustomerCoords ? Number(latitude) : (providerCoords ? providerCoords.lat : 15.8497);
-      const destLng = hasCustomerCoords ? Number(longitude) : (providerCoords ? providerCoords.lng : 74.4977);
+      const destLat = hasCustomerCoords ? Number(latitude) : (providerCoords ? providerCoords.lat : 0);
+      const destLng = hasCustomerCoords ? Number(longitude) : (providerCoords ? providerCoords.lng : 0);
 
       if (!leafletMapRef.current) {
         const map = L.map(container, {
@@ -532,13 +531,26 @@ export default function ProviderMapView({
     return () => {
       if (leafletMapRef.current) {
         try {
+          if (providerMarkerRef.current) {
+            providerMarkerRef.current.remove();
+            providerMarkerRef.current = null;
+          }
+          if (destMarkerRef.current) {
+            destMarkerRef.current.remove();
+            destMarkerRef.current = null;
+          }
+          if (customerLiveMarkerRef.current) {
+            customerLiveMarkerRef.current.remove();
+            customerLiveMarkerRef.current = null;
+          }
+          if (routePolylineRef.current) {
+            routePolylineRef.current.remove();
+            routePolylineRef.current = null;
+          }
+          leafletMapRef.current.off();
           leafletMapRef.current.remove();
         } catch (e) {}
         leafletMapRef.current = null;
-        destMarkerRef.current = null;
-        customerLiveMarkerRef.current = null;
-        providerMarkerRef.current = null;
-        routePolylineRef.current = null;
       }
     };
   }, []);

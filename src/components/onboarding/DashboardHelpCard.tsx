@@ -5,7 +5,7 @@ import { useOnboardingTour } from "./OnboardingContext";
 import { Sparkles, X } from "lucide-react";
 
 export function DashboardHelpCard() {
-  const { showHelpCard, restartTour, dismissHelpCard, role } = useOnboardingTour();
+  const { showHelpCard, replayTour, dismissHelpCard, role } = useOnboardingTour();
 
   if (!showHelpCard) return null;
 
@@ -36,7 +36,7 @@ export function DashboardHelpCard() {
 
       <button
         type="button"
-        onClick={() => restartTour(role)}
+        onClick={() => replayTour(role)}
         className="min-h-[40px] px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-md hover:bg-primary/90 transition-all flex items-center gap-1.5 flex-shrink-0"
       >
         <Sparkles className="w-3.5 h-3.5" />

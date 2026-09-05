@@ -33,7 +33,6 @@ import CallButton from "@/components/calls/CallButton";
 import ChatButton from "@/components/chat/ChatButton";
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import LocationPicker, { ConfirmedLocationData } from "@/components/location/LocationPicker";
-import { DashboardHelpCard } from "@/components/onboarding/DashboardHelpCard";
 import { useOnboardingTour } from "@/components/onboarding/OnboardingContext";
 
 function getBookingTimestamp(booking: { date: string; time?: string }) {
@@ -86,11 +85,21 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 export default function AccountPage() {
   const router = useRouter();
   const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings } = useAuthStore();
-  const { restartTour: restartQuickGuide } = useOnboardingTour();
+  const { replayTour } = useOnboardingTour();
   const [activeTab, setActiveTab] = useState<"bookings" | "addresses" | "profile">("bookings");
   const { t } = useTranslation();
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
   useEffect(() => {
+    setIsHydrated(useAuthStore.persist.hasHydrated());
+    const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
     if (!currentUser) {
       router.push("/auth?mode=login&returnTo=/account");
       return;
@@ -123,7 +132,7 @@ export default function AccountPage() {
         try { syncChannel.close(); } catch (e) {}
       }
     };
-  }, [fetchUserBookings, currentUser, router, logout]);
+  }, [fetchUserBookings, currentUser, router, logout, isHydrated]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
@@ -242,7 +251,7 @@ export default function AccountPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId: activeUser?.id || "customer-1",
+          customerId: activeUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : ""),
           providerId,
           providerName,
           serviceName,
@@ -435,20 +444,17 @@ export default function AccountPage() {
 
                 <button
                   type="button"
-                  onClick={() => restartQuickGuide()}
+                  onClick={() => replayTour("customer")}
                   className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-semibold text-primary hover:bg-primary/10 transition-all cursor-pointer mt-1"
                 >
                   <HelpCircle className="h-4 w-4 text-primary" />
-                  <span>❓ Quick Guide</span>
+                  <span>Guide Tour</span>
                 </button>
               </div>
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 min-w-0">
-              {/* Optional Dismissible Dashboard Quick Guide Card */}
-              <DashboardHelpCard />
-
               {/* TAB 1: MY BOOKINGS */}
               {activeTab === "bookings" && (
                 <div className="space-y-6">
@@ -543,7 +549,7 @@ export default function AccountPage() {
                             />
                             <ChatButton
                               customerId={activeUser.id}
-                              providerId={booking.providerId || "provider-1"}
+                              providerId={booking.providerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
                               bookingId={booking.id}
                               peerName={booking.provider || "Verified Expert"}
                               serviceName={booking.service}
@@ -814,9 +820,15 @@ export default function AccountPage() {
                         </label>
                         <input
                           type="tel"
+                          maxLength={10}
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="+91 98765 43210"
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            if (val.length <= 10) {
+                              setPhone(val);
+                            }
+                          }}
+                          placeholder="9876543210"
                           className="w-full px-4 py-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm text-foreground outline-none"
                         />
                       </div>

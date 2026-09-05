@@ -24,16 +24,18 @@ export async function generateLiveKitToken(
 ): Promise<LiveKitSessionDetails> {
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const serverUrl = process.env.LIVEKIT_URL || "wss://YOUR_PROJECT.livekit.cloud";
+  const serverUrl = process.env.LIVEKIT_URL;
+
+  if (!serverUrl || serverUrl.includes("YOUR_PROJECT") || serverUrl.includes("localhost")) {
+    throw new Error("[LIVEKIT_CONFIG_ERROR] LIVEKIT_URL is missing or contains placeholder values in environment variables.");
+  }
 
   if (!apiKey || !apiSecret) {
-    throw new Error("LiveKit Configuration Missing: LIVEKIT_API_KEY or LIVEKIT_API_SECRET is not set.");
+    throw new Error("[LIVEKIT_CONFIG_ERROR] LIVEKIT_API_KEY or LIVEKIT_API_SECRET is not set in environment variables.");
   }
 
   if (isPlaceholderSecret(apiSecret)) {
-    console.warn(
-      "[LiveKit] WARNING: LIVEKIT_API_SECRET in .env contains placeholder bullet characters. LiveKit Cloud will reject the connection with 'invalid token' until replaced with your real LiveKit secret key."
-    );
+    throw new Error("[LIVEKIT_CONFIG_ERROR] LIVEKIT_API_SECRET contains placeholder bullet characters.");
   }
 
   const roomName = generateLiveKitRoomName(bookingId);

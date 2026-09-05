@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { generateLiveKitToken } from "@/lib/livekitToken";
 import {
   createCallRecord,
   getActiveCallForBooking,
@@ -147,9 +148,14 @@ export async function POST(request: Request) {
     }
 
     if (existingCall) {
+      let existingLivekit = null;
+      if (existingCall.status === "ACCEPTED" || existingCall.status === "CONNECTED") {
+        existingLivekit = await generateLiveKitToken(bookingId, actualCallerId).catch(() => null);
+      }
       return NextResponse.json({
         success: true,
         call: existingCall,
+        livekit: existingLivekit,
         message: "Existing active call session retrieved"
       });
     }
@@ -186,10 +192,16 @@ export async function POST(request: Request) {
       }
     }).catch((err: any) => console.error("[Call API] Web Push dispatch error:", err));
 
+    const callerLiveKit = await generateLiveKitToken(bookingId, actualCallerId).catch((err) => {
+      console.error("[Call API] LiveKit token generation error:", err);
+      return null;
+    });
+
     // 9. Immediate response to caller client (<50ms)
     return NextResponse.json({
       success: true,
-      call: ringingCallRecord
+      call: ringingCallRecord,
+      livekit: callerLiveKit
     });
   } catch (error: any) {
     console.error("Error initiating call:", error);

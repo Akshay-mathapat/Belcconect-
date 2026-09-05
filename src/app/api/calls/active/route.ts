@@ -18,15 +18,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ activeCall: null, call: null });
     }
 
-    let livekit = null;
-    if (call.status === "ACCEPTED" || call.status === "CONNECTED") {
-      livekit = await generateLiveKitToken(call.bookingId, userId);
-    }
-
     return NextResponse.json({
       success: true,
       call,
-      livekit
+      livekit: null
     });
   } catch (error: any) {
     return NextResponse.json({ activeCall: null, call: null });

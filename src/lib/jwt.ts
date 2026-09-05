@@ -12,6 +12,8 @@ export interface SessionPayload {
   email: string;
   role: "user" | "provider" | "job_provider" | "admin";
   name?: string;
+  oauthMobile?: boolean;
+  oauthCodeChallenge?: string;
   iat?: number;
   exp?: number;
 }

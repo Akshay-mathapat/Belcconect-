@@ -1,40 +1,35 @@
-<<<<<<< HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BelConnect / CityConnect
 
-## Getting Started
+## Brevo SMTP Password Reset Setup
 
-First, run the development server:
+To enable real transactional email delivery for the Forgot Password flow using Brevo SMTP:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. Create or log in to your **Brevo** account (formerly Sendinblue).
+2. Navigate to **Senders & IP** in Brevo and verify your sender email domain or address (e.g. `no-reply@belconnect.com` or your verified sender email).
+3. Navigate to **SMTP & API** settings in Brevo to obtain your SMTP credentials.
+4. Add the following environment variables to your `.env` file (never commit `.env` or real SMTP credentials to version control):
+
+```env
+# Brevo SMTP Relay Configuration
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+
+# Your Brevo SMTP Login (e.g. your registered Brevo account email)
+SMTP_USER=your_brevo_smtp_login
+
+# Your Brevo Master SMTP Key
+SMTP_PASS=your_brevo_smtp_key
+
+# Verified Sender Address in Brevo
+SMTP_FROM_EMAIL=no-reply@belconnect.com
+SMTP_FROM_NAME=BelConnect
+
+# Password Reset Security Parameters
+PASSWORD_RESET_OTP_SECRET=your_secure_hmac_secret
+PASSWORD_RESET_OTP_TTL_MINUTES=10
+PASSWORD_RESET_RESEND_SECONDS=60
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Restart the Next.js development server (`npm run dev`) after updating `.env`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
-# CityConnect
->>>>>>> c3b9b941d1e26aab606bb8e1dd586faa26121914

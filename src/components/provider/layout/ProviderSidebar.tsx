@@ -56,7 +56,7 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
   const pathname = usePathname();
   const { currentUser } = useAuthStore();
   const { profile, syncWithAuthUser } = useProviderStore();
-  const { restartTour: restartQuickGuide } = useOnboardingTour();
+  const { replayTour } = useOnboardingTour();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -137,7 +137,7 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
             {/* Quick Guide Replay Entry Point */}
             <button
               type="button"
-              onClick={() => restartQuickGuide("provider")}
+              onClick={() => replayTour("provider")}
               className="w-full relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-all cursor-pointer mt-2 border border-primary/20"
             >
               <HelpCircle className="h-4 w-4 shrink-0 text-primary" />
@@ -267,7 +267,7 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
                 </nav>
               </div>
 
-              <div className="p-3 border-t border-border/50 bg-muted/20">
+              <div className="p-3 border-t border-border/50 bg-muted/20 space-y-3">
                 <Link href="/provider/profile" onClick={handleNavClick} className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-blue-600/30 shrink-0">
                     {profile.name ? profile.name.trim().charAt(0).toUpperCase() : "P"}
@@ -280,6 +280,16 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
                     <span className="text-[10px] text-muted-foreground block truncate">{t("serviceProvider.verifiedPro")}</span>
                   </div>
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    useAuthStore.getState().logout();
+                    if (setMobileOpen) setMobileOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                >
+                  <span className="truncate">{t("common.signOut")}</span>
+                </button>
               </div>
             </motion.div>
           </>

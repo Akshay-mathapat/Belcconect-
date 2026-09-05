@@ -129,7 +129,7 @@ export default function ProviderProfilePage() {
 
   // Fetch persisted KYC details from PostgreSQL database on load
   useEffect(() => {
-    const providerId = currentUser?.id || "provider-1";
+    const providerId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "");
     fetch(`/api/provider/kyc?providerId=${encodeURIComponent(providerId)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -162,7 +162,7 @@ export default function ProviderProfilePage() {
       return;
     }
 
-    const providerId = currentUser?.id || "provider-1";
+    const providerId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "");
 
     const updatedKyc = {
       isVerified: true,

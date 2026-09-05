@@ -198,6 +198,7 @@ function BookingFlow() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            data-location-modal-open="true"
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
           >
             <div className="w-full max-w-2xl my-auto">
@@ -214,6 +215,7 @@ function BookingFlow() {
         key={step}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        data-booking-step={step}
         className="w-full max-w-[640px]"
       >
         <div className="rounded-[2rem] border border-border bg-card p-6 sm:p-8 shadow-2xl relative overflow-hidden">
@@ -257,10 +259,11 @@ function BookingFlow() {
                 </div>
                 <button
                   type="button"
+                  data-tour="pin-map-location"
                   onClick={() => setShowLocationPickerModal(true)}
                   className="px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Navigation className="w-4 h-4" />
                   <span>Pin Map Location</span>
                 </button>
               </div>
@@ -324,7 +327,7 @@ function BookingFlow() {
                 )}
 
                 {/* Manual Text Address Option */}
-                <label className={`block border rounded-2xl p-4 cursor-pointer transition-all ${selectedAddressId === "new" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/40"}`}>
+                <label data-tour="manual-address" className={`block border rounded-2xl p-4 cursor-pointer transition-all ${selectedAddressId === "new" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/40"}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="block font-semibold text-xs text-foreground mb-0.5">Enter Manual Text Address</span>
@@ -340,7 +343,7 @@ function BookingFlow() {
                     value={legacyAddressText}
                     onChange={(e) => setLegacyAddressText(e.target.value)}
                     placeholder="Enter full address manually..."
-                    className="w-full mt-2 p-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-blue-600 text-xs text-foreground outline-none"
+                    className="w-full mt-2 p-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-blue-600 text-xs text-foreground outline-none cursor-text"
                   />
                 )}
               </div>
