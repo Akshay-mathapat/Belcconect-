@@ -1,14 +1,16 @@
 const { spawn, execSync } = require("child_process");
 const os = require("os");
+const path = require("path");
 
-console.log("[CityConnect Launcher] Starting Signaling Server (Port 4001) & Next.js App...");
+console.log("[CityConnect Launcher] Starting Backend Signaling Server (backend/server.js) & Frontend Next.js App...");
 
-const signalingProcess = spawn("node", ["signaling-server/server.js"], {
+const backendProcess = spawn("node", ["backend/server.js"], {
   stdio: "inherit",
   shell: os.platform() === "win32"
 });
 
-const nextProcess = spawn("npx", ["next", "dev", "--webpack"], {
+const frontendProcess = spawn("npm", ["run", "dev"], {
+  cwd: path.join(__dirname, "frontend"),
   stdio: "inherit",
   shell: os.platform() === "win32"
 });
@@ -17,11 +19,11 @@ const cleanup = () => {
   console.log("[CityConnect Launcher] Shutting down servers...");
   try {
     if (os.platform() === "win32") {
-      execSync(`taskkill /pid ${signalingProcess.pid} /T /F`, { stdio: 'ignore' });
-      execSync(`taskkill /pid ${nextProcess.pid} /T /F`, { stdio: 'ignore' });
+      execSync(`taskkill /pid ${backendProcess.pid} /T /F`, { stdio: 'ignore' });
+      execSync(`taskkill /pid ${frontendProcess.pid} /T /F`, { stdio: 'ignore' });
     } else {
-      signalingProcess.kill();
-      nextProcess.kill();
+      backendProcess.kill();
+      frontendProcess.kill();
     }
   } catch (e) {}
   process.exit();
