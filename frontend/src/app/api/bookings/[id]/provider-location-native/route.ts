@@ -1,0 +1,138 @@
+import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
+
+const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Started"];
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // 1. Authenticate user from session token
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing or invalid authentication token" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { latitude, longitude, accuracy, speed, heading, timestamp } = body;
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      return NextResponse.json(
+        { error: "Invalid latitude or longitude coordinate values" },
+        { status: 400 }
+      );
+    }
+
+    // Retrieve booking to validate existence & status
+    const bookingRes = await query(
+      "SELECT id, status, provider_id FROM bookings WHERE id = $1 LIMIT 1",
+      [id]
+    );
+
+    if (bookingRes.rows.length === 0) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    const booking = bookingRes.rows[0];
+
+    // 2. Authorize provider: authenticated user ID must match assigned provider_id strictly
+    const isAssignedProvider = authUser.userId === booking.provider_id;
+
+    if (!isAssignedProvider) {
+      return NextResponse.json(
+        { error: "Forbidden: Only the assigned service provider can update provider location for this booking" },
+        { status: 403 }
+      );
+    }
+
+    // Validate that booking is in active tracking window
+    if (!ACTIVE_TRACKING_STATUSES.includes(booking.status)) {
+      return NextResponse.json(
+        {
+          error: `Location updates rejected: booking status '${booking.status}' is not in active tracking window`,
+          status: booking.status
+        },
+        { status: 400 }
+      );
+    }
+
+    const accValue = typeof accuracy === "number" && !isNaN(accuracy) ? accuracy : null;
+
+    // Fast asynchronous update of provider location
+    await query(
+      `UPDATE bookings 
+       SET provider_current_latitude = $1,
+           provider_current_longitude = $2,
+           provider_location_updated_at = NOW(),
+           provider_location_accuracy = $3
+       WHERE id = $4`,
+      [lat, lng, accValue, id]
+    );
+
+    // Broadcast to Socket.IO signaling server
+    const serverTimestamp = Date.now();
+    const clientTs = Number(timestamp);
+    const safeClientTs = Number.isFinite(clientTs) && clientTs > 0 ? clientTs : null;
+
+    const payload = {
+      bookingId: id,
+      latitude: lat,
+      longitude: lng,
+      accuracy: accValue,
+      heading: typeof heading === "number" && !isNaN(heading) ? heading : null,
+      speed: typeof speed === "number" && !isNaN(speed) ? speed : null,
+      timestamp: serverTimestamp,
+      clientTimestamp: safeClientTs,
+      source: "android-native"
+    };
+
+    const signalingUrl = process.env.SIGNALING_SERVER_URL || "http://127.0.0.1:4001";
+    const internalSecret = process.env.SIGNALING_INTERNAL_SECRET;
+
+    if (internalSecret) {
+        fetch(`${signalingUrl}/api/location/broadcast`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                secret: internalSecret,
+                bookingId: id,
+                event: "provider:location:update",
+                payload
+            })
+        }).catch(err => console.error("[Native Location] Failed to broadcast to signaling server", err));
+    }
+
+    return NextResponse.json({
+      success: true,
+      bookingId: id,
+      latitude,
+      longitude,
+      accuracy: accValue,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error(`[Provider Native Location API] Error updating provider location for ${id}:`, error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update provider location" },
+      { status: 500 }
+    );
+  }
+}

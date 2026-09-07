@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CityConnect</string>
+    <string name="title_activity_main">CityConnect</string>
+    <string name="package_name">com.cityconnect.app</string>
+    <string name="custom_url_scheme">com.cityconnect.app</string>
+</resources>
