@@ -97,29 +97,28 @@ export async function GET(request: Request) {
 
   // 4. Exchange the authorization code only after state and PKCE validation.
   try {
+    if (!stateCheck.codeChallenge) {
+      throw new Error("Missing OAuth PKCE challenge");
+    }
     const redirectUri = `${appOrigin}/api/auth/google/callback`;
     const oAuth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirectUri);
-    const oauthCookieStore = await cookies();
-    const codeVerifier = oauthCookieStore.get("google_oauth_verifier")?.value;
-
-    // 5. Exchange Auth Code for Tokens
-    if (!stateCheck.codeChallenge || !codeVerifier) {
-      throw new Error("Missing OAuth PKCE verifier");
-    }
-    const computedCodeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
-    if (computedCodeChallenge !== stateCheck.codeChallenge) {
-      throw new Error("OAuth PKCE verifier does not match state challenge");
-    }
-    const stateConsumed = await consumeGoogleOAuthTransaction({
+    const transaction = await consumeGoogleOAuthTransaction({
       state: state || "",
       codeChallenge: stateCheck.codeChallenge,
     });
-    if (!stateConsumed) {
+    if (!transaction) {
       console.warn("[GOOGLE_OAUTH_CSRF_REJECT] OAuth state replay or expiry");
       return renderCloseWindowScript({
         type: "GOOGLE_AUTH_ERROR",
         error: "Security validation failed: OAuth transaction is expired or already used.",
       }, stateCheck.mobile);
+    }
+    const { accountType, codeVerifier } = transaction;
+
+    // 5. Exchange Auth Code for Tokens
+    const computedCodeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+    if (computedCodeChallenge !== stateCheck.codeChallenge) {
+      throw new Error("OAuth PKCE verifier does not match state challenge");
     }
     const { tokens } = await oAuth2Client.getToken({ code, codeVerifier });
     const idToken = tokens.id_token;
@@ -147,7 +146,7 @@ export async function GET(request: Request) {
       emailVerified: payload.email_verified || false,
       name: payload.name,
       picture: payload.picture,
-      requestedRole: stateCheck.role,
+      requestedAccountType: accountType,
     });
 
     if (result.error || !result.user) {

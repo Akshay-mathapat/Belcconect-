@@ -1,8 +1,10 @@
 import crypto from "crypto";
 import { signJwtToken, verifyJwtToken } from "@/lib/jwt";
+import { normalizeOAuthAccountType, OAuthAccountType } from "@/lib/oauthAccountType";
 
 export interface OAuthStatePayload {
-  role: "user" | "provider" | "job_provider";
+  role: "user";
+  oauthAccountType: OAuthAccountType;
   nonce: string;
   iat: number;
   codeChallenge?: string;
@@ -11,14 +13,14 @@ export interface OAuthStatePayload {
 /**
  * Creates a signed short-lived single-use OAuth State parameter (JWT format) to prevent CSRF.
  */
-export function createOAuthState(role: string = "user", mobile = false, codeChallenge?: string): string {
-  const safeRole = (["user", "provider", "job_provider"].includes(role) ? role : "user") as "user" | "provider" | "job_provider";
+export function createOAuthState(accountType: OAuthAccountType, mobile = false, codeChallenge?: string): string {
   const nonce = crypto.randomBytes(16).toString("hex");
   
   return signJwtToken({
     userId: "oauth_state",
     email: "oauth@state.internal",
-    role: safeRole,
+    role: "user",
+    oauthAccountType: accountType,
     name: nonce,
     oauthMobile: mobile,
     oauthCodeChallenge: codeChallenge,
@@ -28,7 +30,7 @@ export function createOAuthState(role: string = "user", mobile = false, codeChal
 /**
  * Validates the state parameter returned by Google during OAuth callback.
  */
-export function verifyOAuthState(stateToken: string | null): { valid: boolean; role?: string; mobile?: boolean; codeChallenge?: string } {
+export function verifyOAuthState(stateToken: string | null): { valid: boolean; mobile?: boolean; codeChallenge?: string } {
   if (!stateToken) return { valid: false };
 
   try {
@@ -42,10 +44,9 @@ export function verifyOAuthState(stateToken: string | null): { valid: boolean; r
       return { valid: false };
     }
 
-    const role = ["user", "provider", "job_provider"].includes(payload.role) ? payload.role : "user";
+    if (!normalizeOAuthAccountType(payload.oauthAccountType)) return { valid: false };
     return {
       valid: true,
-      role,
       mobile: payload.oauthMobile === true,
       codeChallenge: payload.oauthCodeChallenge,
     };

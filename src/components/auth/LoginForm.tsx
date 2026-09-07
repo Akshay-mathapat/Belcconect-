@@ -10,13 +10,15 @@ import { useAuthStore, UserRole } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { registerAndSubscribeUser } from "@/lib/registerSW";
 import { getSafeReturnUrl } from "@/lib/urlUtils";
+import { OAuthAccountType } from "@/lib/oauthAccountType";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
   onForgotPassword?: () => void;
+  accountType: OAuthAccountType;
 }
 
-export function LoginForm({ onSwitchToSignup, onForgotPassword }: LoginFormProps) {
+export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType }: LoginFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -239,7 +241,7 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword }: LoginFormProps
         </div>
 
         {/* Google SSO Button */}
-        <GoogleButton />
+        <GoogleButton accountType={accountType} />
       </form>
 
       {/* Switch to Signup Link */}

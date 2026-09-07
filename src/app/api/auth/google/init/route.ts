@@ -2,14 +2,19 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createOAuthState } from "@/lib/oauthState";
 import { storeGoogleOAuthTransaction } from "@/lib/googleOAuthTransactions";
+import { normalizeOAuthAccountType } from "@/lib/oauthAccountType";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const role = searchParams.get("role") || "user";
+  const accountType = normalizeOAuthAccountType(searchParams.get("accountType") || searchParams.get("role"));
   const mobile = searchParams.get("mobile") === "1";
 
   const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const appUrl = process.env.APP_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
+
+  if (!accountType) {
+    return NextResponse.json({ error: "Invalid Google account type." }, { status: 400 });
+  }
 
   if (!clientId || !appUrl) {
     return NextResponse.json(
@@ -25,8 +30,8 @@ export async function GET(request: Request) {
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
 
   // Generate cryptographically signed single-use state containing role and PKCE challenge.
-  const state = createOAuthState(role, mobile, codeChallenge);
-  await storeGoogleOAuthTransaction({ state, codeChallenge, role });
+  const state = createOAuthState(accountType, mobile, codeChallenge);
+  await storeGoogleOAuthTransaction({ state, codeChallenge, accountType, codeVerifier });
 
   const scope = encodeURIComponent("openid email profile");
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(

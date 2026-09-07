@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       return validation.response;
     }
 
-    const { credential, role: requestedRole } = validation.data;
+    const { credential } = validation.data;
 
     // 3. Cryptographic Verification of Google ID Token
     let ticket;
@@ -63,7 +63,9 @@ export async function POST(request: Request) {
       emailVerified: payload.email_verified || false,
       name: payload.name,
       picture: payload.picture,
-      requestedRole,
+      // Direct ID-token sign-in has no server-side OAuth transaction. Keep this
+      // legacy endpoint customer-only; role-specific sign-in uses /init.
+      requestedAccountType: "customer",
     });
 
     if (result.error || !result.user) {

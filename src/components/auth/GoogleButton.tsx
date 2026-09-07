@@ -10,6 +10,7 @@ import { getSafeReturnUrl } from "@/lib/urlUtils";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
+import { OAuthAccountType } from "@/lib/oauthAccountType";
 
 declare global {
   interface Window {
@@ -18,10 +19,10 @@ declare global {
 }
 
 interface GoogleButtonProps {
-  role?: "user" | "provider" | "job_provider";
+  accountType: OAuthAccountType;
 }
 
-export const GoogleButton = memo(function GoogleButton({ role = "user" }: GoogleButtonProps) {
+export const GoogleButton = memo(function GoogleButton({ accountType }: GoogleButtonProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,38 +34,13 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
-  // 1. Process verified Google Credential from direct ID Token POST
-  const handleGoogleResponse = async (response: any) => {
-    if (!response || !response.credential) {
-      setErrorMessage("Google sign-in was cancelled or failed.");
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage("");
-
+  const getTrustedOAuthOrigin = () => {
+    const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!configuredAppUrl) return window.location.origin;
     try {
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          credential: response.credential,
-          role,
-        }),
-      });
-
-      const data = await res.json();
-      setIsLoading(false);
-
-      if (res.ok && data.success && data.user && data.token) {
-        completeSuccessfulLogin(data.user, data.token);
-      } else {
-        setErrorMessage(data.error || "Unable to sign in with Google. Please try again.");
-      }
-    } catch (err) {
-      setIsLoading(false);
-      setErrorMessage("Network error. Please check your connection.");
+      return new URL(configuredAppUrl).origin;
+    } catch {
+      return window.location.origin;
     }
   };
 
@@ -89,10 +65,10 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
     } else {
       switch (user.role) {
         case "provider":
-          router.push("/provider/dashboard");
+          router.push(user.isFirstLogin ? "/provider/profile" : "/provider");
           break;
         case "job_provider":
-          router.push("/jobprovider/dashboard");
+          router.push(user.isFirstLogin ? "/jobprovider/business-profile" : "/jobprovider/dashboard");
           break;
         default:
           router.push("/");
@@ -104,8 +80,10 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
   // 2. Strict Parent Window PostMessage Listener
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // REQUIRE STRICT PARENT ORIGIN MATCH BEFORE TRUSTING EVENT DATA
-      if (event.origin !== window.location.origin) return;
+      // The callback may run on the configured HTTPS tunnel while the auth page
+      // is open on localhost during development. Both origins are explicit.
+      const trustedOrigins = new Set([window.location.origin, getTrustedOAuthOrigin()]);
+      if (!trustedOrigins.has(event.origin)) return;
 
       if (!event.data || typeof event.data !== "object") return;
 
@@ -204,48 +182,6 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
     };
   }, [searchParams, setAuthUser, router]);
 
-  // 3. Keep Clean Single Google Identity Services Integration
-  useEffect(() => {
-    if (typeof window === "undefined" || !clientId) return;
-
-    let mounted = true;
-    const initGsi = () => {
-      if (!mounted || !window.google?.accounts?.id) return;
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (res: any) => {
-          handleGoogleResponse(res);
-        },
-      });
-
-      const container = document.getElementById("google-button-container");
-      if (container) {
-        container.innerHTML = "";
-        window.google.accounts.id.renderButton(container, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "continue_with",
-          shape: "rectangular",
-          logo_alignment: "left",
-          width: "100%",
-        });
-      }
-    };
-
-    const interval = setInterval(() => {
-      if (window.google?.accounts?.id) {
-        clearInterval(interval);
-        initGsi();
-      }
-    }, 150);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [clientId, role]);
-
   const handleManualFallbackClick = () => {
     if (!clientId) {
       alert("Google Client ID is missing. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.");
@@ -273,7 +209,7 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
       }
 
       const initUrl = new URL("/api/auth/google/init", mobileAppUrl);
-      initUrl.searchParams.set("role", role);
+      initUrl.searchParams.set("accountType", accountType);
       initUrl.searchParams.set("mobile", "1");
       void Browser.open({ url: initUrl.toString(), presentationStyle: "popover" }).catch(() => {
         setIsLoading(false);
@@ -282,35 +218,15 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
       return;
     }
 
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (res: any) => {
-          handleGoogleResponse(res);
-        },
-      });
-
-      window.google.accounts.id.prompt((notification: any) => {
-        setIsLoading(false);
-      });
-    } else {
-      // Fallback via server OAuth init route carrying CSRF state and role
-      const initUrl = `/api/auth/google/init?role=${encodeURIComponent(role)}`;
-      const width = 500;
-      const height = 600;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-
-      const popup = window.open(
-        initUrl,
-        "GoogleSignIn",
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      if (!popup) {
-        setIsLoading(false);
-        alert("Pop-up blocked. Please allow pop-ups for this site to sign in with Google.");
-      }
+    const initUrl = `/api/auth/google/init?accountType=${encodeURIComponent(accountType)}`;
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    const popup = window.open(initUrl, "GoogleSignIn", `width=${width},height=${height},left=${left},top=${top}`);
+    if (!popup) {
+      setIsLoading(false);
+      alert("Pop-up blocked. Please allow pop-ups for this site to sign in with Google.");
     }
   };
 
@@ -319,7 +235,7 @@ export const GoogleButton = memo(function GoogleButton({ role = "user" }: Google
       {errorMessage && (
         <p className="text-xs text-rose-500 font-medium text-center">{errorMessage}</p>
       )}
-      <div id="google-button-container" className="w-full min-h-[44px] flex items-center justify-center">
+      <div className="w-full min-h-[44px] flex items-center justify-center">
         <button
           type="button"
           disabled={isLoading}

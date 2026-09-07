@@ -1,5 +1,10 @@
 import crypto from "crypto";
 import { getClient } from "@/lib/db";
+import {
+  OAuthAccountType,
+  oauthAccountTypeToJwtRole,
+  oauthAccountTypeToTable,
+} from "@/lib/oauthAccountType";
 
 export interface GoogleIdentityParams {
   googleId: string;
@@ -7,14 +12,31 @@ export interface GoogleIdentityParams {
   emailVerified: boolean;
   name?: string | null;
   picture?: string | null;
-  requestedRole?: string | null;
+  requestedAccountType: OAuthAccountType;
 }
 
 export interface GoogleIdentityResult {
   user: any;
+  accountType?: OAuthAccountType;
   status: "existing" | "linked" | "created";
   error?: string;
   statusCode?: number;
+}
+
+const ACCOUNT_TABLES: Array<{ type: OAuthAccountType; table: "customers" | "service_providers" | "job_providers" }> = [
+  { type: "customer", table: "customers" },
+  { type: "service_provider", table: "service_providers" },
+  { type: "job_provider", table: "job_providers" },
+];
+
+function accountMismatch(actual: OAuthAccountType): GoogleIdentityResult {
+  const labels = { customer: "customer", service_provider: "service provider", job_provider: "job provider" };
+  return {
+    user: null,
+    status: "existing",
+    error: `This Google account is already registered as a ${labels[actual]}. Please use the ${labels[actual]} portal or a different Google account.`,
+    statusCode: 409,
+  };
 }
 
 /**
@@ -39,154 +61,88 @@ export async function resolveGoogleIdentity({
   emailVerified,
   name,
   picture,
-  requestedRole,
+  requestedAccountType,
 }: GoogleIdentityParams): Promise<GoogleIdentityResult> {
   if (!email || !emailVerified) {
-    return {
-      user: null,
-      status: "existing",
-      error: "Unverified or missing Google email address. Access denied.",
-      statusCode: 400,
-    };
+    return { user: null, status: "existing", error: "Unverified or missing Google email address. Access denied.", statusCode: 400 };
   }
 
   const cleanEmail = email.trim().toLowerCase();
   const cleanName = name || cleanEmail.split("@")[0] || "BelConnect User";
   const avatar = picture || "";
-
-  let dbClient;
-  let userObj: any = null;
-  let resolveStatus: "existing" | "linked" | "created" = "existing";
+  const dbClient = await getClient();
 
   try {
-    dbClient = await getClient();
     await dbClient.query("BEGIN");
 
-    // 1. Search by google_id across tables
-    const custG = await dbClient.query("SELECT * FROM customers WHERE google_id = $1 LIMIT 1", [googleId]);
-    if (custG.rows.length > 0) {
-      userObj = { ...custG.rows[0], role: "user" };
-      resolveStatus = "existing";
-    } else {
-      const provG = await dbClient.query("SELECT * FROM service_providers WHERE google_id = $1 LIMIT 1", [googleId]);
-      if (provG.rows.length > 0) {
-        userObj = { ...provG.rows[0], role: "provider" };
-        resolveStatus = "existing";
-      } else {
-        const empG = await dbClient.query("SELECT * FROM job_providers WHERE google_id = $1 LIMIT 1", [googleId]);
-        if (empG.rows.length > 0) {
-          userObj = { ...empG.rows[0], role: "job_provider" };
-          resolveStatus = "existing";
-        }
-      }
-    }
-
-    // 2. Search by email if not found by google_id
-    if (!userObj) {
-      const custE = await dbClient.query("SELECT * FROM customers WHERE email = $1 LIMIT 1", [cleanEmail]);
-      if (custE.rows.length > 0) {
-        const matched = custE.rows[0];
-        if (matched.google_id && matched.google_id !== googleId) {
+    // Google identity is global: never create or overwrite a second local identity for one sub.
+    for (const account of ACCOUNT_TABLES) {
+      const result = await dbClient.query(`SELECT * FROM ${account.table} WHERE google_id = $1 LIMIT 1`, [googleId]);
+      if (result.rows.length > 0) {
+        if (account.type !== requestedAccountType) {
           await dbClient.query("ROLLBACK");
-          return {
-            user: null,
-            status: "existing",
-            error: "Account link conflict: This email is associated with a different Google account.",
-            statusCode: 409,
-          };
+          return accountMismatch(account.type);
         }
-        await dbClient.query(
-          "UPDATE customers SET google_id = $1, avatar = COALESCE(NULLIF(avatar, ''), $2) WHERE id = $3",
-          [googleId, avatar, matched.id]
-        );
-        userObj = { ...matched, google_id: googleId, role: "user" };
-        resolveStatus = "linked";
-      } else {
-        const provE = await dbClient.query("SELECT * FROM service_providers WHERE email = $1 LIMIT 1", [cleanEmail]);
-        if (provE.rows.length > 0) {
-          const matched = provE.rows[0];
-          if (matched.google_id && matched.google_id !== googleId) {
-            await dbClient.query("ROLLBACK");
-            return {
-              user: null,
-              status: "existing",
-              error: "Account link conflict: This email is associated with a different Google account.",
-              statusCode: 409,
-            };
-          }
-          await dbClient.query(
-            "UPDATE service_providers SET google_id = $1, avatar = COALESCE(NULLIF(avatar, ''), $2) WHERE id = $3",
-            [googleId, avatar, matched.id]
-          );
-          userObj = { ...matched, google_id: googleId, role: "provider" };
-          resolveStatus = "linked";
-        } else {
-          const empE = await dbClient.query("SELECT * FROM job_providers WHERE email = $1 LIMIT 1", [cleanEmail]);
-          if (empE.rows.length > 0) {
-            const matched = empE.rows[0];
-            if (matched.google_id && matched.google_id !== googleId) {
-              await dbClient.query("ROLLBACK");
-              return {
-                user: null,
-                status: "existing",
-                error: "Account link conflict: This email is associated with a different Google account.",
-                statusCode: 409,
-              };
-            }
-            await dbClient.query(
-              "UPDATE job_providers SET google_id = $1, avatar = COALESCE(NULLIF(avatar, ''), $2) WHERE id = $3",
-              [googleId, avatar, matched.id]
-            );
-            userObj = { ...matched, google_id: googleId, role: "job_provider" };
-            resolveStatus = "linked";
-          }
-        }
+        const user = { ...result.rows[0], role: oauthAccountTypeToJwtRole(account.type) };
+        await dbClient.query("COMMIT");
+        delete user.password_hash;
+        return { user, accountType: account.type, status: "existing" };
       }
     }
 
-    // 3. Create New User
-    if (!userObj) {
-      // Safe Role Sanitation (Admin / Privileged roles strictly forbidden)
-      const targetRole =
-        requestedRole && ["user", "provider", "job_provider"].includes(requestedRole)
-          ? requestedRole
-          : "user";
+    // Registration forbids duplicate email addresses across account tables, so a cross-portal
+    // Google login must fail explicitly rather than presenting the wrong role as authenticated.
+    for (const account of ACCOUNT_TABLES) {
+      const result = await dbClient.query(`SELECT * FROM ${account.table} WHERE email = $1 LIMIT 1`, [cleanEmail]);
+      if (result.rows.length === 0) continue;
 
-      const prefix = targetRole === "user" ? "cust" : targetRole === "provider" ? "prov" : "emp";
-      const newUserId = `${prefix}-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
-      const targetTable =
-        targetRole === "user"
-          ? "customers"
-          : targetRole === "provider"
-          ? "service_providers"
-          : "job_providers";
+      if (account.type !== requestedAccountType) {
+        await dbClient.query("ROLLBACK");
+        return accountMismatch(account.type);
+      }
+
+      const matched = result.rows[0];
+      if (matched.google_id && matched.google_id !== googleId) {
+        await dbClient.query("ROLLBACK");
+        return { user: null, status: "existing", error: "Account link conflict: This email is associated with a different Google account.", statusCode: 409 };
+      }
 
       await dbClient.query(
-        `INSERT INTO ${targetTable} (id, email, name, avatar, google_id)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [newUserId, cleanEmail, cleanName, avatar, googleId]
+        `UPDATE ${account.table}
+         SET google_id = $1, avatar = COALESCE(NULLIF(avatar, ''), $2)
+         WHERE id = $3 AND (google_id IS NULL OR google_id = $1)`,
+        [googleId, avatar, matched.id]
       );
-
-      userObj = {
-        id: newUserId,
-        email: cleanEmail,
-        name: cleanName,
-        avatar,
-        google_id: googleId,
-        role: targetRole,
-        isFirstLogin: true,
-      };
-      resolveStatus = "created";
+      const user = { ...matched, google_id: googleId, role: oauthAccountTypeToJwtRole(account.type) };
+      await dbClient.query("COMMIT");
+      delete user.password_hash;
+      return { user, accountType: account.type, status: "linked" };
     }
 
-    await dbClient.query("COMMIT");
-  } catch (err) {
-    if (dbClient) await dbClient.query("ROLLBACK");
-    throw err;
-  } finally {
-    if (dbClient) dbClient.release();
-  }
+    const targetTable = oauthAccountTypeToTable(requestedAccountType);
+    const prefix = requestedAccountType === "customer" ? "cust" : requestedAccountType === "service_provider" ? "prov" : "emp";
+    const newUserId = `${prefix}-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    await dbClient.query(
+      `INSERT INTO ${targetTable} (id, email, name, avatar, google_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [newUserId, cleanEmail, cleanName, avatar, googleId]
+    );
 
-  delete userObj.password_hash;
-  return { user: userObj, status: resolveStatus };
+    const user = {
+      id: newUserId,
+      email: cleanEmail,
+      name: cleanName,
+      avatar,
+      google_id: googleId,
+      role: oauthAccountTypeToJwtRole(requestedAccountType),
+      isFirstLogin: true,
+    };
+    await dbClient.query("COMMIT");
+    return { user, accountType: requestedAccountType, status: "created" };
+  } catch (error) {
+    await dbClient.query("ROLLBACK");
+    throw error;
+  } finally {
+    dbClient.release();
+  }
 }

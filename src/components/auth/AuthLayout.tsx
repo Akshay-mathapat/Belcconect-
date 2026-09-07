@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Building2 } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import { LeftBrandPanel } from "./LeftBrandPanel";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
 import { ForgotPasswordModal } from "./ForgotPasswordModal";
+import { normalizeOAuthAccountType } from "@/lib/oauthAccountType";
 
 interface AuthLayoutProps {
   initialMode?: "login" | "signup" | "forgot";
@@ -17,6 +19,8 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const accountType = normalizeOAuthAccountType(searchParams.get("accountType") || searchParams.get("role")) || "customer";
   const [authMode, setAuthMode] = useState<"login" | "signup" | "forgot">(initialMode);
 
   useEffect(() => {
@@ -89,6 +93,7 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
                 <LoginForm
                   onSwitchToSignup={() => setAuthMode("signup")}
                   onForgotPassword={() => setAuthMode("forgot")}
+                  accountType={accountType}
                 />
               ) : authMode === "signup" ? (
                 <SignupForm onSwitchToLogin={() => setAuthMode("login")} />

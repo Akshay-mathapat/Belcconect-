@@ -408,7 +408,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         </div>
 
         {/* Google SSO Button */}
-        <GoogleButton />
+        <GoogleButton accountType={signupRole === "user" ? "customer" : signupRole === "provider" ? "service_provider" : "job_provider"} />
       </form>
 
       {/* Switch to Login Link */}
