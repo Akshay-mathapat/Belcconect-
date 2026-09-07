@@ -12,7 +12,12 @@ export function getPool(): Pool {
     if (!connectionString) {
       throw new Error("FATAL: DATABASE_URL environment variable is missing on Vercel.");
     }
-    const hostInfo = connectionString.includes("@") ? connectionString.split("@")[1].split("/")[0] : "configured host";
+    const hostInfo = connectionString.includes("@") ? connectionString.split("@")[1].split("/")[0] : connectionString;
+    
+    if (process.env.NODE_ENV === "production" && (hostInfo.includes("127.0.0.1") || hostInfo.includes("localhost"))) {
+      throw new Error(`FATAL: DATABASE_URL on Vercel is currently configured as a local address (${hostInfo}). Please update DATABASE_URL in Vercel Dashboard Settings -> Environment Variables to your Cloud PostgreSQL URL (e.g. Render or Neon).`);
+    }
+
     console.log(`[Database] Initializing Pool connecting to: ${hostInfo}`);
     globalThis.postgresPool = new Pool({
       connectionString,
