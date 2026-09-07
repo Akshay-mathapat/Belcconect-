@@ -2,27 +2,26 @@ import { Pool } from "pg";
 import crypto from "crypto";
 import argon2 from "argon2";
 
-// DO NOT REINTRODUCE HARDCODED FALLBACKS FOR SECRETS (JWT_SECRET, DATABASE_URL, SIGNALING_INTERNAL_SECRET, LIVEKIT_API_SECRET, VAPID_PRIVATE_KEY) UNDER ANY CIRCUMSTANCES, INCLUDING LOCAL DEV CONVENIENCE.
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString && typeof window === "undefined") {
-  throw new Error("FATAL: DATABASE_URL environment variable is missing.");
-}
-
-
 declare global {
   var postgresPool: Pool | undefined;
 }
 
-const pool =
-  globalThis.postgresPool ||
-  new Pool({
-    connectionString,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  });
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.postgresPool = pool;
+export function getPool(): Pool {
+  if (!globalThis.postgresPool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error("FATAL: DATABASE_URL environment variable is missing on Vercel.");
+    }
+    const hostInfo = connectionString.includes("@") ? connectionString.split("@")[1].split("/")[0] : "configured host";
+    console.log(`[Database] Initializing Pool connecting to: ${hostInfo}`);
+    globalThis.postgresPool = new Pool({
+      connectionString,
+      ssl: process.env.NODE_ENV === "production" || connectionString.includes("render.com") || connectionString.includes("neon.tech")
+        ? { rejectUnauthorized: false }
+        : false,
+    });
+  }
+  return globalThis.postgresPool;
 }
 
 let dbInitialized = false;
@@ -55,7 +54,7 @@ export async function initDB() {
   initPromise = (async () => {
     let client;
     try {
-      client = await pool.connect();
+      client = await getPool().connect();
       await client.query("BEGIN");
 
       // 1. Create Customers table
@@ -454,12 +453,12 @@ export async function query(text: string, params?: any[]) {
   if (!dbInitialized) {
     await initDB();
   }
-  return pool.query(text, params);
+  return getPool().query(text, params);
 }
 
 export async function getClient() {
   if (!dbInitialized) {
     await initDB();
   }
-  return pool.connect();
+  return getPool().connect();
 }
