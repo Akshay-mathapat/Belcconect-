@@ -27,6 +27,8 @@ if (process.env.NODE_ENV !== "production") {
 
 let dbInitialized = false;
 let initPromise: Promise<void> | null = null;
+let lastInitErrorTime = 0;
+const INIT_RETRY_COOLDOWN_MS = 5000;
 
 export async function hashPassword(password: string): Promise<string> {
   return argon2.hash(password, { type: argon2.argon2id });
@@ -365,6 +367,30 @@ export async function initDB() {
         CREATE INDEX IF NOT EXISTS idx_notif_logs_status ON notification_logs(status);
       `);
 
+      // 14. Create Google OAuth Transactions & Mobile Handoffs tables
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS google_oauth_transactions (
+          state_hash TEXT PRIMARY KEY,
+          code_challenge TEXT NOT NULL,
+          account_type VARCHAR(32) NOT NULL CHECK (account_type IN ('customer', 'service_provider', 'job_provider')),
+          code_verifier TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          used_at TIMESTAMPTZ
+        );
+        CREATE INDEX IF NOT EXISTS idx_google_oauth_transactions_expiry ON google_oauth_transactions(expires_at);
+
+        CREATE TABLE IF NOT EXISTS google_mobile_handoffs (
+          code_hash TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          email TEXT NOT NULL,
+          name TEXT NOT NULL,
+          role VARCHAR(20) NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          used_at TIMESTAMPTZ
+        );
+        CREATE INDEX IF NOT EXISTS idx_google_mobile_handoffs_expiry ON google_mobile_handoffs(expires_at);
+      `);
+
       // Auto-expire lingering call sessions on server/DB initialization
       await client.query(`
         UPDATE calls 
@@ -462,13 +488,17 @@ export async function initDB() {
       await client.query("COMMIT");
       dbInitialized = true;
       console.log("Database initialized successfully.");
-    } catch (error) {
+    } catch (error: any) {
       if (client) {
         try {
           await client.query("ROLLBACK");
         } catch (_) {}
       }
-      console.error("Error during database initialization:", error);
+      const now = Date.now();
+      if (now - lastInitErrorTime > INIT_RETRY_COOLDOWN_MS) {
+        console.error("Database connection warning:", error?.message || error);
+        lastInitErrorTime = now;
+      }
       initPromise = null;
       throw error;
     } finally {

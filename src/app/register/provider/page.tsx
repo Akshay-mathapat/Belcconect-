@@ -4,7 +4,8 @@ import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, User, Phone, Briefcase, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 export default function ProviderRegisterPage() {
   const [step, setStep] = useState(1);
@@ -185,10 +186,25 @@ export default function ProviderRegisterPage() {
                   </button>
                 </form>
 
-                <div className="mt-8 text-center">
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-3 text-muted-foreground font-medium">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <Suspense fallback={<div className="h-11 w-full bg-muted/40 animate-pulse rounded-xl" />}>
+                  <GoogleButton accountType="service_provider" />
+                </Suspense>
+
+                <div className="mt-6 text-center">
                   <p className="text-sm text-muted-foreground">
                     Already a provider?{" "}
-                    <Link href="/login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+                    <Link href="/login?role=provider" className="font-semibold text-primary hover:text-primary/80 transition-colors">
                       Log in
                     </Link>
                   </p>

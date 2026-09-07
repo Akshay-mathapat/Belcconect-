@@ -231,11 +231,11 @@ export const GoogleButton = memo(function GoogleButton({ accountType }: GoogleBu
   };
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full space-y-2" suppressHydrationWarning>
       {errorMessage && (
         <p className="text-xs text-rose-500 font-medium text-center">{errorMessage}</p>
       )}
-      <div className="w-full min-h-[44px] flex items-center justify-center">
+      <div className="w-full min-h-[44px] flex items-center justify-center" suppressHydrationWarning>
         <button
           type="button"
           disabled={isLoading}

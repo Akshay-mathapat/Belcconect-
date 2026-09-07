@@ -13,6 +13,7 @@ import { SERVICE_TAXONOMY, SERVICE_CATEGORIES } from "@/constants/site";
 import CategoryBar from "@/components/sections/CategoryBar";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { InstallAppButton } from "@/components/common/InstallAppButton";
 
 const iconMap: Record<string, any> = {
   Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
@@ -327,6 +328,9 @@ export default function Navigation() {
           {/* Right actions — desktop */}
           <div className="hidden lg:flex items-center gap-3 flex-shrink-0 ml-auto">
             <div className="flex items-center gap-1">
+              {/* Install App Button */}
+              <InstallAppButton />
+
               {/* Notification Bell */}
               <NotificationBell />
 
@@ -516,6 +520,7 @@ export default function Navigation() {
 
           {/* Mobile: Notification Bell + search icon + hamburger */}
           <div className="flex items-center gap-2 lg:hidden ml-auto">
+            <InstallAppButton isMobileOnly />
             <NotificationBell />
             <button
               onClick={() => {

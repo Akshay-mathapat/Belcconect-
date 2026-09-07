@@ -1,14 +1,112 @@
-// CityConnect Service Worker for Web Push & Offline Support
+// BelConnect Service Worker - PWA Caching & Web Push Notifications
 
+const CACHE_NAME = "belconnect-cache-v1";
+const STATIC_ASSETS = [
+  "/",
+  "/manifest.json",
+  "/belconnect.png",
+  "/BelConnectLogo.png",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
+  "/icons/maskable-icon-512x512.png"
+];
+
+// Install Event - Pre-cache static assets
 self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn("[SW] Cache addAll warning:", err);
+      });
+    })
+  );
   self.skipWaiting();
 });
 
+// Activate Event - Clean up old caches
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
-// Handle Incoming Web Push Notifications
+// Fetch Event - Sensible Caching Strategy
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // 1. Ignore non-GET requests (POST, PUT, DELETE, etc.) and non-http schemes
+  if (request.method !== "GET" || !url.protocol.startsWith("http")) {
+    return;
+  }
+
+  // 2. API Requests & Auth & Signaling & Dynamic Data -> STRICT NETWORK-FIRST (no stale data)
+  if (
+    url.pathname.startsWith("/api/") ||
+    url.pathname.includes("socket.io") ||
+    url.pathname.includes("/auth/") ||
+    url.pathname.includes("/livekit/")
+  ) {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return new Response(JSON.stringify({ error: "Offline mode. Network unavailable." }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" }
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. HTML / Navigation pages -> NETWORK-FIRST with cache fallback
+  if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) return cachedResponse;
+          return caches.match("/");
+        })
+    );
+    return;
+  }
+
+  // 4. Static Assets (Images, Fonts, CSS, JS, Icons) -> STALE-WHILE-REVALIDATE
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
+    })
+  );
+});
+
+// =========================================================
+// Web Push Notifications
+// =========================================================
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -18,7 +116,6 @@ self.addEventListener("push", (event) => {
     const notificationData = data || {};
     const type = notificationData.type || "general";
 
-    // 1. Handle Call Cancelled / Ended -> Immediately close ringing notification
     if (type === "call:cancelled" || type === "call:ended") {
       const callTag = `call_${notificationData.callId}`;
       event.waitUntil(
@@ -29,13 +126,12 @@ self.addEventListener("push", (event) => {
       return;
     }
 
-    // 2. Handle Incoming Call -> High-priority persistent notification banner
     if (type === "call:incoming") {
       const callId = notificationData.callId || "unknown";
       const options = {
         body: body || "Incoming Voice Call...",
-        icon: icon || "/BelConnectLogo.png",
-        badge: "/BelConnectLogo.png",
+        icon: icon || "/belconnect.png",
+        badge: "/belconnect.png",
         tag: `call_${callId}`,
         renotify: true,
         requireInteraction: true,
@@ -53,13 +149,12 @@ self.addEventListener("push", (event) => {
       return;
     }
 
-    // 3. Handle Chat Message Notification
     if (type === "chat:message") {
       const convId = notificationData.conversationId || "general";
       const options = {
         body: body || "You have received a new message.",
-        icon: icon || "/BelConnectLogo.png",
-        badge: "/BelConnectLogo.png",
+        icon: icon || "/belconnect.png",
+        badge: "/belconnect.png",
         tag: `chat_${convId}`,
         renotify: true,
         data: notificationData
@@ -71,21 +166,19 @@ self.addEventListener("push", (event) => {
       return;
     }
 
-    // Default Fallback Notification
     const defaultOptions = {
-      body: body || "New update from CityConnect",
-      icon: icon || "/BelConnectLogo.png",
+      body: body || "New update from BelConnect",
+      icon: icon || "/belconnect.png",
       data: notificationData
     };
     event.waitUntil(
-      self.registration.showNotification(title || "CityConnect Alert", defaultOptions)
+      self.registration.showNotification(title || "BelConnect Alert", defaultOptions)
     );
   } catch (err) {
     console.error("[Service Worker] Push event error:", err);
   }
 });
 
-// Handle Notification Click & Action Buttons
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -93,7 +186,6 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data || {};
   const targetUrl = data.url || "/";
 
-  // Action: Decline Call directly from Notification
   if (action === "decline" && data.callId) {
     event.waitUntil(
       fetch(`/api/calls/${data.callId}/reject`, {
@@ -104,10 +196,8 @@ self.addEventListener("notificationclick", (event) => {
     return;
   }
 
-  // Action: Answer Call or Open App Window
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Look for an existing open window client
       for (const client of clientList) {
         if (client.url && "focus" in client) {
           if ("navigate" in client) {
@@ -116,7 +206,6 @@ self.addEventListener("notificationclick", (event) => {
           return client.focus();
         }
       }
-      // If no window client is open, open a new window
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl);
       }

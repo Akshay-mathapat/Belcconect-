@@ -5,6 +5,7 @@ import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, googleAuthSchema } from "@/lib/validations";
 import { resolveGoogleIdentity } from "@/lib/googleAuthHelper";
+import { normalizeOAuthAccountType } from "@/lib/oauthAccountType";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
       return validation.response;
     }
 
-    const { credential } = validation.data;
+    const { credential, accountType: rawAccountType, role: rawRole } = validation.data;
+    const requestedAccountType = normalizeOAuthAccountType(rawAccountType || rawRole) || "customer";
 
     // 3. Cryptographic Verification of Google ID Token
     let ticket;
@@ -63,9 +65,7 @@ export async function POST(request: Request) {
       emailVerified: payload.email_verified || false,
       name: payload.name,
       picture: payload.picture,
-      // Direct ID-token sign-in has no server-side OAuth transaction. Keep this
-      // legacy endpoint customer-only; role-specific sign-in uses /init.
-      requestedAccountType: "customer",
+      requestedAccountType,
     });
 
     if (result.error || !result.user) {

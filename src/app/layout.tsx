@@ -42,9 +42,15 @@ export const metadata: Metadata = {
     locale: "en_IN",
   },
   icons: {
-    icon: "/BelConnect-logo.png",
+    icon: "/belconnect.png",
+    apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BelConnect",
+  },
 };
 
 import { AppTour } from "@/components/onboarding/AppTour";

@@ -15,6 +15,8 @@ export const loginSchema = z.object({
 });
 export const googleAuthSchema = z.object({
   credential: z.string().min(10, "Google credential ID token is required"),
+  accountType: z.string().optional(),
+  role: z.string().optional(),
 });
 export const registerSchema = z.object({
   email: z
