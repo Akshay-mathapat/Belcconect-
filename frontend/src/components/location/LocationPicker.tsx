@@ -93,15 +93,6 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      // Ensure leaflet CSS link element is present
-      if (!document.getElementById("leaflet-css")) {
-        const link = document.createElement("link");
-        link.id = "leaflet-css";
-        link.rel = "stylesheet";
-        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-        document.head.appendChild(link);
-      }
-
       if (leafletMapRef.current) {
         try {
           if (markerRef.current) {
@@ -124,10 +115,10 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
       leafletMapRef.current = map;
 
       // Set initial Tile Layer
-      const streetLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         subdomains: ["a", "b", "c"],
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       });
 
       const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
@@ -246,10 +237,10 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
           attribution: "Tiles &copy; Esri"
         }).addTo(map);
       } else {
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           subdomains: ["a", "b", "c"],
-          attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
       }
     });
