@@ -6,7 +6,7 @@ const TILE_SOURCES = {
 } as const;
 
 function isTileCoordinate(value: string) {
-  return /^\d{1,3}$/.test(value);
+  return /^\d{1,8}$/.test(value);
 }
 
 export async function GET(
