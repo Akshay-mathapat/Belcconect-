@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { TourStep } from "./types";
-import { useOnboardingTour } from "./OnboardingContext";
-import { X } from "lucide-react";
 
 interface TourOverlayProps {
   currentStep: TourStep | null;
@@ -19,19 +17,12 @@ interface TargetRect {
 }
 
 export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverlayProps) {
-  const { requestSkip } = useOnboardingTour();
   const [rect, setRect] = useState<TargetRect | null>(null);
-  const [pinRect, setPinRect] = useState<TargetRect | null>(null);
-  const [manualRect, setManualRect] = useState<TargetRect | null>(null);
-  const [btnRects, setBtnRects] = useState<{ top: number; left: number; right: number; height: number; label?: string }[]>([]);
   const [viewport, setViewport] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
   const updateTargetRect = useCallback(() => {
     if (!currentStep || isFinishedScreen || !isOpen) {
       setRect(null);
-      setPinRect(null);
-      setManualRect(null);
-      setBtnRects([]);
       return;
     }
 
@@ -40,18 +31,8 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
     setViewport({ width: vw, height: vh });
 
     const isOnBookPage = typeof window !== "undefined" && window.location.pathname.startsWith("/book");
-    const bookingStepEl = typeof document !== "undefined" ? document.querySelector('[data-booking-step]') : null;
-    const bookingStep = bookingStepEl ? bookingStepEl.getAttribute('data-booking-step') : null;
-    const isLocationModalOpen = typeof document !== "undefined" && (
-      !!document.querySelector('[data-location-modal-open="true"]') ||
-      !!document.querySelector('.leaflet-container')
-    );
-
     if (isOnBookPage) {
       setRect(null);
-      setPinRect(null);
-      setManualRect(null);
-      setBtnRects([]);
       return;
     }
 
@@ -69,22 +50,8 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
         height: clientRect.height + padding * 2,
       });
 
-      if (attr === "providers-list" || currentStep.id === "book") {
-        const btns = document.querySelectorAll(`[data-tour-book-button="true"]`);
-        const list: { top: number; left: number; right: number; height: number; label?: string }[] = [];
-        btns.forEach((btn) => {
-          const r = btn.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            list.push({ top: r.top, left: r.left, right: r.right, height: r.height, label: "Book Here 👉" });
-          }
-        });
-        setBtnRects(list);
-      } else {
-        setBtnRects([]);
-      }
     } else {
       setRect(null);
-      setBtnRects([]);
     }
   }, [currentStep, isOpen, isFinishedScreen]);
 
@@ -115,37 +82,17 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
   if (!isOpen) return null;
 
   const isInteractive = currentStep?.allowTargetInteraction ?? true;
-  const isOnBookPage = typeof window !== "undefined" && window.location.pathname.startsWith("/book");
-  const bookingStepEl = typeof document !== "undefined" ? document.querySelector('[data-booking-step]') : null;
-  const bookingStep = bookingStepEl ? bookingStepEl.getAttribute('data-booking-step') : null;
-  const isLocationModalOpen = typeof document !== "undefined" && (
-    !!document.querySelector('[data-location-modal-open="true"]') ||
-    !!document.querySelector('.leaflet-container')
-  );
-  const showAddressTour = isOnBookPage && bookingStep === "2" && !isLocationModalOpen;
-
-  const regionBgClass = isOnBookPage ? "bg-transparent" : "bg-black/30";
-  const pointerEventsClass = isOnBookPage ? "pointer-events-none" : "pointer-events-auto";
+  const regionBgClass = "bg-black/30";
+  const pointerEventsClass = "pointer-events-auto";
 
   return (
-    <div
-      className="fixed inset-0 z-[9990] pointer-events-none select-none"
-      aria-hidden="true"
-    >
+    <div className="fixed inset-0 z-[9990] pointer-events-none select-none" aria-hidden="true">
       {rect && viewport.width > 0 ? (
         <>
-          {/* Top Overlay Region */}
           <div
             className={`fixed ${regionBgClass} transition-all duration-150 ${pointerEventsClass}`}
-            style={{
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: `${Math.max(0, rect.top)}px`,
-            }}
+            style={{ top: 0, left: 0, width: "100%", height: `${Math.max(0, rect.top)}px` }}
           />
-
-          {/* Bottom Overlay Region */}
           <div
             className={`fixed ${regionBgClass} transition-all duration-150 ${pointerEventsClass}`}
             style={{
@@ -155,19 +102,10 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
               height: `${Math.max(0, viewport.height - (rect.top + rect.height))}px`,
             }}
           />
-
-          {/* Left Overlay Region */}
           <div
             className={`fixed ${regionBgClass} transition-all duration-150 ${pointerEventsClass}`}
-            style={{
-              top: `${rect.top}px`,
-              left: 0,
-              width: `${Math.max(0, rect.left)}px`,
-              height: `${rect.height}px`,
-            }}
+            style={{ top: `${rect.top}px`, left: 0, width: `${Math.max(0, rect.left)}px`, height: `${rect.height}px` }}
           />
-
-          {/* Right Overlay Region */}
           <div
             className={`fixed ${regionBgClass} transition-all duration-150 ${pointerEventsClass}`}
             style={{
@@ -178,71 +116,28 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
             }}
           />
 
-          {/* If step explicitly DISALLOWS interaction, block target area specifically */}
           {!isInteractive && (
             <div
               className="fixed bg-transparent pointer-events-auto"
-              style={{
-                top: `${rect.top}px`,
-                left: `${rect.left}px`,
-                width: `${rect.width}px`,
-                height: `${rect.height}px`,
-              }}
+              style={{ top: `${rect.top}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` }}
             />
           )}
 
-          {/* Glowing SVG Rings */}
           <svg className="fixed inset-0 w-full h-full pointer-events-none z-[9991]">
-            {showAddressTour ? (
-              <>
-                {pinRect && (
-                  <rect
-                    x={pinRect.left}
-                    y={pinRect.top}
-                    width={pinRect.width}
-                    height={pinRect.height}
-                    rx="14"
-                    ry="14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-primary animate-pulse drop-shadow-[0_0_12px_rgba(37,99,235,0.9)]"
-                  />
-                )}
-                {manualRect && (
-                  <rect
-                    x={manualRect.left}
-                    y={manualRect.top}
-                    width={manualRect.width}
-                    height={manualRect.height}
-                    rx="14"
-                    ry="14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-primary animate-pulse drop-shadow-[0_0_12px_rgba(37,99,235,0.9)]"
-                  />
-                )}
-              </>
-            ) : (
-              <rect
-                x={rect.left}
-                y={rect.top}
-                width={rect.width}
-                height={rect.height}
-                rx="16"
-                ry="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-                className="text-primary animate-pulse drop-shadow-[0_0_12px_rgba(37,99,235,0.9)]"
-              />
-            )}
+            <rect
+              x={rect.left}
+              y={rect.top}
+              width={rect.width}
+              height={rect.height}
+              rx="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="4"
+              className="text-primary animate-pulse drop-shadow-[0_0_12px_rgba(37,99,235,0.9)]"
+            />
           </svg>
-
         </>
       ) : (
-        /* Fallback overlay when target element is not present */
         <div className="fixed inset-0 bg-transparent pointer-events-none" />
       )}
     </div>
