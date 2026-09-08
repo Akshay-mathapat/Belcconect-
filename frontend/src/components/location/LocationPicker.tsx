@@ -115,13 +115,12 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
       leafletMapRef.current = map;
 
       // Set initial Tile Layer
-      const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const streetLayer = L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        subdomains: ["a", "b", "c"],
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       });
 
-      const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      const satelliteLayer = L.tileLayer("/api/map-tile/esri/{z}/{x}/{y}", {
         maxZoom: 19,
         attribution: "Tiles &copy; Esri"
       });
@@ -232,14 +231,13 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
       });
 
       if (mapTileType === "satellite") {
-        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        L.tileLayer("/api/map-tile/esri/{z}/{x}/{y}", {
           maxZoom: 19,
           attribution: "Tiles &copy; Esri"
         }).addTo(map);
       } else {
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          subdomains: ["a", "b", "c"],
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
       }
