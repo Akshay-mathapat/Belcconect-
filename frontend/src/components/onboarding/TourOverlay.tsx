@@ -132,32 +132,6 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
       className="fixed inset-0 z-[9990] pointer-events-none select-none"
       aria-hidden="true"
     >
-      {/* Dedicated Separate Sticky Note Card for Step 2 (Address Selection) */}
-      {showAddressTour && (
-        <div
-          className="fixed z-[9995] bg-primary text-primary-foreground p-5 rounded-2xl shadow-[0_12px_45px_rgba(0,0,0,0.5)] ring-2 ring-white/20 w-[280px] sm:w-[320px] pointer-events-auto"
-          style={{
-            right: "24px",
-            top: "220px",
-          }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-sm flex items-center gap-1.5 pr-4">
-              <span>📍</span> Choose Address Mode
-            </h3>
-            <button
-              onClick={requestSkip}
-              aria-label="Close guide"
-              className="p-1 rounded-lg text-primary-foreground/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <p className="text-xs leading-relaxed opacity-95 font-medium">
-            Choose your way of adding address accordingly — either pin your exact map location or enter text address manually.
-          </p>
-        </div>
-      )}
       {rect && viewport.width > 0 ? (
         <>
           {/* Top Overlay Region */}
@@ -266,19 +240,6 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
             )}
           </svg>
 
-          {/* Animated Arrow Badges over each Provider's Book Now button */}
-          {btnRects.map((btnRect, idx) => (
-            <div
-              key={idx}
-              className="fixed z-[9992] flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded-full shadow-xl border border-white/30 animate-pulse pointer-events-none whitespace-nowrap"
-              style={{
-                top: `${btnRect.top + btnRect.height / 2 - 14}px`,
-                left: `${Math.max(16, btnRect.left - 120)}px`,
-              }}
-            >
-              <span>{btnRect.label || "Book Here 👉"}</span>
-            </div>
-          ))}
         </>
       ) : (
         /* Fallback overlay when target element is not present */
