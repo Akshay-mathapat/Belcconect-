@@ -20,9 +20,10 @@ declare global {
 
 interface GoogleButtonProps {
   accountType: OAuthAccountType;
+  roleNeutral?: boolean;
 }
 
-export const GoogleButton = memo(function GoogleButton({ accountType }: GoogleButtonProps) {
+export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutral = false }: GoogleButtonProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -210,6 +211,7 @@ export const GoogleButton = memo(function GoogleButton({ accountType }: GoogleBu
 
       const initUrl = new URL("/api/auth/google/init", mobileAppUrl);
       initUrl.searchParams.set("accountType", accountType);
+      if (roleNeutral) initUrl.searchParams.set("roleNeutral", "1");
       initUrl.searchParams.set("mobile", "1");
       void Browser.open({ url: initUrl.toString(), presentationStyle: "popover" }).catch(() => {
         setIsLoading(false);
@@ -218,7 +220,7 @@ export const GoogleButton = memo(function GoogleButton({ accountType }: GoogleBu
       return;
     }
 
-    const initUrl = `/api/auth/google/init?accountType=${encodeURIComponent(accountType)}`;
+    const initUrl = `/api/auth/google/init?accountType=${encodeURIComponent(accountType)}${roleNeutral ? "&roleNeutral=1" : ""}`;
     const width = 500;
     const height = 600;
     const left = window.screenX + (window.outerWidth - width) / 2;

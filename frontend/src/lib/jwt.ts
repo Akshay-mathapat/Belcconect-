@@ -15,6 +15,7 @@ export interface SessionPayload {
   oauthMobile?: boolean;
   oauthCodeChallenge?: string;
   oauthAccountType?: "customer" | "service_provider" | "job_provider";
+  oauthRoleNeutral?: boolean;
   iat?: number;
   exp?: number;
 }

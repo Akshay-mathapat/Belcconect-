@@ -13,6 +13,7 @@ export interface GoogleIdentityParams {
   name?: string | null;
   picture?: string | null;
   requestedAccountType: OAuthAccountType;
+  roleNeutral?: boolean;
 }
 
 export interface GoogleIdentityResult {
@@ -62,6 +63,7 @@ export async function resolveGoogleIdentity({
   name,
   picture,
   requestedAccountType,
+  roleNeutral = false,
 }: GoogleIdentityParams): Promise<GoogleIdentityResult> {
   if (!email || !emailVerified) {
     return { user: null, status: "existing", error: "Unverified or missing Google email address. Access denied.", statusCode: 400 };
@@ -79,7 +81,7 @@ export async function resolveGoogleIdentity({
     for (const account of ACCOUNT_TABLES) {
       const result = await dbClient.query(`SELECT * FROM ${account.table} WHERE google_id = $1 LIMIT 1`, [googleId]);
       if (result.rows.length > 0) {
-        if (account.type !== requestedAccountType) {
+        if (!roleNeutral && account.type !== requestedAccountType) {
           await dbClient.query("ROLLBACK");
           return accountMismatch(account.type);
         }
@@ -96,7 +98,7 @@ export async function resolveGoogleIdentity({
       const result = await dbClient.query(`SELECT * FROM ${account.table} WHERE email = $1 LIMIT 1`, [cleanEmail]);
       if (result.rows.length === 0) continue;
 
-      if (account.type !== requestedAccountType) {
+      if (!roleNeutral && account.type !== requestedAccountType) {
         await dbClient.query("ROLLBACK");
         return accountMismatch(account.type);
       }

@@ -147,6 +147,7 @@ export async function GET(request: Request) {
       name: payload.name,
       picture: payload.picture,
       requestedAccountType: accountType,
+      roleNeutral: stateCheck.roleNeutral === true,
     });
 
     if (result.error || !result.user) {

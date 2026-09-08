@@ -5,6 +5,7 @@ import { normalizeOAuthAccountType, OAuthAccountType } from "@/lib/oauthAccountT
 export interface OAuthStatePayload {
   role: "user";
   oauthAccountType: OAuthAccountType;
+  oauthRoleNeutral?: boolean;
   nonce: string;
   iat: number;
   codeChallenge?: string;
@@ -13,7 +14,7 @@ export interface OAuthStatePayload {
 /**
  * Creates a signed short-lived single-use OAuth State parameter (JWT format) to prevent CSRF.
  */
-export function createOAuthState(accountType: OAuthAccountType, mobile = false, codeChallenge?: string): string {
+export function createOAuthState(accountType: OAuthAccountType, mobile = false, codeChallenge?: string, roleNeutral = false): string {
   const nonce = crypto.randomBytes(16).toString("hex");
   
   return signJwtToken({
@@ -21,6 +22,7 @@ export function createOAuthState(accountType: OAuthAccountType, mobile = false, 
     email: "oauth@state.internal",
     role: "user",
     oauthAccountType: accountType,
+    ...(roleNeutral ? { oauthRoleNeutral: true } : {}),
     name: nonce,
     oauthMobile: mobile,
     oauthCodeChallenge: codeChallenge,
@@ -30,7 +32,7 @@ export function createOAuthState(accountType: OAuthAccountType, mobile = false, 
 /**
  * Validates the state parameter returned by Google during OAuth callback.
  */
-export function verifyOAuthState(stateToken: string | null): { valid: boolean; mobile?: boolean; codeChallenge?: string } {
+export function verifyOAuthState(stateToken: string | null): { valid: boolean; mobile?: boolean; codeChallenge?: string; roleNeutral?: boolean } {
   if (!stateToken) return { valid: false };
 
   try {
@@ -49,6 +51,7 @@ export function verifyOAuthState(stateToken: string | null): { valid: boolean; m
       valid: true,
       mobile: payload.oauthMobile === true,
       codeChallenge: payload.oauthCodeChallenge,
+      roleNeutral: payload.oauthRoleNeutral === true,
     };
   } catch (err) {
     return { valid: false };

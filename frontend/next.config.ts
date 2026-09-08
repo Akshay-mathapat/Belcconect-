@@ -45,13 +45,14 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://accounts.google.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
               "font-src 'self' https://fonts.gstatic.com data:",
               "img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com https://unpkg.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.openstreetmap.org",
-              // connect-src: allows connections to local ports, OSRM, LiveKit, Dev Tunnels, and Render signaling server
-              "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://router.project-osrm.org https://*.livekit.cloud wss://*.livekit.cloud https://*.devtunnels.ms wss://*.devtunnels.ms https://*.onrender.com wss://*.onrender.com",
+              // connect-src: allows connections to local ports, OSRM, LiveKit, Dev Tunnels, Google, and Render signaling server
+              "connect-src 'self' ws: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://accounts.google.com https://router.project-osrm.org https://*.livekit.cloud wss://*.livekit.cloud https://*.devtunnels.ms wss://*.devtunnels.ms https://*.onrender.com wss://*.onrender.com",
               "media-src 'self' blob:",
+              "frame-src 'self' https://accounts.google.com",
               "object-src 'none'",
               "frame-ancestors 'none'"
             ].join("; "),

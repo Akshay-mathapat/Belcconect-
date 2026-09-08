@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, User, Wrench, Briefcase } from "lucide-react";
+import { ArrowRight, Check, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { AuthHeader } from "./AuthHeader";
-import { useAuthStore, UserRole } from "@/store/useAuthStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { registerAndSubscribeUser } from "@/lib/registerSW";
 import { getSafeReturnUrl } from "@/lib/urlUtils";
@@ -25,9 +25,7 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
   const rawReturnTo = searchParams?.get("returnTo");
   const safeReturnTo = getSafeReturnUrl(rawReturnTo);
 
-  const [selectedAccountType, setSelectedAccountType] = useState<OAuthAccountType>(
-    initialAccountType || "customer"
-  );
+  const accountType = initialAccountType || "customer";
   const { loginUser, currentUser } = useAuthStore();
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -124,51 +122,6 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
         title={t("auth.welcomeBack")}
         subtitle={t("auth.welcomeBackDesc")}
       />
-
-      {/* 3 Role Switcher Buttons on Top */}
-      <div className="mb-6 p-1 bg-muted/70 dark:bg-zinc-800/70 rounded-xl grid grid-cols-3 gap-1 border border-border/50">
-        <button
-          type="button"
-          onClick={() => setSelectedAccountType("customer")}
-          className={`py-2 px-1 sm:px-2 text-[10px] sm:text-xs md:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
-            selectedAccountType === "customer"
-              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-          suppressHydrationWarning
-        >
-          <User className="w-3.5 h-3.5" />
-          {t("auth.createGroupUser")}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSelectedAccountType("service_provider")}
-          className={`py-2 px-1 sm:px-2 text-[10px] sm:text-xs md:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
-            selectedAccountType === "service_provider"
-              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-          suppressHydrationWarning
-        >
-          <Wrench className="w-3.5 h-3.5" />
-          {t("auth.createGroupProvider")}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSelectedAccountType("job_provider")}
-          className={`py-2 px-1 sm:px-2 text-[10px] sm:text-xs md:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap ${
-            selectedAccountType === "job_provider"
-              ? "bg-background text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-          suppressHydrationWarning
-        >
-          <Briefcase className="w-3.5 h-3.5" />
-          {t("auth.createGroupEmployer")}
-        </button>
-      </div>
 
       {errorMessage && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold">
@@ -289,7 +242,7 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
         </div>
 
         {/* Google SSO Button */}
-        <GoogleButton accountType={selectedAccountType} />
+  <GoogleButton accountType={accountType} roleNeutral />
       </form>
 
       {/* Switch to Signup Link */}
