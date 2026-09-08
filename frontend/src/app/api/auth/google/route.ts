@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       name: payload.name,
       picture: payload.picture,
       requestedAccountType,
-  roleNeutral: !rawAccountType && !rawRole,
+        roleNeutral: !rawAccountType && !rawRole,
     });
 
     if (result.error || !result.user) {
