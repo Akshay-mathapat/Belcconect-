@@ -405,14 +405,6 @@ export default function CustomerTrackingMap({
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      if (!document.getElementById("leaflet-css")) {
-        const link = document.createElement("link");
-        link.id = "leaflet-css";
-        link.rel = "stylesheet";
-        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-        document.head.appendChild(link);
-      }
-
       const container = mapContainerRef.current;
       if (!container) return;
 
@@ -438,9 +430,8 @@ export default function CustomerTrackingMap({
         L.control.zoom({ position: "topright" }).addTo(map);
 
         // Fast, reliable OpenStreetMap tile layer (Carto Voyager styled map)
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          subdomains: ["a", "b", "c"],
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
