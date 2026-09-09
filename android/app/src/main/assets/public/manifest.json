@@ -1,0 +1,21 @@
+{
+  "name": "CityConnect Services Marketplace",
+  "short_name": "CityConnect",
+  "description": "Local On-Demand Services Marketplace & Real-Time Communications",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/BelConnectLogo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/BelConnectLogo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

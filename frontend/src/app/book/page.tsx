@@ -10,10 +10,12 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import LocationPicker, { ConfirmedLocationData } from "@/components/location/LocationPicker";
+import { useTranslation } from "@/lib/i18n";
 
 function BookingFlow() {
   const router = useRouter();
   const { currentUser, addAddress } = useAuthStore();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const service = searchParams.get("service") || "Service";
   const proId = searchParams.get("pro");
@@ -106,7 +108,7 @@ function BookingFlow() {
       }
 
       if (!resolvedProviderId) {
-        alert("Service provider not selected. Please browse services and select a provider first.");
+        alert(t("booking.providerRequired"));
         setIsSubmitting(false);
         return;
       }
@@ -115,7 +117,7 @@ function BookingFlow() {
       let finalDestLat: number | null = null;
       let finalDestLng: number | null = null;
       let finalDestPlaceId: string | null = null;
-      let finalDestAddress: string = "No address provided";
+      let finalDestAddress: string = t("booking.noAddressProvided");
       let finalDestLandmark: string | null = null;
       let finalDestInstructions: string | null = null;
 
@@ -127,7 +129,7 @@ function BookingFlow() {
         finalDestLandmark = newLocationData.landmark || null;
         finalDestInstructions = newLocationData.deliveryInstructions || null;
       } else if (selectedAddressId === "new") {
-        finalDestAddress = legacyAddressText || "New Address";
+        finalDestAddress = legacyAddressText || t("booking.newAddress");
       } else {
         const found = savedAddresses.find(a => a.id === selectedAddressId);
         if (found) {
@@ -139,7 +141,7 @@ function BookingFlow() {
           finalDestLandmark = found.landmark ?? null;
           finalDestInstructions = found.deliveryInstructions ?? null;
         } else {
-          finalDestAddress = legacyAddressText || "New Address";
+          finalDestAddress = legacyAddressText || t("booking.newAddress");
         }
       }
 
@@ -156,7 +158,7 @@ function BookingFlow() {
           customerPhone,
           customerPhoto,
           date,
-          time: time || "10:00 AM – 11:00 AM",
+          time: time || t("booking.defaultTimeRange"),
           address: finalDestAddress,
           serviceAddressId: finalServiceAddressId,
           destinationLatitude: finalDestLat,
@@ -171,7 +173,7 @@ function BookingFlow() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create booking");
+        throw new Error(data.error || t("booking.createBookingError"));
       }
 
       try {
@@ -184,7 +186,7 @@ function BookingFlow() {
       setStep(6);
     } catch (e: any) {
       console.error("Booking submission error:", e);
-      alert(e?.message || "Booking failed. Please check your server and database connection.");
+      alert(e?.message || t("booking.bookingFailed"));
       setIsSubmitting(false);
     }
   };
@@ -224,29 +226,29 @@ function BookingFlow() {
           {step < 6 && (
             <div className="flex justify-between items-center mb-6">
               {step > 1 ? (
-                <button onClick={prevStep} className="text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer">Back</button>
+                <button onClick={prevStep} className="text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer">{t("booking.back")}</button>
               ) : <div></div>}
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Step {step} of 5</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t("booking.stepOf")} {step} {t("booking.ofFive")}</span>
               <div></div>
             </div>
           )}
 
           {step === 1 && (
             <>
-              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">Service Details</h1>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">{t("booking.serviceDetails")}</h1>
               <div className="space-y-4 mb-8">
                 <div className="rounded-xl bg-muted/50 p-4 border border-border">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-muted-foreground">Service</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("booking.service")}</span>
                     <span className="text-sm font-semibold text-foreground capitalize" suppressHydrationWarning>{service}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-muted-foreground">Professional ID</span>
-                    <span className="text-sm font-semibold text-foreground" suppressHydrationWarning>{proId || "Auto-assign"}</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("booking.professionalId")}</span>
+                    <span className="text-sm font-semibold text-foreground" suppressHydrationWarning>{proId || t("booking.autoAssign")}</span>
                   </div>
                 </div>
               </div>
-              <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all cursor-pointer">Continue</button>
+              <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all cursor-pointer">{t("booking.continue")}</button>
             </>
           )}
 
@@ -254,8 +256,8 @@ function BookingFlow() {
             <>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground">Service Address</h1>
-                  <p className="text-xs text-muted-foreground">Select a pinned location for accurate provider navigation</p>
+                  <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground">{t("booking.serviceAddress")}</h1>
+                  <p className="text-xs text-muted-foreground">{t("booking.selectLocation")}</p>
                 </div>
                 <button
                   type="button"
@@ -264,7 +266,7 @@ function BookingFlow() {
                   className="px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <Navigation className="w-4 h-4" />
-                  <span>Pin Map Location</span>
+                  <span>{t("booking.pinMapLocation")}</span>
                 </button>
               </div>
 
@@ -293,7 +295,7 @@ function BookingFlow() {
                           </div>
                           <span className="text-xs text-muted-foreground block leading-relaxed">{addr.text}</span>
                           {addr.landmark && (
-                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium block">Landmark: {addr.landmark}</span>
+                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium block">{t("booking.landmark")}: {addr.landmark}</span>
                           )}
                         </div>
                         <input 
@@ -330,8 +332,8 @@ function BookingFlow() {
                 <label data-tour="manual-address" className={`block border rounded-2xl p-4 cursor-pointer transition-all ${selectedAddressId === "new" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/40"}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="block font-semibold text-xs text-foreground mb-0.5">Enter Manual Text Address</span>
-                      <span className="text-[11px] text-muted-foreground">Without map pinning</span>
+                      <span className="block font-semibold text-xs text-foreground mb-0.5">{t("booking.manualAddressPlaceholder")}</span>
+                      <span className="text-[11px] text-muted-foreground">{t("booking.manualAddressHint")}</span>
                     </div>
                     <input type="radio" name="address" checked={selectedAddressId === "new"} onChange={() => setSelectedAddressId("new")} className="text-blue-600 focus:ring-blue-600" />
                   </div>
@@ -342,7 +344,7 @@ function BookingFlow() {
                     rows={2}
                     value={legacyAddressText}
                     onChange={(e) => setLegacyAddressText(e.target.value)}
-                    placeholder="Enter full address manually..."
+                    placeholder={t("booking.manualAddressPlaceholder")}
                     className="w-full mt-2 p-3 border border-border rounded-xl bg-background focus:ring-2 focus:ring-blue-600 text-xs text-foreground outline-none cursor-text"
                   />
                 )}
@@ -353,14 +355,14 @@ function BookingFlow() {
                 disabled={selectedAddressId === "new" && !legacyAddressText.trim()}
                 className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 cursor-pointer"
               >
-                Continue
+                {t("booking.continue")}
               </button>
             </>
           )}
 
           {step === 3 && (
             <>
-              <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground mb-4">Date & Time Slot</h1>
+              <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground mb-4">{t("booking.dateTimeSlot")}</h1>
               <div className="mb-6">
                 <TimeSlotPicker
                   selectedDate={date}
@@ -370,42 +372,42 @@ function BookingFlow() {
                   providerId={proId}
                 />
               </div>
-              <button onClick={nextStep} disabled={!date || !time} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 cursor-pointer">Continue</button>
+              <button onClick={nextStep} disabled={!date || !time} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 cursor-pointer">{t("booking.continue")}</button>
             </>
           )}
 
           {step === 4 && (
             <>
-              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">Order Summary</h1>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">{t("booking.orderSummary")}</h1>
               <div className="space-y-4 mb-8">
                 <div className="rounded-xl bg-muted/50 p-5 border border-border space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Service</span>
+                    <span className="text-sm text-muted-foreground">{t("booking.service")}</span>
                     <span className="text-sm font-semibold text-foreground capitalize">{service}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Date</span>
+                    <span className="text-sm text-muted-foreground">{t("booking.dateLabel")}</span>
                     <span className="text-sm font-semibold text-foreground">{date}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Time Slot</span>
-                    <span className="text-sm font-semibold text-foreground">{time || "10:00 AM – 11:00 AM"}</span>
+                    <span className="text-sm text-muted-foreground">{t("booking.timeSlot")}</span>
+                    <span className="text-sm font-semibold text-foreground">{time || t("booking.defaultTimeRange")}</span>
                   </div>
                 </div>
               </div>
-              <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer">Proceed to Booking</button>
+              <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer">{t("booking.proceedToBooking")}</button>
             </>
           )}
 
           {step === 5 && (
             <>
-              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">Payment Method</h1>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">{t("booking.paymentMethod")}</h1>
               <div className="space-y-3 mb-8">
                 <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${payment === "online" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/50"}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="block font-semibold text-foreground mb-1">Pay Online</span>
-                      <span className="text-sm text-muted-foreground">UPI, Credit/Debit Card</span>
+                      <span className="block font-semibold text-foreground mb-1">{t("booking.payOnline")}</span>
+                      <span className="text-sm text-muted-foreground">{t("booking.payOnlineDetails")}</span>
                     </div>
                     <input type="radio" name="payment" checked={payment === "online"} onChange={() => setPayment("online")} className="text-blue-600 focus:ring-blue-600" />
                   </div>
@@ -413,8 +415,8 @@ function BookingFlow() {
                 <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${payment === "cash" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/50"}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="block font-semibold text-foreground mb-1">Pay After Service</span>
-                      <span className="text-sm text-muted-foreground">Cash on completion</span>
+                      <span className="block font-semibold text-foreground mb-1">{t("booking.payAfterService")}</span>
+                      <span className="text-sm text-muted-foreground">{t("booking.payAfterServiceDetails")}</span>
                     </div>
                     <input type="radio" name="payment" checked={payment === "cash"} onChange={() => setPayment("cash")} className="text-blue-600 focus:ring-blue-600" />
                   </div>
@@ -427,7 +429,7 @@ function BookingFlow() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  "Confirm Booking"
+                  t("booking.confirmBooking")
                 )}
               </button>
             </>
@@ -442,10 +444,10 @@ function BookingFlow() {
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Booking Confirmed!</h2>
-              <p className="text-muted-foreground mb-4">Your professional has been assigned and is on the way.</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">{t("booking.bookingConfirmed")}</h2>
+              <p className="text-muted-foreground mb-4">{t("booking.professionalAssigned")}</p>
               <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-6 flex items-center justify-center gap-1.5 animate-pulse">
-                <span>Redirecting to your dashboard...</span>
+                <span>{t("booking.redirecting")}</span>
               </p>
               
               <button 
@@ -453,7 +455,7 @@ function BookingFlow() {
                 onClick={() => router.push("/account")}
                 className="inline-flex justify-center items-center py-3 px-6 rounded-xl border border-border bg-card text-foreground hover:bg-muted font-semibold transition-colors w-full cursor-pointer"
               >
-                Go to Dashboard
+                {t("booking.goToDashboard")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </button>
             </motion.div>

@@ -114,14 +114,14 @@ export function SearchDropdown({
             ) : (
               <div className="py-8 text-center">
                 <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-foreground">No services found for &ldquo;{query}&rdquo;</p>
-                <p className="text-xs text-muted-foreground mt-1">Try searching for Painter, Plumber, or Electrician</p>
+                <p className="text-sm font-medium text-foreground">{t("nav.noServicesFound", { query })}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("nav.noServicesSuggestion")}</p>
                 <Link
                   href="/services"
                   onClick={onClose}
                   className="inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-[#1F5F5B] hover:text-[#164845] transition-colors"
                 >
-                  Browse all services
+                  {t("nav.browseAllServices")}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>

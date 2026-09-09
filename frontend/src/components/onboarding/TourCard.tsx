@@ -3,8 +3,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useOnboardingTour } from "./OnboardingContext";
 import { ChevronRight, ChevronLeft, X, Check } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 export function TourCard() {
+  const { t } = useTranslation();
   const {
     isOpen,
     isFinishedScreen,
@@ -164,23 +166,23 @@ export function TourCard() {
         }}
       />
 
-      <button onClick={requestSkip} aria-label="Close guide" className="absolute top-2 right-2 p-1.5 text-primary-foreground/70 hover:text-white transition-colors cursor-pointer">
+      <button onClick={requestSkip} aria-label={t("tour.close")} className="absolute top-2 right-2 p-1.5 text-primary-foreground/70 hover:text-white transition-colors cursor-pointer">
         <X className="w-4 h-4" />
       </button>
 
       <div className="relative z-10 pt-1">
         <h3 className="font-bold text-base mb-1 pr-6 leading-tight flex items-center gap-1.5">
-          <span>{currentStep.title}</span>
+          <span>{t(currentStep.title)}</span>
         </h3>
         {currentStep.description && (
-          <p className="text-sm opacity-90 leading-snug mb-4">{currentStep.description}</p>
+          <p className="text-sm opacity-90 leading-snug mb-4">{t(currentStep.description)}</p>
         )}
 
         <div className="flex items-center justify-between pt-3 border-t border-white/20">
           {!isFirstStep ? (
             <button
               onClick={previousStep}
-              aria-label="Previous step"
+              aria-label={t("quickGuide.back")}
               className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -195,7 +197,7 @@ export function TourCard() {
 
           <button
             onClick={nextStep}
-            aria-label={isLastStep ? "Done" : "Next step"}
+            aria-label={isLastStep ? t("quickGuide.done") : t("quickGuide.next")}
             className="w-9 h-9 rounded-full bg-white text-primary hover:bg-white/90 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
           >
             {isLastStep ? <Check className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}

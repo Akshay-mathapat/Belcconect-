@@ -5,15 +5,19 @@ const path = require("path");
 console.log("[CityConnect Launcher] Starting Backend Signaling Server (backend/server.js) & Frontend Next.js App...");
 
 const backendProcess = spawn("node", ["backend/server.js"], {
-  stdio: "inherit",
-  shell: os.platform() === "win32"
+  cwd: __dirname,
+  stdio: "inherit"
 });
 
-const frontendProcess = spawn("npm", ["run", "dev"], {
-  cwd: path.join(__dirname, "frontend"),
-  stdio: "inherit",
-  shell: os.platform() === "win32"
-});
+const frontendProcess = os.platform() === "win32"
+  ? spawn("cmd.exe", ["/d", "/s", "/c", "npm run dev"], {
+      cwd: path.join(__dirname, "frontend"),
+      stdio: "inherit"
+    })
+  : spawn("npm", ["run", "dev"], {
+      cwd: path.join(__dirname, "frontend"),
+      stdio: "inherit"
+    });
 
 const cleanup = () => {
   console.log("[CityConnect Launcher] Shutting down servers...");

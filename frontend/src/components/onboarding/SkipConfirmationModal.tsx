@@ -3,9 +3,11 @@
 import React from "react";
 import { useOnboardingTour } from "./OnboardingContext";
 import { HelpCircle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 export function SkipConfirmationModal() {
   const { skipConfirmOpen, confirmSkip, cancelSkip } = useOnboardingTour();
+  const { t } = useTranslation();
 
   if (!skipConfirmOpen) return null;
 
@@ -24,10 +26,10 @@ export function SkipConfirmationModal() {
 
         <div>
           <h2 id="skip-dialog-title" className="text-lg font-heading font-bold text-foreground">
-            Skip Quick Guide?
+            {t("tour.skipGuideTitle")}
           </h2>
           <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-            You can open it again anytime from <span className="font-semibold text-foreground">Account → Help</span>.
+            {t("tour.skipGuideDesc")}
           </p>
         </div>
 
@@ -37,7 +39,7 @@ export function SkipConfirmationModal() {
             onClick={confirmSkip}
             className="flex-1 min-h-[44px] rounded-xl border border-border bg-muted/60 text-muted-foreground font-semibold text-xs hover:text-foreground hover:bg-muted transition-colors"
           >
-            Skip
+            {t("tour.skip")}
           </button>
 
           <button
@@ -45,7 +47,7 @@ export function SkipConfirmationModal() {
             onClick={cancelSkip}
             className="flex-1 min-h-[44px] rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-md hover:bg-primary/90 transition-all"
           >
-            Continue Guide
+            {t("tour.continueGuide")}
           </button>
         </div>
 

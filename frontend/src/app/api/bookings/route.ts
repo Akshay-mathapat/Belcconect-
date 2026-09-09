@@ -140,22 +140,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Verify providerId existence in DB
-    let validProviderId = providerId;
+    // Canonical provider validation: do not trust client-supplied or demo placeholder IDs.
+    // A booking must always reference a real service_providers row, otherwise the provider
+    // dashboard will never be able to find it by the same provider_id used at login.
+    const requestedProviderId = typeof providerId === "string" ? providerId.trim() : "";
+    const blockedProviderIds = new Set(["provider-1", "1", "demo-provider", "demo-pro"]);
+
+    if (!requestedProviderId || blockedProviderIds.has(requestedProviderId)) {
+      return NextResponse.json(
+        { error: "Invalid service provider selection. Please choose a real provider from the marketplace." },
+        { status: 400 }
+      );
+    }
+
+    let validProviderId = requestedProviderId;
     try {
       const proCheck = await query("SELECT id FROM service_providers WHERE id = $1 LIMIT 1", [providerId]);
       if (proCheck.rows.length === 0) {
-        if (process.env.DEMO_MODE === "true") {
-          validProviderId = "provider-1";
-        } else {
-          return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
-        }
-      }
-    } catch (e) {
-      if (process.env.DEMO_MODE !== "true") {
         return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
       }
-      validProviderId = "provider-1";
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
     }
 
     // Validate destination coordinates strictly if supplied (-90 <= lat <= 90, -180 <= lng <= 180)

@@ -4,32 +4,32 @@ export const customerTourSteps: TourStep[] = [
   {
     id: "search",
     targetDataAttr: "customer-search",
-    title: "Find a Service",
-    description: "Search for plumbers, electricians, painters, and more in Belagavi.",
+    title: "tour.customer.searchTitle",
+    description: "tour.customer.searchDesc",
     allowTargetInteraction: true,
     advanceOnTargetClick: true,
   },
   {
     id: "categories",
     targetDataAttr: "browse-services",
-    title: "Browse Categories",
-    description: "Click any category below (like Electrical, Plumbing, or Cleaning) to view service providers.",
+    title: "tour.customer.categoryTitle",
+    description: "tour.customer.categoryDesc",
     allowTargetInteraction: true,
     advanceOnTargetClick: true,
   },
   {
     id: "sort-by",
     targetDataAttr: "sort-by",
-    title: "Sort & Filter Providers",
-    description: "Filter professionals by Recommended, Rating: High to Low, or Most Experienced.",
+    title: "tour.customer.filterTitle",
+    description: "tour.customer.filterDesc",
     allowTargetInteraction: true,
     advanceOnTargetClick: true,
   },
   {
     id: "book",
     targetDataAttr: "providers-list",
-    title: "Choose & Book Any Provider",
-    description: "Click Book Now on any provider card to schedule your service request.",
+    title: "tour.customer.bookTitle",
+    description: "tour.customer.bookDesc",
     allowTargetInteraction: true,
     advanceOnTargetClick: true,
     hideStickyCard: true,
@@ -37,8 +37,8 @@ export const customerTourSteps: TourStep[] = [
 ];
 
 export const customerFinishContent = {
-  title: "You're Ready!",
-  description: "Find a service and make your first booking.",
-  actionText: "Done",
+  title: "tour.customer.readyTitle",
+  description: "tour.customer.readyDesc",
+  actionText: "tour.done",
   actionRoute: "/services"
 };

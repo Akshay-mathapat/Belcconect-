@@ -74,6 +74,8 @@ export default function BookingsManagementPage() {
   const { bookings, updateBookingStatus, deleteBooking, fetchProviderBookings } = useProviderStore();
   const [activeTab, setActiveTab] = useState<string>("ACTIVE");
   const [searchQuery, setSearchQuery] = useState("");
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { t } = useTranslation();
 
   const statusFilterTabs = [
@@ -89,6 +91,10 @@ export default function BookingsManagementPage() {
   useEffect(() => {
     fetchProviderBookings();
 
+    const intervalId = setInterval(() => {
+      fetchProviderBookings();
+    }, 4000);
+
     let syncChannel: BroadcastChannel | null = null;
     try {
       syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
@@ -100,11 +106,25 @@ export default function BookingsManagementPage() {
     } catch (e) {}
 
     return () => {
+      clearInterval(intervalId);
       if (syncChannel) {
         try { syncChannel.close(); } catch (e) {}
       }
     };
   }, [fetchProviderBookings]);
+
+  const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
+    setUpdatingBookingId(bookingId);
+    setActionError(null);
+    try {
+      await updateBookingStatus(bookingId, newStatus);
+    } catch (err: any) {
+      console.error("Error updating status:", err);
+      setActionError(err.message || "Failed to update booking status");
+    } finally {
+      setUpdatingBookingId(null);
+    }
+  };
 
   const filteredBookings = bookings.filter((b) => {
     let matchesTab = true;
@@ -202,6 +222,13 @@ export default function BookingsManagementPage() {
         })}
       </div>
 
+      {actionError && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="font-bold underline hover:no-underline">Dismiss</button>
+        </div>
+      )}
+
       {/* Bookings List */}
       <div className="space-y-4">
         {filteredBookings.length === 0 ? (
@@ -274,35 +301,48 @@ export default function BookingsManagementPage() {
                     {b.status === "Requested" && (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => updateBookingStatus(b.id, "Accepted")}
-                          className="px-4 py-2 rounded-xl bg-[#1F5F5B] hover:bg-[#164744] text-white text-xs font-bold shadow-sm transition-all"
+                          disabled={updatingBookingId === b.id}
+                          onClick={() => handleStatusChange(b.id, "Accepted")}
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                         >
-                          {t("serviceProvider.accept")}
+                          {updatingBookingId === b.id ? (
+                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : null}
+                          <span>{t("serviceProvider.accept")}</span>
                         </button>
                         <button
-                          onClick={() => updateBookingStatus(b.id, "Rejected")}
-                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all"
+                          disabled={updatingBookingId === b.id}
+                          onClick={() => handleStatusChange(b.id, "Rejected" as any)}
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                         >
-                          {t("serviceProvider.reject")}
+                          <span>{t("serviceProvider.reject")}</span>
                         </button>
                       </div>
                     )}
 
                     {b.status === "Accepted" && (
                       <button
-                        onClick={() => updateBookingStatus(b.id, "Started")}
-                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all"
+                        disabled={updatingBookingId === b.id}
+                        onClick={() => handleStatusChange(b.id, "Started")}
+                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                       >
-                        {t("serviceProvider.startJob")}
+                        {updatingBookingId === b.id ? (
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : null}
+                        <span>{t("serviceProvider.startJob")}</span>
                       </button>
                     )}
 
                     {b.status === "Started" && (
                       <button
-                        onClick={() => updateBookingStatus(b.id, "Completed")}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+                        disabled={updatingBookingId === b.id}
+                        onClick={() => handleStatusChange(b.id, "Completed")}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        {t("serviceProvider.completeService")}
+                        {updatingBookingId === b.id ? (
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : null}
+                        <span>{t("serviceProvider.completeService")}</span>
                       </button>
                     )}
 

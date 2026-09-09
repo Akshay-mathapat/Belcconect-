@@ -146,6 +146,17 @@ export const useAuthStore = create<AuthState>()(
       usersList: INITIAL_USERS,
 
       setAuthUser: (user: AuthUser) => {
+        if (typeof window !== "undefined") {
+          if (user.token) {
+            localStorage.setItem("auth_token", user.token);
+            localStorage.setItem("cityconnect_token", user.token);
+            localStorage.setItem("cityconnect_auth_token", user.token);
+          }
+          if (user.id) {
+            localStorage.setItem("cityconnect_user_id", user.id);
+            localStorage.setItem("user_id", user.id);
+          }
+        }
         set((state) => {
           const exists = state.usersList.some((u) => u.id === user.id);
           const list = exists
@@ -171,6 +182,17 @@ export const useAuthStore = create<AuthState>()(
           const data = await res.json();
           if (res.ok && data.success) {
             const user: AuthUser = { bookings: [], isFirstLogin: true, ...data.user, token: data.token };
+            if (typeof window !== "undefined") {
+              if (data.token) {
+                localStorage.setItem("auth_token", data.token);
+                localStorage.setItem("cityconnect_token", data.token);
+                localStorage.setItem("cityconnect_auth_token", data.token);
+              }
+              if (user.id) {
+                localStorage.setItem("cityconnect_user_id", user.id);
+                localStorage.setItem("user_id", user.id);
+              }
+            }
             set((state) => ({
               usersList: [...state.usersList, user],
               currentUser: user
@@ -198,6 +220,17 @@ export const useAuthStore = create<AuthState>()(
           const data = await res.json();
           if (res.ok && data.success) {
             const user = { bookings: [], ...data.user, token: data.token };
+            if (typeof window !== "undefined") {
+              if (data.token) {
+                localStorage.setItem("auth_token", data.token);
+                localStorage.setItem("cityconnect_token", data.token);
+                localStorage.setItem("cityconnect_auth_token", data.token);
+              }
+              if (user.id) {
+                localStorage.setItem("cityconnect_user_id", user.id);
+                localStorage.setItem("user_id", user.id);
+              }
+            }
             set((state) => {
               const list = state.usersList.map((u) => u.id === user.id ? user : u);
               return { currentUser: user, usersList: list };
@@ -382,6 +415,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           if (typeof window !== "undefined") {
             localStorage.removeItem("belconnect-provider-storage-v2");
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("cityconnect_token");
+            localStorage.removeItem("cityconnect_auth_token");
+            localStorage.removeItem("cityconnect_user_id");
+            localStorage.removeItem("user_id");
           }
         } catch (e) {}
         set({ currentUser: null });
@@ -393,3 +431,31 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+export function getStoredAuthToken(): string | null {
+  const authUser = useAuthStore.getState().currentUser;
+  if (authUser?.token) return authUser.token;
+  if (typeof window !== "undefined") {
+    return (
+      localStorage.getItem("cityconnect_auth_token") ||
+      localStorage.getItem("cityconnect_token") ||
+      localStorage.getItem("auth_token") ||
+      null
+    );
+  }
+  return null;
+}
+
+export function getStoredUserId(): string | null {
+  const authUser = useAuthStore.getState().currentUser;
+  if (authUser?.id) return authUser.id;
+  if (typeof window !== "undefined") {
+    return (
+      localStorage.getItem("cityconnect_user_id") ||
+      localStorage.getItem("user_id") ||
+      null
+    );
+  }
+  return null;
+}
+

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sun, Sunset, Moon, Calendar as CalendarIcon, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 import { AvailabilitySchedule } from "@/types/provider";
+import { useTranslation } from "@/lib/i18n";
 
 interface TimeSlotPickerProps {
   selectedDate: string; // YYYY-MM-DD format
@@ -160,6 +161,7 @@ export default function TimeSlotPicker({
   onTimeChange,
   providerId,
 }: TimeSlotPickerProps) {
+  const { t } = useTranslation();
   const { schedule } = useProviderStore();
   const days = getNext7Days();
 
@@ -255,31 +257,31 @@ export default function TimeSlotPicker({
 
     if (isPastDate) {
       return {
-        title: "Selected Date Has Passed",
-        description: `The selected date (${selectedDayObj.displayTitle}) is in the past. Please choose today or an upcoming date to view available time slots.`,
+        title: t("booking.selectedDatePassed"),
+        description: t("booking.datePassedDesc", { date: selectedDayObj.displayTitle }),
         variant: "amber" as const,
       };
     }
 
     if (isToday && slotData.totalPassed > 0 && slotData.totalBooked === 0) {
       return {
-        title: "Today's Time Slots Have Passed",
-        description: `All time slots for today (${selectedDayObj.displayTitle}) have already passed. Please select tomorrow or another upcoming date to book your service.`,
+        title: t("booking.todaySlotsPassed"),
+        description: t("booking.todaySlotsPassedDesc", { date: selectedDayObj.displayTitle }),
         variant: "amber" as const,
       };
     }
 
     if (slotData.totalPassed > 0 && slotData.totalBooked > 0) {
       return {
-        title: "No Available Slots For Today",
-        description: `Time slots for today (${selectedDayObj.displayTitle}) are either fully booked or have already passed. Please choose another date.`,
+        title: t("booking.noAvailableSlots"),
+        description: t("booking.noAvailableSlotsDesc", { date: selectedDayObj.displayTitle }),
         variant: "rose" as const,
       };
     }
 
     return {
-      title: "All Slots Fully Booked",
-      description: `All time slots on ${selectedDayObj.displayTitle} have already been booked by other customers. Please choose another date.`,
+      title: t("booking.allSlotsBooked"),
+      description: t("booking.allSlotsBookedDesc", { date: selectedDayObj.displayTitle }),
       variant: "rose" as const,
     };
   };
@@ -291,7 +293,7 @@ export default function TimeSlotPicker({
         <div className="flex items-center justify-between mb-3">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <CalendarIcon className="w-4 h-4 text-primary" />
-            Select Service Date
+            {t("booking.selectServiceDate")}
           </label>
           <span className="text-xs font-semibold text-primary">{selectedDayObj.displayTitle}</span>
         </div>
@@ -334,7 +336,7 @@ export default function TimeSlotPicker({
 
         {/* Custom Calendar Picker fallback */}
         <div className="mt-3 flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground font-medium">Or pick another date:</span>
+          <span className="text-[11px] text-muted-foreground font-medium">{t("booking.pickAnotherDate")}</span>
           <input
             type="date"
             min={todayStr}
@@ -355,9 +357,9 @@ export default function TimeSlotPicker({
         <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
           <div>
-            <p className="font-bold text-sm text-foreground">Provider Off Duty</p>
+            <p className="font-bold text-sm text-foreground">{t("booking.providerOffDuty")}</p>
             <p className="text-[11px] opacity-90 mt-0.5">
-              The service provider is not on duty on {selectedDayObj.fullDayName}s according to their weekly availability. Please choose another date.
+              {t("booking.providerOffDutyDesc", { day: selectedDayObj.fullDayName })}
             </p>
           </div>
         </div>
@@ -384,7 +386,7 @@ export default function TimeSlotPicker({
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-primary" />
-              Available Time Slots
+              {t("booking.availableTimeSlots")}
             </label>
             <div className="flex items-center gap-2">
               {slotData.totalBooked > 0 && (
@@ -402,7 +404,7 @@ export default function TimeSlotPicker({
                   Selected: {selectedTime}
                 </span>
               ) : (
-                <span className="text-[11px] text-muted-foreground font-medium">Select an available slot</span>
+                <span className="text-[11px] text-muted-foreground font-medium">{t("booking.selectAvailableSlot")}</span>
               )}
             </div>
           </div>
@@ -412,7 +414,7 @@ export default function TimeSlotPicker({
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Sun className="w-4 h-4 text-amber-500" />
-                <span>Morning</span>
+                <span>{t("booking.morning")}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {slotData.morning.map((slot) => {
@@ -448,7 +450,7 @@ export default function TimeSlotPicker({
             <div className="space-y-2.5 pt-2">
               <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Sunset className="w-4 h-4 text-orange-500" />
-                <span>Afternoon</span>
+                <span>{t("booking.afternoon")}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {slotData.afternoon.map((slot) => {
@@ -484,7 +486,7 @@ export default function TimeSlotPicker({
             <div className="space-y-2.5 pt-2">
               <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Moon className="w-4 h-4 text-indigo-400" />
-                <span>Evening</span>
+                <span>{t("booking.evening")}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {slotData.evening.map((slot) => {

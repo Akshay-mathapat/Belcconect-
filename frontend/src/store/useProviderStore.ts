@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { useAuthStore } from "./useAuthStore";
+import { useAuthStore, getStoredAuthToken } from "./useAuthStore";
 import { 
   Booking, 
   BookingStatus, 
@@ -87,7 +87,7 @@ const initialSchedule: AvailabilitySchedule[] = [
   { day: "Thursday", isWorking: true, startTime: "09:00", endTime: "19:00", breakStart: "13:00", breakEnd: "14:00" },
   { day: "Friday", isWorking: true, startTime: "09:00", endTime: "19:00", breakStart: "13:00", breakEnd: "14:00" },
   { day: "Saturday", isWorking: true, startTime: "09:00", endTime: "18:00", breakStart: "13:00", breakEnd: "14:00" },
-  { day: "Sunday", isWorking: false, startTime: "10:00", endTime: "16:00", breakStart: "13:00", breakEnd: "14:00" }
+  { day: "Sunday", isWorking: true, startTime: "09:00", endTime: "19:00", breakStart: "13:00", breakEnd: "14:00" }
 ];
 
 const initialConversations: ChatConversation[] = [
@@ -130,10 +130,10 @@ export const useProviderStore = create<ProviderStoreState>()(
 
       updateBookingStatus: async (id, status) => {
         try {
-          const token = typeof window !== "undefined"
-            ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
-            : null;
+          const authUser = useAuthStore.getState().currentUser;
+          const token = authUser?.token || getStoredAuthToken();
           const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (authUser?.id) headers["x-user-id"] = authUser.id;
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
           const res = await fetch(`/api/bookings/${id}`, {
@@ -166,10 +166,10 @@ export const useProviderStore = create<ProviderStoreState>()(
 
       deleteBooking: async (id) => {
         try {
-          const token = typeof window !== "undefined"
-            ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
-            : null;
+          const authUser = useAuthStore.getState().currentUser;
+          const token = authUser?.token || getStoredAuthToken();
           const headers: Record<string, string> = {};
+          if (authUser?.id) headers["x-user-id"] = authUser.id;
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
           const res = await fetch(`/api/bookings/${id}`, {
@@ -207,9 +207,7 @@ export const useProviderStore = create<ProviderStoreState>()(
         }
         const providerId = currentUser.id;
         try {
-          const token = typeof window !== "undefined"
-            ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
-            : null;
+          const token = currentUser.token || getStoredAuthToken();
           const headers: Record<string, string> = { "x-user-id": providerId };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 

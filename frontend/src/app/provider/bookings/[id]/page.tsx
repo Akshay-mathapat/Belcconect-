@@ -16,7 +16,7 @@ import CallButton from "@/components/calls/CallButton";
 import ChatButton from "@/components/chat/ChatButton";
 import { useLiveLocationBroadcast } from "@/hooks/useLiveLocationBroadcast";
 import { useTranslation } from "@/lib/i18n";
-import { BookingStatus } from "@/types/provider";
+import { Booking, BookingStatus } from "@/types/provider";
 import { getSocket } from "@/lib/socket";
 
 export default function ProviderBookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,6 +26,8 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [localBooking, setLocalBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     fetchProviderBookings();
@@ -35,6 +37,32 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
 
     return () => clearInterval(intervalId);
   }, [fetchProviderBookings]);
+
+  // Fallback direct fetch in case store hasn't populated yet
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDirectBooking() {
+      try {
+        const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+        const headers: Record<string, string> = {};
+        if (currentUser?.id) headers["x-user-id"] = currentUser.id;
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch(`/api/bookings/${id}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.booking) {
+            setLocalBooking(data.booking);
+          }
+        }
+      } catch (e) {
+      } finally {
+        if (isMounted) setInitialLoading(false);
+      }
+    }
+    loadDirectBooking();
+    return () => { isMounted = false; };
+  }, [id, currentUser]);
 
   // Socket.IO Status Synchronizer
   useEffect(() => {
@@ -46,6 +74,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     const handleStatusUpdated = (data: any) => {
       if (data && data.bookingId === id && data.status) {
         fetchProviderBookings();
+        setLocalBooking((prev) => prev ? { ...prev, status: data.status as BookingStatus } : prev);
       }
     };
 
@@ -59,7 +88,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
 
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const booking = bookings.find((b) => b.id === id);
+  const booking = bookings.find((b) => b.id === id) || localBooking;
 
   // Broadcast Provider GPS location
   const {
@@ -76,6 +105,15 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     wakeLockActive,
     toggleWakeLock
   } = useLiveLocationBroadcast(booking?.id, booking?.status);
+
+  if (initialLoading && !booking) {
+    return (
+      <div className="p-12 text-center space-y-4">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-bold text-foreground">Loading Booking #{id}...</p>
+      </div>
+    );
+  }
 
   if (!booking) {
     return (
