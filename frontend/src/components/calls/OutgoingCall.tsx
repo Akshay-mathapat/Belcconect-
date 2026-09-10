@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { PhoneOff, ShieldCheck } from "lucide-react";
 import { CallRecord } from "@/lib/calls";
-import { ringtonePlayer } from "@/lib/ringtone";
+import { callAudioManager } from "@/lib/callAudioManager";
 
 interface OutgoingCallProps {
   call: CallRecord;
@@ -15,13 +15,13 @@ export default function OutgoingCall({ call, onCancel }: OutgoingCallProps) {
   const receiverName = call.receiverName || "Service Contact";
   const receiverAvatar = call.receiverAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80";
 
-  // Play 80s outgoing ringback tone
+  // Play outgoing ringback tone
   useEffect(() => {
-    ringtonePlayer.startRingtone("outgoing");
+    callAudioManager.playOutgoing(call.id);
     return () => {
-      ringtonePlayer.stopRingtone();
+      callAudioManager.stopOutgoing();
     };
-  }, []);
+  }, [call.id]);
 
   return (
     <div className="fixed inset-0 z-[999999] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 touch-none select-none">
@@ -58,7 +58,10 @@ export default function OutgoingCall({ call, onCancel }: OutgoingCallProps) {
         <div className="flex flex-col items-center gap-2 mt-8">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => {
+              callAudioManager.stopAll();
+              onCancel();
+            }}
             className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-xl ring-4 ring-rose-600/30 scale-105 active:scale-95"
             title="Cancel Call"
           >

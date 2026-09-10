@@ -31,6 +31,7 @@ import com.getcapacitor.PermissionState;
 public class ProviderLocationPlugin extends Plugin {
 
     private boolean isServiceRunning = false;
+    private String currentBookingId = null;
 
     @PluginMethod
     public void startTracking(PluginCall call) {
@@ -44,8 +45,18 @@ public class ProviderLocationPlugin extends Plugin {
         }
 
         if (isServiceRunning) {
+        if (isServiceRunning && bookingId.equals(currentBookingId)) {
+            // Re-send updated token or apiUrl if needed
+            Intent serviceIntent = new Intent(getContext(), BelConnectLocationService.class);
+            serviceIntent.putExtra("bookingId", bookingId);
+            serviceIntent.putExtra("token", token);
+            serviceIntent.putExtra("apiUrl", apiUrl);
+            serviceIntent.setAction("START_TRACKING");
+            ContextCompat.startForegroundService(getContext(), serviceIntent);
+
             JSObject ret = new JSObject();
             ret.put("status", "already_running");
+            ret.put("bookingId", currentBookingId);
             call.resolve(ret);
             return;
         }
@@ -97,21 +108,42 @@ public class ProviderLocationPlugin extends Plugin {
 
         ContextCompat.startForegroundService(getContext(), serviceIntent);
         isServiceRunning = true;
+        currentBookingId = bookingId;
         
         JSObject ret = new JSObject();
         ret.put("status", "started");
+        ret.put("bookingId", bookingId);
         call.resolve(ret);
     }
 
     @PluginMethod
     public void stopTracking(PluginCall call) {
+        String reqBookingId = call.getString("bookingId");
+        if (reqBookingId != null && currentBookingId != null && !reqBookingId.equals(currentBookingId)) {
+            // Request is to stop a different booking than the one actively running; do not stop active service
+            JSObject ret = new JSObject();
+            ret.put("status", "ignored_different_booking");
+            ret.put("activeBookingId", currentBookingId);
+            call.resolve(ret);
+            return;
+        }
+
         Intent serviceIntent = new Intent(getContext(), BelConnectLocationService.class);
         serviceIntent.setAction("STOP_TRACKING");
         getContext().startService(serviceIntent);
 
         isServiceRunning = false;
+        currentBookingId = null;
         JSObject ret = new JSObject();
         ret.put("status", "stopped");
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void getTrackingStatus(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("isTracking", isServiceRunning);
+        ret.put("bookingId", currentBookingId);
         call.resolve(ret);
     }
 }

@@ -538,14 +538,24 @@ app.post("/api/signal", (req, res) => {
 
   if (targetUserIds && Array.isArray(targetUserIds)) {
     targetUserIds.forEach((uid) => {
-      if (uid) io.to(`user:${uid}`).emit("call:signal", payload);
+      if (uid) {
+        io.to(`user:${uid}`).emit("call:signal", payload);
+        io.to(`user:${uid}`).emit(type, payload);
+      }
     });
   } else if (targetUserId) {
     io.to(`user:${targetUserId}`).emit("call:signal", payload);
+    io.to(`user:${targetUserId}`).emit(type, payload);
   } else {
     // Fallback: emit to both caller and receiver
-    if (call.callerId) io.to(`user:${call.callerId}`).emit("call:signal", payload);
-    if (call.receiverId) io.to(`user:${call.receiverId}`).emit("call:signal", payload);
+    if (call.callerId) {
+      io.to(`user:${call.callerId}`).emit("call:signal", payload);
+      io.to(`user:${call.callerId}`).emit(type, payload);
+    }
+    if (call.receiverId) {
+      io.to(`user:${call.receiverId}`).emit("call:signal", payload);
+      io.to(`user:${call.receiverId}`).emit(type, payload);
+    }
   }
 
   return res.json({ success: true, delivered: true });

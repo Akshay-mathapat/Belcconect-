@@ -15,6 +15,8 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:exported="true">
 
             <intent-filter>
@@ -46,6 +48,36 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location|microphone" />
+            android:foregroundServiceType="location" />
+
+        <!-- BroadcastReceiver for native incoming call notification actions (e.g. Decline) -->
+        <!-- Foreground Service for ongoing active voice calls (microphone keep-alive in background) -->
+        <service
+            android:name=".BelConnectCallService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- BroadcastReceiver for native incoming & active call notification actions (Decline / End Call) -->
+        <receiver
+            android:name=".CallActionReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.cityconnect.app.ACTION_DECLINE" />
+                <action android:name="com.cityconnect.app.ACTION_END_CALL" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Firebase Messaging Service for background call push wake-up -->
+        <service
+            android:name=".BelConnectFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
     </application>
 
     <!-- Permissions -->
@@ -59,4 +91,10 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <!-- Incoming Call Notification & Wake-Up Permissions -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

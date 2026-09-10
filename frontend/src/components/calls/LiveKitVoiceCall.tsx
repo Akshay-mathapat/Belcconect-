@@ -16,6 +16,7 @@ import { ShieldCheck, Volume2, Mic, RefreshCw, AlertCircle, PhoneOff, Loader2 } 
 import { CallRecord } from "@/lib/calls";
 import CallTimer from "./CallTimer";
 import CallControls from "./CallControls";
+import { callAudioManager } from "@/lib/callAudioManager";
 import "@livekit/components-styles";
 
 export interface LiveKitCredentials {
@@ -523,6 +524,11 @@ export default function LiveKitVoiceCall({
   const [connectError, setConnectError] = useState<string | null>(null);
   const [mediaRetryGeneration, setMediaRetryGeneration] = useState<number>(0);
   const intentionalDisconnectRef = useRef<boolean>(false);
+
+  // Connected call protection: guarantee ringtone and ringback are stopped instantly
+  useEffect(() => {
+    callAudioManager.stopAll();
+  }, []);
 
   const handleRoomDisconnected = useCallback(() => {
     console.log("[LIVEKIT_STATE] disconnected. Intentional?", intentionalDisconnectRef.current);

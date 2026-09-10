@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
@@ -56,10 +57,12 @@ public class BelConnectLocationService extends Service {
     public void onCreate() {
         super.onCreate();
         // Set reasonable timeouts for native HTTP client
+        // Set reasonable timeouts and retry logic for native HTTP client
         httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .writeTimeout(10, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build();
             
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -77,6 +80,9 @@ public class BelConnectLocationService extends Service {
                     }
                 }
                 if (bestLocation != null) {
+                    Log.d(TAG, "[LocationService] GPS update: lat=" + bestLocation.getLatitude() + 
+                               ", lng=" + bestLocation.getLongitude() + 
+                               ", accuracy=" + (bestLocation.hasAccuracy() ? bestLocation.getAccuracy() : "N/A") + "m");
                     sendLocationToBackend(bestLocation);
                 }
             }
@@ -91,10 +97,10 @@ public class BelConnectLocationService extends Service {
                 String newBookingId = intent.getStringExtra("bookingId");
                 
                 if (isTracking && newBookingId != null && newBookingId.equals(bookingId)) {
-                    Log.i(TAG, "Already tracking this booking");
+                    Log.i(TAG, "[LocationService] Already tracking booking: " + bookingId);
                     token = intent.getStringExtra("token");
                     apiUrl = intent.getStringExtra("apiUrl");
-                    return START_NOT_STICKY;
+                    return START_STICKY;
                 }
                 
                 if (isTracking) {
@@ -106,14 +112,19 @@ public class BelConnectLocationService extends Service {
                 apiUrl = intent.getStringExtra("apiUrl");
                 
                 createNotificationChannel();
-                startForeground(NOTIFICATION_ID, getNotification());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(NOTIFICATION_ID, getNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                } else {
+                    startForeground(NOTIFICATION_ID, getNotification());
+                }
                 requestLocationUpdates();
                 isTracking = true;
+                Log.i(TAG, "[LocationService] Started foreground tracking for booking: " + bookingId);
             } else if ("STOP_TRACKING".equals(action)) {
                 stopTracking();
             }
         }
-        return START_NOT_STICKY; // Use START_NOT_STICKY for safety if killed, wait for user to re-open app
+        return START_STICKY;
     }
 
     private void requestLocationUpdates() {
@@ -184,32 +195,49 @@ public class BelConnectLocationService extends Service {
             httpClient.newCall(requestBuilder.build()).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "Failed to send location: " + e.getMessage());
+                    Log.w(TAG, "[LocationService] Network failure posting location: " + e.getMessage() + " (will retry on next GPS tick)");
                     isRequestPending = false;
                     processLatestPending();
                 }
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
-                    if (response.isSuccessful()) {
-                        lastSentTimestamp = currentTimestamp;
-                    } else if (response.code() == 401 || response.code() == 403 || response.code() == 404) {
-                        Log.e(TAG, "Backend rejected location permanently: " + response.code());
-                        stopTracking(); // Critical auth/booking failure
+                    try {
+                        if (response.isSuccessful()) {
+                            lastSentTimestamp = currentTimestamp;
+                            Log.d(TAG, "[LocationService] Location update successfully posted to backend for booking " + bookingId);
+                        } else if (response.code() == 401 || response.code() == 403 || response.code() == 404) {
+                            Log.e(TAG, "[LocationService] Backend rejected location permanently: " + response.code() + ", stopping tracking.");
+                            stopTracking();
+                            isRequestPending = false;
+                            return;
+                        } else if (response.code() == 400) {
+                            String bodyStr = "";
+                            try {
+                                if (response.body() != null) {
+                                    bodyStr = response.body().string();
+                                }
+                            } catch (Exception ignored) {}
+                            Log.w(TAG, "[LocationService] Backend returned 400: " + bodyStr);
+                            if (bodyStr.contains("not in active tracking window")) {
+                                Log.i(TAG, "[LocationService] Booking is no longer active. Stopping tracking.");
+                                stopTracking();
+                                isRequestPending = false;
+                                return;
+                            }
+                        } else {
+                            Log.w(TAG, "[LocationService] Backend responded with code: " + response.code());
+                        }
+                    } finally {
                         response.close();
                         isRequestPending = false;
-                        return;
-                    } else {
-                        Log.e(TAG, "Backend rejected location: " + response.code());
+                        processLatestPending();
                     }
-                    response.close();
-                    isRequestPending = false;
-                    processLatestPending();
                 }
             });
 
         } catch (Exception e) {
-            Log.e(TAG, "JSON Exception", e);
+            Log.e(TAG, "[LocationService] Error constructing location payload", e);
             isRequestPending = false;
             processLatestPending();
         }
@@ -226,14 +254,20 @@ public class BelConnectLocationService extends Service {
     private Notification getNotification() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this, 
+            0, 
+            intent, 
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("BelConnect")
-                .setContentText("Live location sharing active. Tap to return to current service.")
+                .setContentTitle("BelConnect - Active Service")
+                .setContentText("Sharing live GPS location with customer...")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(pendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setOngoing(true)
                 .build();
     }
@@ -242,10 +276,10 @@ public class BelConnectLocationService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
-                    "BelConnect Live Tracking",
+                    "BelConnect Live Service Tracking",
                     NotificationManager.IMPORTANCE_LOW
             );
-            serviceChannel.setDescription("Persistent notification for active provider tracking");
+            serviceChannel.setDescription("Persistent notification while provider shares location during an active job");
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(serviceChannel);

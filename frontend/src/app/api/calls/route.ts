@@ -13,7 +13,7 @@ import {
 import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
-import { sendPushToUser } from "@/lib/pushNotifications";
+import { sendPushToUser, sendCallPushWakeUp } from "@/lib/pushNotifications";
 
 export async function POST(request: Request) {
   try {
@@ -180,6 +180,7 @@ export async function POST(request: Request) {
     });
 
     // 8b. Trigger Web Push Notification to receiver (non-blocking)
+    // 8b. Trigger Web Push & Native Android Push Wake-Up to receiver (non-blocking)
     const callerName = isProvider ? (booking.provider_name || "Service Partner") : "Customer";
     sendPushToUser(receiverId, {
       title: "Incoming Voice Call 📞",
@@ -191,6 +192,13 @@ export async function POST(request: Request) {
         url: `/?activeCall=true&callId=${ringingCallRecord.id}`
       }
     }).catch((err: any) => console.error("[Call API] Web Push dispatch error:", err));
+    sendCallPushWakeUp(receiverId, {
+      type: "incoming_call",
+      callId: ringingCallRecord.id,
+      bookingId,
+      callerName,
+      serviceName: booking.service_name || "BelConnect Service"
+    }).catch((err: any) => console.error("[Call API] Call Push dispatch error:", err));
 
     const callerLiveKit = await generateLiveKitToken(bookingId, actualCallerId).catch((err) => {
       console.error("[Call API] LiveKit token generation error:", err);

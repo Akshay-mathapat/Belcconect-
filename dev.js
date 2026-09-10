@@ -4,7 +4,7 @@ const path = require("path");
 
 console.log("[CityConnect Launcher] Starting Backend Signaling Server (backend/server.js) & Frontend Next.js App...");
 
-const backendProcess = spawn("node", ["backend/server.js"], {
+const backendProcess = spawn(process.execPath, [path.join(__dirname, "backend", "server.js")], {
   cwd: __dirname,
   stdio: "inherit"
 });
@@ -23,11 +23,15 @@ const cleanup = () => {
   console.log("[CityConnect Launcher] Shutting down servers...");
   try {
     if (os.platform() === "win32") {
-      execSync(`taskkill /pid ${backendProcess.pid} /T /F`, { stdio: 'ignore' });
-      execSync(`taskkill /pid ${frontendProcess.pid} /T /F`, { stdio: 'ignore' });
+      if (backendProcess && backendProcess.pid) {
+        execSync(`taskkill /pid ${backendProcess.pid} /T /F`, { stdio: 'ignore' });
+      }
+      if (frontendProcess && frontendProcess.pid) {
+        execSync(`taskkill /pid ${frontendProcess.pid} /T /F`, { stdio: 'ignore' });
+      }
     } else {
-      backendProcess.kill();
-      frontendProcess.kill();
+      if (backendProcess) backendProcess.kill();
+      if (frontendProcess) frontendProcess.kill();
     }
   } catch (e) {}
   process.exit();

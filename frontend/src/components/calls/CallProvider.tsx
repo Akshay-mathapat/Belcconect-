@@ -10,7 +10,10 @@ import OutgoingCall from "./OutgoingCall";
 import ActiveCall from "./ActiveCall";
 import { LiveKitCredentials } from "./LiveKitVoiceCall";
 import { ringtonePlayer } from "@/lib/ringtone";
+import { callAudioManager } from "@/lib/callAudioManager";
 import { registerAndSubscribeUser } from "@/lib/registerSW";
+import { App } from "@capacitor/app";
+import { nativeCallBridge } from "@/lib/nativeCallBridge";
 
 interface CallContextType {
   activeCall: CallRecord | null;
@@ -111,6 +114,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const callStateRef = useRef(callState);
   useEffect(() => { callStateRef.current = callState; }, [callState]);
+  useEffect(() => { 
+    callStateRef.current = callState; 
+    callAudioManager.setCallState(callState);
+  }, [callState]);
 
   const socketRef = useRef<Socket | null>(null);
   const socketConnectedRef = useRef(false);
@@ -190,22 +197,50 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       if (type === "call:ring" || type === "call:initiate") {
         const isReceiver = matchesMe(call.receiverId);
-        if (isReceiver && callStateRef.current === "IDLE") {
-          setActiveCall(call);
-          setCallState("INCOMING");
-          ringtonePlayer.startRingtone("incoming");
+        if (isReceiver) {
+          // Connected Call Protection: Never interrupt active or accepting call
+          if (callStateRef.current === "ACTIVE" || callStateRef.current === "ACCEPTING") {
+            return;
+          }
+
+          // If the app is in the background or hidden, trigger native heads-up call banner with CallStyle
+          const isHidden = typeof document !== "undefined" && document.hidden;
+          if (isHidden) {
+            nativeCallBridge.showIncomingCallNotification({
+              callId: call.id,
+              callerName: call.callerName || "BelConnect User",
+              serviceName: call.serviceName || "Voice Call",
+              bookingId: call.bookingId
+            });
+          } else {
+            // Dismiss native notification only if user has app actively open in foreground
+            if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
+          }
+
+          // Duplicate-event protection: If this call ID is already ringing, do not restart ringtone
+          if (callStateRef.current === "INCOMING" && activeCallRef.current?.id === call.id) {
+            return;
+          }
+          if (callStateRef.current === "IDLE") {
+            setActiveCall(call);
+            setCallState("INCOMING");
+            callAudioManager.playIncoming();
+            callAudioManager.playIncoming(call.id);
+          }
         }
       } else if (type === "call:accept") {
+        if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
+        clearOutgoingTimeout();
+        callAudioManager.stopAll();
+
         // Idempotency check: if already active for same call, don't restart media session
         if (activeCallRef.current && activeCallRef.current.id === call.id && callStateRef.current === "ACTIVE" && livekitCredentialsRef.current) {
           return;
         }
-        clearOutgoingTimeout();
         const isParticipant = matchesMe(call.callerId) || matchesMe(call.receiverId);
         if (isParticipant || callStateRef.current === "OUTGOING" || callStateRef.current === "INCOMING" || callStateRef.current === "ACCEPTING") {
           setActiveCall(call);
           setCallState("ACTIVE");
-          ringtonePlayer.stopRingtone();
 
           if (livekit && livekit.participantToken && livekit.roomName) {
             if (!livekitCredentialsRef.current || livekitCredentialsRef.current.roomName !== livekit.roomName) {
@@ -215,11 +250,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             fetchMyLiveKitToken(call.bookingId);
           }
         }
-      } else if (type === "call:reject" || type === "call:end" || type === "call:cancel") {
+      } else if (type === "call:reject" || type === "call:end" || type === "call:cancel" || type === "call:missed" || type === "call:busy") {
+        if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
         if (activeCallRef.current && activeCallRef.current.id !== call.id) return;
 
         clearOutgoingTimeout();
-        ringtonePlayer.stopRingtone();
+        callAudioManager.stopAll();
         setCallState("IDLE");
         setActiveCall(null);
         setLivekitCredentials(null);
@@ -311,15 +347,30 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       console.warn("[SIGNALING] Socket.IO disconnected reason=", reason);
       socketConnectedRef.current = false;
       connectPromiseRef.current = null;
+      callAudioManager.stopAll();
     });
 
     // Real-time signal listener dispatcher
-    const events = ["call:ring", "call:initiate", "call:accept", "call:reject", "call:end", "call:cancel"];
+    const events = [
+      "call:ring",
+      "call:initiate",
+      "call:accept",
+      "call:reject",
+      "call:end",
+      "call:cancel",
+      "call:missed",
+      "call:busy"
+    ];
     events.forEach(evt => {
       socket.on(evt, (data: any) => {
         console.log(`[SIGNALING_EVENT] ${evt}:`, data);
         handleSignalPayloadRef.current({ type: evt, ...data });
       });
+    });
+
+    socket.on("call:signal", (data: any) => {
+      console.log("[SIGNALING_EVENT] call:signal:", data);
+      handleSignalPayloadRef.current(data);
     });
 
     return Promise.resolve();
@@ -351,10 +402,177 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, [initializeSocket]);
 
   // Proactively warm up socket connection on auth load
+  // ─── Native Android background call wake-up & accept action recovery ─────
+  // ─── Native Android background call wake-up & web push accept action recovery ─────
+  const handleNativeCallAction = useCallback(async () => {
+    // 1. Check Web URL search params (e.g. from Web Push notification click in Chrome)
+    if (typeof window !== "undefined" && window.location.search) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const webCallId = urlParams.get("callId");
+        const autoAccept = urlParams.get("autoAccept") === "true";
+        const hasActiveCallParam = urlParams.get("activeCall") === "true";
+
+        if (webCallId && (hasActiveCallParam || autoAccept)) {
+          // Remove query params from address bar without page reload
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+
+          if (autoAccept) {
+            console.log(`[CALL] Handling Web Push Auto-Accept for call: ${webCallId}`);
+            clearOutgoingTimeout();
+            callAudioManager.stopAll();
+            setCallState("ACCEPTING");
+            acceptInProgressRef.current = true;
+            ensureSocketConnected().catch(() => {});
+
+            const res = await fetch(`/api/calls/${webCallId}/accept`, {
+              method: "POST",
+              headers: getHeaders(),
+              body: JSON.stringify({})
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              setActiveCall(data.call);
+              setCallState("ACTIVE");
+              if (data.livekit) {
+                setLivekitCredentials(data.livekit);
+              } else if (data.call.bookingId) {
+                fetchMyLiveKitToken(data.call.bookingId);
+              }
+            } else {
+              console.warn("[CALL] Failed to auto-accept call from Web Push:", data.error);
+              callAudioManager.stopAll();
+              setCallState("IDLE");
+              setActiveCall(null);
+              setLivekitCredentials(null);
+            }
+            return;
+          } else {
+            console.log(`[CALL] Handling Web Push notification click for call: ${webCallId}`);
+            const res = await fetch(`/api/calls/${webCallId}`, { headers: getHeaders() });
+            const data = await res.json();
+            if (res.ok && data.call && (data.call.status === "INITIATED" || data.call.status === "RINGING")) {
+              setActiveCall(data.call);
+              setCallState("INCOMING");
+              callAudioManager.playIncoming(data.call.id);
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("[CALL] Error parsing URL search params for call:", e);
+      }
+    }
+
+    // 2. Check Native Android pending actions (e.g. from NotificationCompat.CallStyle action buttons)
+    if (!nativeCallBridge.isNative()) return;
+    try {
+      const pending = await nativeCallBridge.getPendingCallAction();
+      if (!pending || !pending.callId || !pending.action) return;
+
+      const { action, callId } = pending;
+      await nativeCallBridge.clearPendingCallAction();
+      await nativeCallBridge.dismissNativeCall(callId);
+
+      if (action === "accept") {
+        console.log(`[CALL] Handling native notification Accept action for call: ${callId}`);
+        clearOutgoingTimeout();
+        callAudioManager.stopAll();
+        setCallState("ACCEPTING");
+        acceptInProgressRef.current = true;
+        ensureSocketConnected().catch(() => {});
+
+        const res = await fetch(`/api/calls/${callId}/accept`, {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          setActiveCall(data.call);
+          setCallState("ACTIVE");
+          if (data.livekit) {
+            setLivekitCredentials(data.livekit);
+          } else if (data.call.bookingId) {
+            fetchMyLiveKitToken(data.call.bookingId);
+          }
+        } else {
+          console.warn("[CALL] Failed to accept call from native notification:", data.error);
+          console.warn("[CALL] Failed to accept call from native notification (stale or ended):", data.error);
+          callAudioManager.stopAll();
+          setCallState("IDLE");
+          setActiveCall(null);
+          setLivekitCredentials(null);
+        }
+      } else if (action === "incoming") {
+        console.log(`[CALL] Handling native notification Incoming click for call: ${callId}`);
+        const res = await fetch(`/api/calls/${callId}`, { headers: getHeaders() });
+        const data = await res.json();
+        if (res.ok && data.call && (data.call.status === "INITIATED" || data.call.status === "RINGING")) {
+          setActiveCall(data.call);
+          setCallState("INCOMING");
+          callAudioManager.playIncoming();
+          callAudioManager.playIncoming(data.call.id);
+        } else {
+          console.log(`[CALL] Stale incoming notification (status: ${data?.call?.status || "unknown"}). Dismissing.`);
+          callAudioManager.stopAll();
+          setCallState("IDLE");
+          setActiveCall(null);
+        }
+      }
+    } catch (err) {
+      console.warn("[CALL] Error checking native call action:", err);
+    } finally {
+      acceptInProgressRef.current = false;
+    }
+  }, [clearOutgoingTimeout, ensureSocketConnected, getHeaders, fetchMyLiveKitToken]);
+
+  // Proactively check native call action on mount & app resume/foreground transition
+  useEffect(() => {
+    handleNativeCallAction();
+
+    let resumeListener: any = null;
+    let appStateListener: any = null;
+
+    if (typeof window !== "undefined" && nativeCallBridge.isNative()) {
+      App.addListener("resume", () => {
+        console.log("[CALL] App resumed from background. Reconnecting socket & checking call actions...");
+        ensureSocketConnected().catch(() => {});
+        handleNativeCallAction();
+      }).then((l) => { resumeListener = l; }).catch(() => {});
+
+      App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) {
+          console.log("[CALL] App active state changed to foreground.");
+          ensureSocketConnected().catch(() => {});
+          handleNativeCallAction();
+        }
+      }).then((l) => { appStateListener = l; }).catch(() => {});
+    }
+
+    return () => {
+      if (resumeListener) resumeListener.remove();
+      if (appStateListener) appStateListener.remove();
+    };
+  }, [handleNativeCallAction, ensureSocketConnected]);
+
+  // Proactively warm up socket connection on auth load & sync native push token
   useEffect(() => {
     if (currentUserId) {
       ensureSocketConnected().catch(() => {});
       registerAndSubscribeUser(currentUserId).catch(() => {});
+      nativeCallBridge.syncNativeDeviceToken(currentUserId).catch(() => {});
+
+      const token =
+        userTokenRef.current ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token")
+          : null);
+      if (token) {
+        nativeCallBridge.setAuthCredentials(token, typeof window !== "undefined" ? window.location.origin : undefined).catch(() => {});
+      }
     }
 
     let crossTabChannel: BroadcastChannel | null = null;
@@ -373,6 +591,30 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [currentUserId, ensureSocketConnected]);
+
+  // Cleanup all audio if CallProvider unmounts
+  // ─── Native Android Active-Call Foreground Service Lifecycle ─────────────
+  useEffect(() => {
+    if (callState === "ACTIVE" && activeCall && activeCall.id && !activeCall.id.startsWith("temp-")) {
+      const isCaller = currentUserId === activeCall.callerId;
+      const peerName = isCaller ? (activeCall.receiverName || "Service Partner") : (activeCall.callerName || "Customer");
+      nativeCallBridge.startActiveCallService({
+        callId: activeCall.id,
+        peerName,
+        serviceName: activeCall.serviceName || "BelConnect Voice Call"
+      }).catch(() => {});
+    } else if (callState === "IDLE" || callState === "OUTGOING" || callState === "INCOMING") {
+      nativeCallBridge.stopActiveCallService().catch(() => {});
+    }
+  }, [callState, activeCall, currentUserId]);
+
+  // Cleanup all audio and foreground services if CallProvider unmounts
+  useEffect(() => {
+    return () => {
+      callAudioManager.stopAll();
+      nativeCallBridge.stopActiveCallService().catch(() => {});
+    };
+  }, []);
 
   // Logout cleanup
   const prevUserIdRef = useRef(currentUserId);
@@ -419,14 +661,26 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
           if (call.status === "INITIATED" || call.status === "RINGING") {
             if (isReceiver && callStateRef.current === "IDLE") {
-              setActiveCall(call); setCallState("INCOMING"); ringtonePlayer.startRingtone("incoming");
+              setActiveCall(call); setCallState("INCOMING"); callAudioManager.playIncoming();
+              setActiveCall(call);
+              setCallState("INCOMING");
+              callAudioManager.playIncoming(call.id);
+              if (typeof document !== "undefined" && document.hidden) {
+                nativeCallBridge.showIncomingCallNotification({
+                  callId: call.id,
+                  callerName: call.callerName || "Customer",
+                  serviceName: call.serviceName || "Voice Call",
+                  bookingId: call.bookingId
+                });
+              }
             } else if (isCaller && callStateRef.current === "IDLE") {
-              setActiveCall(call); setCallState("OUTGOING");
+              setActiveCall(call); setCallState("OUTGOING"); callAudioManager.playOutgoing();
             }
           } else if (call.status === "ACCEPTED" || call.status === "CONNECTED") {
             clearOutgoingTimeout();
+            callAudioManager.stopAll();
             if ((isCaller || isReceiver) && callStateRef.current !== "ACTIVE") {
-              setActiveCall(call); setCallState("ACTIVE"); ringtonePlayer.stopRingtone();
+              setActiveCall(call); setCallState("ACTIVE");
               
               // CRITICAL BUG FIX 23: Ignore token replacement if room is already active
               if (data.livekit) {
@@ -444,6 +698,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               clearOutgoingTimeout();
               setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
               ringtonePlayer.stopRingtone();
+              callAudioManager.stopAll();
               callStartInProgressRef.current = false;
               acceptInProgressRef.current = false;
               endInProgressRef.current = false;
@@ -462,6 +717,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             clearOutgoingTimeout();
             setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
             ringtonePlayer.stopRingtone();
+            callAudioManager.stopAll();
             callStartInProgressRef.current = false;
             acceptInProgressRef.current = false;
             endInProgressRef.current = false;
@@ -505,14 +761,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     setActiveCall(tempCall);
     setCallState("OUTGOING");
-    ringtonePlayer.startRingtone("outgoing");
+    callAudioManager.playOutgoing();
 
     // Outgoing ring timeout (30 seconds)
     clearOutgoingTimeout();
     outgoingTimeoutRef.current = setTimeout(() => {
       if (callStateRef.current === "OUTGOING") {
         console.log("[CALL] Outgoing ring timed out after 30s");
-        ringtonePlayer.stopRingtone();
+        callAudioManager.stopAll();
         setCallState("IDLE"); setActiveCall(null);
         callStartInProgressRef.current = false;
       }
@@ -529,6 +785,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       if (res.ok && data.success && data.call) {
         setActiveCall(data.call);
+        callAudioManager.setCallId(data.call.id);
         if (data.livekit) {
           setLivekitCredentials(data.livekit);
         }
@@ -542,14 +799,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       } else {
         clearOutgoingTimeout();
-        ringtonePlayer.stopRingtone();
+        callAudioManager.stopAll();
         setCallState("IDLE"); setActiveCall(null);
         callStartInProgressRef.current = false;
       }
     } catch (err: any) {
       console.error("[CALL_ERROR] Error initiating call:", err);
       clearOutgoingTimeout();
-      ringtonePlayer.stopRingtone();
+      callAudioManager.stopAll();
       setCallState("IDLE"); setActiveCall(null);
       callStartInProgressRef.current = false;
     }
@@ -562,10 +819,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const acceptStartTime = Date.now();
     acceptInProgressRef.current = true;
     clearOutgoingTimeout();
-    ringtonePlayer.stopRingtone();
+    callAudioManager.stopAll();
     setCallState("ACCEPTING");
 
     const callId = activeCallRef.current.id;
+    if (callId) nativeCallBridge.dismissNativeCall(callId).catch(() => {});
 
     ensureSocketConnected().catch(() => {});
 
@@ -594,7 +852,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           bc.close();
         } catch {}
       } else {
-        ringtonePlayer.stopRingtone();
+        callAudioManager.stopAll();
         setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
         acceptInProgressRef.current = false;
         callStartInProgressRef.current = false;
@@ -613,7 +871,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       console.error("[CALL_SESSION_FAILED] Error accepting call:", err);
-      ringtonePlayer.stopRingtone();
+      callAudioManager.stopAll();
       setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
       acceptInProgressRef.current = false;
       callStartInProgressRef.current = false;
@@ -626,7 +884,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const callId = activeCallRef.current.id;
 
     clearOutgoingTimeout();
-    ringtonePlayer.stopRingtone();
+    callAudioManager.stopAll();
+    nativeCallBridge.dismissNativeCall(callId).catch(() => {});
+    nativeCallBridge.stopActiveCallService().catch(() => {});
     setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
 
     if (socketRef.current && socketConnectedRef.current) {
@@ -650,9 +910,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     endInProgressRef.current = true;
 
     clearOutgoingTimeout();
-    ringtonePlayer.stopRingtone();
-
+    callAudioManager.stopAll();
     const callToClose = activeCallRef.current;
+    if (callToClose?.id) nativeCallBridge.dismissNativeCall(callToClose.id).catch(() => {});
+    nativeCallBridge.stopActiveCallService().catch(() => {});
+
     setCallState("IDLE");
     setActiveCall(null);
     setLivekitCredentials(null);

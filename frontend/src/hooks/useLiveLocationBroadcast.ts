@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { BookingStatus } from "@/types/provider";
 import { getSocket } from "@/lib/socket";
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { getStoredAuthToken, getStoredUserId } from "@/store/useAuthStore";
 
 const ProviderLocationPlugin = registerPlugin<any>("ProviderLocation");
 
@@ -139,12 +140,12 @@ export function useLiveLocationBroadcast(
 
   // Stop native tracking explicitly when booking status is no longer active
   useEffect(() => {
-    if (Capacitor.isNativePlatform() && status) {
+    if (Capacitor.isNativePlatform() && status && bookingId) {
       if (!ACTIVE_TRACKING_STATUSES.includes(status)) {
-        ProviderLocationPlugin.stopTracking().catch(console.error);
+        ProviderLocationPlugin.stopTracking({ bookingId }).catch(console.error);
       }
     }
-  }, [status]);
+  }, [status, bookingId]);
 
   // Main Tracking Effect
   useEffect(() => {
@@ -176,26 +177,34 @@ export function useLiveLocationBroadcast(
 
     // Capacitor Native Android Background Location Service
     if (Capacitor.isNativePlatform()) {
-      const token = localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") || "";
+      const token = getStoredAuthToken() || "";
       
-      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      if (!apiUrl && typeof window !== "undefined") {
-        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-          apiUrl = window.location.origin + "/api";
-        } else {
-          apiUrl = "http://10.0.2.2:3000/api";
+      let apiUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || "";
+      if (typeof window !== "undefined") {
+        const customApi = localStorage.getItem("cityconnect_api_url");
+        if (customApi) {
+          apiUrl = customApi;
+        } else if (!apiUrl && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          apiUrl = window.location.origin;
         }
       }
+      if (!apiUrl) {
+        apiUrl = "https://belcconect.vercel.app";
+      }
+      apiUrl = apiUrl.replace(/\/+$/, "");
       if (!apiUrl.endsWith("/api")) {
-          apiUrl += "/api";
+        apiUrl += "/api";
       }
       
+      console.log(`[Native Location] Starting background tracking for booking ${bookingId} via ${apiUrl}`);
       ProviderLocationPlugin.startTracking({
         bookingId: bookingId!,
         token,
         apiUrl
+      }).then((res: any) => {
+        console.log("[Native Location] startTracking result:", res);
       }).catch((err: any) => {
-        console.error("Native tracking failed to start", err);
+        console.error("[Native Location] Tracking failed to start", err);
         setError("Native background location service failed to start.");
       });
       
@@ -320,12 +329,8 @@ export function useLiveLocationBroadcast(
       if (shouldSaveDb) {
         lastDbSavedPositionRef.current = { lat: latitude, lng: longitude, time: now };
 
-        const token = typeof window !== "undefined"
-          ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
-          : null;
-        const userId = typeof window !== "undefined"
-          ? (localStorage.getItem("cityconnect_user_id") || localStorage.getItem("user_id"))
-          : null;
+        const token = getStoredAuthToken();
+        const userId = getStoredUserId();
         const headers: Record<string, string> = {
           "Content-Type": "application/json"
         };

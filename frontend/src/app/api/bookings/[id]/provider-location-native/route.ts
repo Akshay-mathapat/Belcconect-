@@ -102,8 +102,8 @@ export async function POST(
       source: "android-native"
     };
 
-    const signalingUrl = process.env.SIGNALING_SERVER_URL || "http://127.0.0.1:4001";
-    const internalSecret = process.env.SIGNALING_INTERNAL_SECRET;
+    const signalingUrl = process.env.SIGNALING_SERVER_URL || process.env.NEXT_PUBLIC_SIGNALING_URL || "http://127.0.0.1:4001";
+    const internalSecret = process.env.SIGNALING_INTERNAL_SECRET || process.env.INTERNAL_API_SECRET || "cityconnect_signaling_secret_key_2026";
 
     if (internalSecret) {
         fetch(`${signalingUrl}/api/location/broadcast`, {

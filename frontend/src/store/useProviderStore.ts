@@ -3,6 +3,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useAuthStore, getStoredAuthToken } from "./useAuthStore";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+const ProviderLocationPlugin = typeof window !== "undefined" ? registerPlugin<any>("ProviderLocation") : null;
 import { 
   Booking, 
   BookingStatus, 
@@ -148,6 +151,12 @@ export const useProviderStore = create<ProviderStoreState>()(
               set((state) => ({
                 bookings: state.bookings.map((b) => b.id === id ? data.booking : b)
               }));
+
+              // If booking finished or cancelled, stop native tracking for this booking
+              if (Capacitor.isNativePlatform() && ProviderLocationPlugin && ["Completed", "Cancelled", "Rejected"].includes(status)) {
+                ProviderLocationPlugin.stopTracking({ bookingId: id }).catch(() => {});
+              }
+
               try {
                 const bc = new BroadcastChannel("cityconnect-bookings-sync");
                 bc.postMessage({ type: "REFRESH_BOOKINGS" });

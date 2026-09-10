@@ -23,9 +23,32 @@ export async function POST(
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
-    // Authorization: strict recipient match
-    if (!call.receiverId || call.receiverId !== authUser.userId) {
+    // Authorization: strict recipient match (with demo mode support)
+    const isDemo = process.env.DEMO_MODE === "true";
+    const isReceiver =
+      call.receiverId === authUser.userId ||
+      (isDemo && (
+        (authUser.userId.includes("prov") || authUser.role === "provider") && (call.receiverId.includes("prov") || call.receiverId === "provider-1") ||
+        (authUser.userId.includes("cust") || authUser.role === "user" || (authUser.role as string) === "customer") && (call.receiverId.includes("cust") || call.receiverId === "customer-1")
+      ));
+
+    if (!isReceiver) {
       return NextResponse.json({ error: "Forbidden: Only the call receiver can accept this call" }, { status: 403 });
+    }
+
+    // Idempotent recovery if already ACCEPTED or CONNECTED by this receiver
+    if (call.status === "ACCEPTED" || call.status === "CONNECTED") {
+      const [callerLiveKit, receiverLiveKit] = await Promise.all([
+        generateLiveKitToken(call.bookingId, call.callerId),
+        generateLiveKitToken(call.bookingId, call.receiverId)
+      ]);
+      const currentLiveKit = authUser.userId === call.callerId ? callerLiveKit : receiverLiveKit;
+      return NextResponse.json({
+        success: true,
+        call,
+        livekit: currentLiveKit,
+        idempotent: true
+      });
     }
 
     // Call status check: must be INITIATED or RINGING

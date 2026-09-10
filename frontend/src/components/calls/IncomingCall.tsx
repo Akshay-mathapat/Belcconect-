@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Phone, PhoneOff, ShieldCheck } from "lucide-react";
 import { CallRecord } from "@/lib/calls";
 
-import { ringtonePlayer } from "@/lib/ringtone";
+import { callAudioManager } from "@/lib/callAudioManager";
 
 interface IncomingCallProps {
   call: CallRecord;
@@ -18,29 +18,28 @@ export default function IncomingCall({ call, onAccept, onReject }: IncomingCallP
   const callerAvatar = call.callerAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80";
   const isAcceptedRef = useRef(false);
 
-  // Play 80s Phone Ringtone & trigger mobile vibration on incoming call
+  // Play phone-ringing.mp3 & trigger mobile vibration on incoming call
   useEffect(() => {
-    ringtonePlayer.startRingtone("incoming");
+    callAudioManager.playIncoming();
+    callAudioManager.playIncoming(call.id);
 
+    let interval: any = null;
     if (typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator) {
       try {
         navigator.vibrate([400, 300, 400, 300, 600]);
-        const interval = setInterval(() => {
+        interval = setInterval(() => {
           if (navigator.vibrate) {
             navigator.vibrate([400, 300, 400, 300, 600]);
           }
         }, 2000);
-        return () => {
-          clearInterval(interval);
-          ringtonePlayer.stopRingtone();
-        };
       } catch (e) {}
     }
 
     return () => {
-      ringtonePlayer.stopRingtone();
+      if (interval) clearInterval(interval);
+      callAudioManager.stopIncoming();
     };
-  }, []);
+  }, [call.id]);
 
   const handleAccept = (e?: React.SyntheticEvent) => {
     if (e) {
@@ -49,6 +48,9 @@ export default function IncomingCall({ call, onAccept, onReject }: IncomingCallP
     }
     if (isAcceptedRef.current) return;
     isAcceptedRef.current = true;
+
+    // Immediately stop ringing
+    callAudioManager.stopAll();
 
     // Explicitly unlock Web Audio Context on user gesture thread
     if (typeof window !== "undefined") {
@@ -71,6 +73,7 @@ export default function IncomingCall({ call, onAccept, onReject }: IncomingCallP
       e.preventDefault();
       e.stopPropagation();
     }
+    callAudioManager.stopAll();
     onReject();
   };
 

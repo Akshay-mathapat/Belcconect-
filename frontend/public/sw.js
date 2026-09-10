@@ -128,8 +128,11 @@ self.addEventListener("push", (event) => {
 
     if (type === "call:incoming") {
       const callId = notificationData.callId || "unknown";
+      const callerName = notificationData.callerName || "BelConnect User";
+      const serviceName = notificationData.serviceName || "Voice Call";
       const options = {
         body: body || "Incoming Voice Call...",
+        body: body || `${callerName} • ${serviceName}`,
         icon: icon || "/belconnect.png",
         badge: "/belconnect.png",
         tag: `call_${callId}`,
@@ -137,14 +140,23 @@ self.addEventListener("push", (event) => {
         requireInteraction: true,
         vibrate: [300, 100, 300, 100, 300],
         data: notificationData,
+        timestamp: Date.now(),
+        vibrate: [500, 200, 500, 200, 500, 200, 500],
+        data: {
+          ...notificationData,
+          callId: callId,
+          url: `/?activeCall=true&callId=${callId}`
+        },
         actions: [
           { action: "answer", title: "📞 Answer" },
+          { action: "answer", title: "📞 Accept" },
           { action: "decline", title: "❌ Decline" }
         ]
       };
 
       event.waitUntil(
         self.registration.showNotification(title || "Incoming Voice Call", options)
+        self.registration.showNotification(title || `Incoming Call from ${callerName}`, options)
       );
       return;
     }
@@ -185,6 +197,7 @@ self.addEventListener("notificationclick", (event) => {
   const action = event.action;
   const data = event.notification.data || {};
   const targetUrl = data.url || "/";
+  let targetUrl = data.url || "/";
 
   if (action === "decline" && data.callId) {
     event.waitUntil(
@@ -194,6 +207,10 @@ self.addEventListener("notificationclick", (event) => {
       }).catch((e) => console.error("[Service Worker] Reject call error:", e))
     );
     return;
+  }
+
+  if (action === "answer" && data.callId) {
+    targetUrl = `/?activeCall=true&callId=${data.callId}&autoAccept=true`;
   }
 
   event.waitUntil(

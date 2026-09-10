@@ -3,7 +3,7 @@ import { getCallById, updateCallStatus } from "@/lib/calls";
 import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
-import { sendPushToUser } from "@/lib/pushNotifications";
+import { sendPushToUser, sendCallPushWakeUp } from "@/lib/pushNotifications";
 
 export async function POST(
   request: Request,
@@ -43,14 +43,13 @@ export async function POST(
       timestamp: Date.now()
     });
 
-    // Dismiss Web Push notification banners for both participants
-    const pushCancelPayload = {
-      title: "Call Ended",
-      body: "Call was declined",
-      data: { type: "call:cancelled", callId: updatedCall.id }
+    // Dismiss Web Push and Native Android Push notification banners for both participants
+    const pushCancelData = {
+      type: "call:cancelled" as const,
+      callId: updatedCall.id
     };
-    sendPushToUser(updatedCall.callerId, pushCancelPayload).catch(() => {});
-    sendPushToUser(updatedCall.receiverId, pushCancelPayload).catch(() => {});
+    sendCallPushWakeUp(updatedCall.callerId, pushCancelData).catch(() => {});
+    sendCallPushWakeUp(updatedCall.receiverId, pushCancelData).catch(() => {});
 
     return NextResponse.json({
       success: true,
