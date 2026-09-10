@@ -471,6 +471,19 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const pending = await nativeCallBridge.getPendingCallAction();
       if (!pending || !pending.callId || !pending.action) return;
 
+      const token =
+        userTokenRef.current ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token")
+          : null);
+
+      // Guard: On cold start, if auth token is still loading from storage, preserve pendingAction
+      // so it can be consumed as soon as auth resolves, rather than dropping it on unauthenticated 401.
+      if (!token && !currentUserIdRef.current) {
+        console.log("[CALL] Native pending action detected but auth is not yet resolved. Preserving pendingAction...");
+        return;
+      }
+
       const { action, callId } = pending;
       await nativeCallBridge.clearPendingCallAction();
       await nativeCallBridge.dismissNativeCall(callId);
@@ -564,6 +577,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       ensureSocketConnected().catch(() => {});
       registerAndSubscribeUser(currentUserId).catch(() => {});
       nativeCallBridge.syncNativeDeviceToken(currentUserId).catch(() => {});
+      handleNativeCallAction();
 
       const token =
         userTokenRef.current ||

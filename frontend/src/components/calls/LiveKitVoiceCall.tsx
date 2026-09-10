@@ -105,6 +105,37 @@ function ConnectingCallOverlay({
 }
 
 /**
+ * Explicitly neutralize Chromium's auto-generated MediaSession notification.
+ * This prevents Android/Chromium WebView from creating a duplicate "Now Playing"
+ * media player notification with a pause button when LiveKit's RoomAudioRenderer plays remote audio.
+ */
+function suppressMediaSession() {
+  if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+    try {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = "none";
+      const actionHandlers: MediaSessionAction[] = [
+        "play",
+        "pause",
+        "stop",
+        "seekto",
+        "previoustrack",
+        "nexttrack",
+      ];
+      for (const action of actionHandlers) {
+        try {
+          navigator.mediaSession.setActionHandler(action, null);
+        } catch {
+          // Ignore unsupported actions across varying WebView versions
+        }
+      }
+    } catch (e) {
+      console.warn("[MediaSession] Error neutralizing media session:", e);
+    }
+  }
+}
+
+/**
  * Main active call content rendered INSIDE LiveKitRoom context.
  * Uses LiveKit React hooks safely.
  */
@@ -152,6 +183,20 @@ function LiveKitVoiceContent({
   const remoteParticipantPresent = remoteParticipants.length > 0;
   const isAudioReady = roomConnected && localMicPublished && remoteParticipantPresent && remoteAudioSubscribed && canPlayAudio === true;
 
+  // Immediately suppress Chromium MediaSession on mount, room connection, and unmount
+  useEffect(() => {
+    suppressMediaSession();
+    return () => {
+      suppressMediaSession();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (roomConnected || remoteAudioSubscribed || isAudioReady) {
+      suppressMediaSession();
+    }
+  }, [roomConnected, remoteAudioSubscribed, isAudioReady]);
+
   // Dev Logging for LiveKit session details and state transitions
   useEffect(() => {
     if (room) {
@@ -172,16 +217,20 @@ function LiveKitVoiceContent({
       console.log("[LIVEKIT_STATE] connecting");
     } else if (connectionState === ConnectionState.Connected) {
       console.log("[LIVEKIT_STATE] connected");
+      suppressMediaSession();
     } else if (connectionState === ConnectionState.Reconnecting) {
       console.log("[LIVEKIT_STATE] reconnecting");
     } else if (connectionState === ConnectionState.Disconnected) {
       console.log("[LIVEKIT_STATE] disconnected");
+      suppressMediaSession();
     }
   }, [connectionState]);
 
   // Track room events for remote audio subscription & diagnostics
   useEffect(() => {
     if (!room) return;
+
+    suppressMediaSession();
 
     // Initial check: mark remote audio as subscribed if any remote participant already has a subscribed audio track
     let initialSubscribed = false;
@@ -200,6 +249,7 @@ function LiveKitVoiceContent({
     ) => {
       if (track.kind === "audio") {
         console.log(`[LIVEKIT] remote-audio-subscribed trackSid=${track.sid}`);
+        suppressMediaSession();
         setRemoteAudioSubscribed(true);
         console.log(`[CALL_PERF] accept_to_remote_audio_ms=${Date.now() - connectTimestampRef.current}`);
       }
@@ -208,6 +258,7 @@ function LiveKitVoiceContent({
     const handleTrackUnsubscribed = (track: RemoteTrack) => {
       if (track.kind === "audio") {
         console.log(`[LIVEKIT] remote-audio-unsubscribed trackSid=${track.sid}`);
+        suppressMediaSession();
         setRemoteAudioSubscribed(false);
       }
     };
@@ -215,12 +266,14 @@ function LiveKitVoiceContent({
     const handleTrackUnpublished = (publication: RemoteTrackPublication) => {
       if (publication.kind === "audio") {
         console.log("[LIVEKIT] remote-audio-unpublished");
+        suppressMediaSession();
         setRemoteAudioSubscribed(false);
       }
     };
 
     const handleParticipantDisconnected = (participant: any) => {
       console.log(`[LIVEKIT] participant-disconnected identity=${participant.identity}`);
+      suppressMediaSession();
       setRemoteAudioSubscribed(false);
     };
 
@@ -241,6 +294,7 @@ function LiveKitVoiceContent({
     room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
 
     return () => {
+      suppressMediaSession();
       room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
       room.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
       room.off(RoomEvent.TrackUnpublished, handleTrackUnpublished);
@@ -526,12 +580,18 @@ export default function LiveKitVoiceCall({
   const intentionalDisconnectRef = useRef<boolean>(false);
 
   // Connected call protection: guarantee ringtone and ringback are stopped instantly
+  // and ensure Chromium MediaSession notification is neutralized
   useEffect(() => {
     callAudioManager.stopAll();
+    suppressMediaSession();
+    return () => {
+      suppressMediaSession();
+    };
   }, []);
 
   const handleRoomDisconnected = useCallback(() => {
     console.log("[LIVEKIT_STATE] disconnected. Intentional?", intentionalDisconnectRef.current);
+    suppressMediaSession();
     if (intentionalDisconnectRef.current) {
       onEndCall();
     } else {
@@ -541,6 +601,7 @@ export default function LiveKitVoiceCall({
 
   const handleUserHangup = useCallback(() => {
     intentionalDisconnectRef.current = true;
+    suppressMediaSession();
     onEndCall();
   }, [onEndCall]);
 
