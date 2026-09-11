@@ -146,6 +146,42 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const matchesMe = useCallback((id: string) => {
+    const uid = currentUserIdRef.current;
+    if (!id || !uid) return false;
+    if (id === uid) return true;
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+      if ((uid.includes("prov") || uid === "provider-1") && (id.includes("prov") || id === "provider-1")) return true;
+      if ((uid.includes("cust") || uid === "customer-1") && (id.includes("cust") || id === "customer-1")) return true;
+    }
+    return false;
+  }, []);
+
+  const nativeAcceptRetryCountRef = useRef<{ [callId: string]: number }>({});
+  const handleNativeCallActionRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  const handleAcceptTransientFailure = useCallback(async (callId: string, errorMsg: string) => {
+    const currentRetries = (nativeAcceptRetryCountRef.current[callId] || 0) + 1;
+    nativeAcceptRetryCountRef.current[callId] = currentRetries;
+    const MAX_RETRIES = 3;
+
+    if (currentRetries <= MAX_RETRIES) {
+      console.warn(`[CALL] Accept failed (${errorMsg}). Transient failure, retrying attempt ${currentRetries}/${MAX_RETRIES} in 1500ms...`);
+      setTimeout(() => {
+        handleNativeCallActionRef.current();
+      }, 1500);
+    } else {
+      console.error(`[CALL] Accept failed after ${MAX_RETRIES} attempts (${errorMsg}). Conclusive timeout. Clearing pending action.`);
+      delete nativeAcceptRetryCountRef.current[callId];
+      await nativeCallBridge.clearPendingCallAction();
+      await nativeCallBridge.dismissNativeCall(callId);
+      callAudioManager.stopAll();
+      setCallState("IDLE");
+      setActiveCall(null);
+      setLivekitCredentials(null);
+    }
+  }, []);
+
   // ─── LiveKit token fetch (fallback only) ──────────────────────────────────
   // ─── LiveKit token fetch (Recovery & manual retry) ──────────────────────────
   const fetchMyLiveKitToken = useCallback((bookingId: string) => {
@@ -405,6 +441,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   // ─── Native Android background call wake-up & accept action recovery ─────
   // ─── Native Android background call wake-up & web push accept action recovery ─────
   const handleNativeCallAction = useCallback(async () => {
+    handleNativeCallActionRef.current = handleNativeCallAction;
+
     // 1. Check Web URL search params (e.g. from Web Push notification click in Chrome)
     if (typeof window !== "undefined" && window.location.search) {
       try {
@@ -485,8 +523,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { action, callId } = pending;
-      await nativeCallBridge.clearPendingCallAction();
-      await nativeCallBridge.dismissNativeCall(callId);
 
       if (action === "accept") {
         console.log(`[CALL] Handling native notification Accept action for call: ${callId}`);
@@ -496,37 +532,106 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         acceptInProgressRef.current = true;
         ensureSocketConnected().catch(() => {});
 
-        const res = await fetch(`/api/calls/${callId}/accept`, {
-          method: "POST",
-          headers: getHeaders(),
-          body: JSON.stringify({})
-        });
-        const data = await res.json();
+        // Step 3: GET /api/calls/{callId} to verify status is INITIATED or RINGING (or already ACCEPTED/CONNECTED by same user)
+        let callCheckRes: Response;
+        try {
+          callCheckRes = await fetch(`/api/calls/${callId}`, { headers: getHeaders() });
+        } catch (fetchErr: any) {
+          handleAcceptTransientFailure(callId, fetchErr?.message || "Network error checking call status");
+          return;
+        }
+
+        const callCheckData = await callCheckRes.json().catch(() => ({}));
+        const existingCall = callCheckData?.call;
+
+        // Step 7: If call is conclusively CANCELLED / REJECTED / EXPIRED / ENDED / BUSY / MISSED, clear pending action immediately
+        if (existingCall) {
+          const terminalStatuses = ["CANCELLED", "REJECTED", "EXPIRED", "ENDED", "BUSY", "MISSED"];
+          if (terminalStatuses.includes(existingCall.status)) {
+            console.log(`[CALL] Call ${callId} is conclusively '${existingCall.status}'. Clearing pending action immediately.`);
+            await nativeCallBridge.clearPendingCallAction();
+            await nativeCallBridge.dismissNativeCall(callId);
+            delete nativeAcceptRetryCountRef.current[callId];
+            callAudioManager.stopAll();
+            setCallState("IDLE");
+            setActiveCall(null);
+            setLivekitCredentials(null);
+            return;
+          }
+
+          // Step 3 (cont): If already ACCEPTED or CONNECTED by this same user -> treat as idempotent success
+          if (existingCall.status === "ACCEPTED" || existingCall.status === "CONNECTED") {
+            const isMe = matchesMe(existingCall.receiverId) || matchesMe(existingCall.callerId);
+            if (isMe) {
+              console.log(`[CALL] Call ${callId} is already in status '${existingCall.status}'. Idempotent recovery.`);
+              setActiveCall(existingCall);
+              setCallState("ACTIVE");
+              if (existingCall.bookingId) {
+                await fetchMyLiveKitToken(existingCall.bookingId);
+              }
+              // Step 6: Clear pending action and dismiss native notification
+              await nativeCallBridge.clearPendingCallAction();
+              await nativeCallBridge.dismissNativeCall(callId);
+              delete nativeAcceptRetryCountRef.current[callId];
+              return;
+            }
+          }
+        }
+
+        // Step 4: POST /api/calls/{callId}/accept
+        let res: Response;
+        try {
+          res = await fetch(`/api/calls/${callId}/accept`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({})
+          });
+        } catch (fetchErr: any) {
+          handleAcceptTransientFailure(callId, fetchErr?.message || "Network error during accept request");
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.success) {
+          // Step 5: Obtain/confirm LiveKit credentials and begin room connection
           setActiveCall(data.call);
           setCallState("ACTIVE");
           if (data.livekit) {
             setLivekitCredentials(data.livekit);
-          } else if (data.call.bookingId) {
+          } else if (data.call?.bookingId) {
             fetchMyLiveKitToken(data.call.bookingId);
           }
+
+          // Step 6: ONLY THEN clear the pending action and dismiss the native notification
+          await nativeCallBridge.clearPendingCallAction();
+          await nativeCallBridge.dismissNativeCall(callId);
+          delete nativeAcceptRetryCountRef.current[callId];
+          console.log(`[CALL] Successfully accepted call ${callId} and cleared pending action.`);
         } else {
-          console.warn("[CALL] Failed to accept call from native notification:", data.error);
-          console.warn("[CALL] Failed to accept call from native notification (stale or ended):", data.error);
-          callAudioManager.stopAll();
-          setCallState("IDLE");
-          setActiveCall(null);
-          setLivekitCredentials(null);
+          const errMsg = data?.error || `HTTP ${res.status}`;
+          // Conclusive non-recoverable error (e.g. 400 Bad Request, 403 Forbidden, 404 Not Found)
+          if (res.status === 400 || res.status === 403 || res.status === 404) {
+            console.warn(`[CALL] Conclusive failure accepting call ${callId} (${errMsg}). Clearing pending action.`);
+            await nativeCallBridge.clearPendingCallAction();
+            await nativeCallBridge.dismissNativeCall(callId);
+            delete nativeAcceptRetryCountRef.current[callId];
+            callAudioManager.stopAll();
+            setCallState("IDLE");
+            setActiveCall(null);
+            setLivekitCredentials(null);
+          } else {
+            // Step 8: Transient failure -> retry within bounded window
+            handleAcceptTransientFailure(callId, errMsg);
+          }
         }
       } else if (action === "incoming") {
         console.log(`[CALL] Handling native notification Incoming click for call: ${callId}`);
         const res = await fetch(`/api/calls/${callId}`, { headers: getHeaders() });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (res.ok && data.call && (data.call.status === "INITIATED" || data.call.status === "RINGING")) {
           setActiveCall(data.call);
           setCallState("INCOMING");
-          callAudioManager.playIncoming();
           callAudioManager.playIncoming(data.call.id);
         } else {
           console.log(`[CALL] Stale incoming notification (status: ${data?.call?.status || "unknown"}). Dismissing.`);
@@ -534,13 +639,15 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           setCallState("IDLE");
           setActiveCall(null);
         }
+        await nativeCallBridge.clearPendingCallAction();
+        await nativeCallBridge.dismissNativeCall(callId);
       }
     } catch (err) {
       console.warn("[CALL] Error checking native call action:", err);
     } finally {
       acceptInProgressRef.current = false;
     }
-  }, [clearOutgoingTimeout, ensureSocketConnected, getHeaders, fetchMyLiveKitToken]);
+  }, [clearOutgoingTimeout, ensureSocketConnected, getHeaders, fetchMyLiveKitToken, handleAcceptTransientFailure, matchesMe]);
 
   // Proactively check native call action on mount & app resume/foreground transition
   useEffect(() => {

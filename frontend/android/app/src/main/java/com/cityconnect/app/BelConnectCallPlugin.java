@@ -33,6 +33,42 @@ public class BelConnectCallPlugin extends Plugin {
     public static volatile String pendingBookingId = null;
     public static volatile String latestDeviceToken = null;
 
+    public static final String PREFS_NAME = "belconnect_push_prefs";
+    public static final String PREF_PENDING_ACTION = "pending_action";
+    public static final String PREF_PENDING_CALL_ID = "pending_call_id";
+    public static final String PREF_PENDING_BOOKING_ID = "pending_booking_id";
+    public static final String PREF_PENDING_CREATED_AT = "pending_created_at";
+    public static final long PENDING_STALENESS_MS = 60_000L;
+
+    public static void setPendingCallAction(Context context, String action, String callId, String bookingId) {
+        pendingAction = action;
+        pendingCallId = callId;
+        pendingBookingId = bookingId;
+
+        if (context != null) {
+            try {
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                if (action != null && callId != null) {
+                    prefs.edit()
+                        .putString(PREF_PENDING_ACTION, action)
+                        .putString(PREF_PENDING_CALL_ID, callId)
+                        .putString(PREF_PENDING_BOOKING_ID, bookingId != null ? bookingId : "")
+                        .putLong(PREF_PENDING_CREATED_AT, System.currentTimeMillis())
+                        .apply();
+                } else {
+                    prefs.edit()
+                        .remove(PREF_PENDING_ACTION)
+                        .remove(PREF_PENDING_CALL_ID)
+                        .remove(PREF_PENDING_BOOKING_ID)
+                        .remove(PREF_PENDING_CREATED_AT)
+                        .apply();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error writing pending call action to prefs: " + e.getMessage());
+            }
+        }
+    }
+
     private static MediaPlayer mediaPlayer = null;
 
     @Override
@@ -164,11 +200,6 @@ public class BelConnectCallPlugin extends Plugin {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        String title = "BelConnect Incoming Call 📞";
-        String content = (callerName != null && !callerName.isEmpty() ? callerName : "Someone")
-            + (serviceName != null && !serviceName.isEmpty() ? " • " + serviceName : " is calling...");
-        String displayName = (callerName != null && !callerName.isEmpty()) ? callerName : "BelConnect User";
-        String displayContent = (serviceName != null && !serviceName.isEmpty()) ? serviceName : "Incoming Voice Call";
         String displayName = (callerName != null && !callerName.trim().isEmpty()) ? callerName.trim() : "BelConnect User";
         String displayContent = (serviceName != null && !serviceName.trim().isEmpty()) ? serviceName.trim() : "Incoming Voice Call";
 
@@ -181,8 +212,6 @@ public class BelConnectCallPlugin extends Plugin {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
-            .setContentText(content)
             .setContentTitle(displayName)
             .setContentText(displayContent)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -232,10 +261,46 @@ public class BelConnectCallPlugin extends Plugin {
 
     @PluginMethod
     public void getPendingCallAction(PluginCall call) {
+        Context context = getContext();
+        String action = null;
+        String callId = null;
+        String bookingId = null;
+
+        if (context != null) {
+            try {
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                long createdAt = prefs.getLong(PREF_PENDING_CREATED_AT, 0);
+                long now = System.currentTimeMillis();
+
+                if (createdAt > 0 && (now - createdAt) <= PENDING_STALENESS_MS) {
+                    action = prefs.getString(PREF_PENDING_ACTION, null);
+                    callId = prefs.getString(PREF_PENDING_CALL_ID, null);
+                    bookingId = prefs.getString(PREF_PENDING_BOOKING_ID, null);
+                } else if (createdAt > 0) {
+                    Log.i(TAG, "Discarding stale pending call action (age=" + (now - createdAt) + "ms)");
+                    prefs.edit()
+                        .remove(PREF_PENDING_ACTION)
+                        .remove(PREF_PENDING_CALL_ID)
+                        .remove(PREF_PENDING_BOOKING_ID)
+                        .remove(PREF_PENDING_CREATED_AT)
+                        .apply();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error reading pending call action from prefs: " + e.getMessage());
+            }
+        }
+
+        // Fall back to in-memory static fields if prefs was empty but memory still has it
+        if (action == null) {
+            action = pendingAction;
+            callId = pendingCallId;
+            bookingId = pendingBookingId;
+        }
+
         JSObject ret = new JSObject();
-        ret.put("action", pendingAction);
-        ret.put("callId", pendingCallId);
-        ret.put("bookingId", pendingBookingId);
+        ret.put("action", action);
+        ret.put("callId", callId);
+        ret.put("bookingId", bookingId);
         call.resolve(ret);
     }
 
@@ -244,6 +309,7 @@ public class BelConnectCallPlugin extends Plugin {
         pendingAction = null;
         pendingCallId = null;
         pendingBookingId = null;
+        setPendingCallAction(getContext(), null, null, null);
         JSObject ret = new JSObject();
         ret.put("cleared", true);
         call.resolve(ret);

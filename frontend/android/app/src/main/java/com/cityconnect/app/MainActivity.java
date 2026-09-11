@@ -77,6 +77,8 @@ public class MainActivity extends BridgeActivity {
             BelConnectCallPlugin.pendingAction = action;
             BelConnectCallPlugin.pendingCallId = callId;
             BelConnectCallPlugin.pendingBookingId = bookingId;
+            // Persist to SharedPreferences and update static cache
+            BelConnectCallPlugin.setPendingCallAction(this, action, callId, bookingId);
 
             // Stop native ringtone immediately as app has now opened/resumed
             BelConnectCallPlugin.dismissCall(this, callId);
