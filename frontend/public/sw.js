@@ -196,7 +196,6 @@ self.addEventListener("notificationclick", (event) => {
 
   const action = event.action;
   const data = event.notification.data || {};
-  const targetUrl = data.url || "/";
   let targetUrl = data.url || "/";
 
   if (action === "decline" && data.callId) {
