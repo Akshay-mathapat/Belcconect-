@@ -35,37 +35,12 @@ public class ProviderLocationPlugin extends Plugin {
 
     @PluginMethod
     public void startTracking(PluginCall call) {
-        String bookingId = call.getString("bookingId");
-        String token = call.getString("token");
-        String apiUrl = call.getString("apiUrl");
-
-        if (bookingId == null || token == null || apiUrl == null) {
-            call.reject("Must provide bookingId, token, and apiUrl");
-            return;
-        }
-
-        if (isServiceRunning) {
-        if (isServiceRunning && bookingId.equals(currentBookingId)) {
-            // Re-send updated token or apiUrl if needed
-            Intent serviceIntent = new Intent(getContext(), BelConnectLocationService.class);
-            serviceIntent.putExtra("bookingId", bookingId);
-            serviceIntent.putExtra("token", token);
-            serviceIntent.putExtra("apiUrl", apiUrl);
-            serviceIntent.setAction("START_TRACKING");
-            ContextCompat.startForegroundService(getContext(), serviceIntent);
-
-            JSObject ret = new JSObject();
-            ret.put("status", "already_running");
-            ret.put("bookingId", currentBookingId);
-            call.resolve(ret);
-            return;
-        }
-
         if (getPermissionState("location") != PermissionState.GRANTED) {
             requestPermissionForAlias("location", call, "locationPermsCallback");
-        } else {
-            checkGpsAndStart(call);
+            return;
         }
+
+        checkGpsAndStart(call);
     }
 
     @PermissionCallback

@@ -22,6 +22,7 @@ interface BelConnectCallPluginInterface {
     serviceName?: string;
     bookingId?: string;
   }): Promise<{ shown: boolean }>;
+  addListener(eventName: "permissionGranted", listenerFunc: (data: { permission: string }) => void): Promise<any>;
 }
 
 const BelConnectCall = registerPlugin<BelConnectCallPluginInterface>("BelConnectCall");
@@ -142,6 +143,20 @@ export const nativeCallBridge = {
     } catch (err) {
       console.warn("[nativeCallBridge] Could not sync native device push token:", err);
     }
+  },
+
+  addPermissionListener(callback: (permission: string) => void): { remove: () => void } {
+    if (!this.isNative()) return { remove: () => {} };
+    let handle: any = null;
+    BelConnectCall.addListener("permissionGranted", (data: { permission: string }) => {
+      console.log("[nativeCallBridge] permissionGranted event received:", data?.permission);
+      callback(data?.permission);
+    }).then((h) => { handle = h; }).catch(() => {});
+    return {
+      remove: () => {
+        if (handle && handle.remove) handle.remove();
+      }
+    };
   }
 };
 

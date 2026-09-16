@@ -131,8 +131,8 @@ public class BelConnectCallService extends Service {
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        String title = "BelConnect Call — " + (peerName != null && !peerName.isEmpty() ? peerName : "In Progress");
-        String contentText = (serviceName != null && !serviceName.isEmpty() ? serviceName + " • " : "") + "Tap to return to call";
+        String title = "BelConnect Call - " + (peerName != null && !peerName.isEmpty() ? peerName : "In Progress");
+        String contentText = (serviceName != null && !serviceName.isEmpty() ? serviceName + " - " : "") + "Tap to return to call";
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)

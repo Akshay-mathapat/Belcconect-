@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.view.WindowManager;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -36,7 +37,10 @@ public class MainActivity extends BridgeActivity {
 
         // Ensure RECORD_AUDIO runtime permission is granted for WebRTC (Android 6+)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.i("MainActivity", "[CALL_TRACE] Requesting RECORD_AUDIO runtime permission from user...");
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+        } else {
+            Log.i("MainActivity", "[CALL_TRACE] RECORD_AUDIO runtime permission already GRANTED.");
         }
 
         // Request POST_NOTIFICATIONS runtime permission on Android 13+ (API 33+)
@@ -50,6 +54,18 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            Log.i("MainActivity", "[CALL_TRACE] RECORD_AUDIO onRequestPermissionsResult received: granted=" + granted);
+            if (granted) {
+                BelConnectCallPlugin.notifyPermissionGranted(this, "microphone");
+            }
+        }
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
@@ -57,13 +73,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         BelConnectCallPlugin.isAppInForeground = true;
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         super.onPause();
         BelConnectCallPlugin.isAppInForeground = false;
     }
@@ -73,6 +89,8 @@ public class MainActivity extends BridgeActivity {
             String action = intent.getStringExtra("action");
             String callId = intent.getStringExtra("callId");
             String bookingId = intent.getStringExtra("bookingId");
+
+            Log.i("MainActivity", "[CALL_TRACE] Step 1 & 2: Notification Accept tapped -> MainActivity.handleCallIntent received (action=" + action + ", callId=" + callId + ", bookingId=" + bookingId + ")");
 
             BelConnectCallPlugin.pendingAction = action;
             BelConnectCallPlugin.pendingCallId = callId;

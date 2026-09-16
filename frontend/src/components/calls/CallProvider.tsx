@@ -523,6 +523,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { action, callId } = pending;
+      console.log(`[CALL_TRACE] Step 4: CallProvider.handleNativeCallAction picked it up (action=${action}, callId=${callId}, bookingId=${pending.bookingId || "none"})`);
 
       if (action === "accept") {
         console.log(`[CALL] Handling native notification Accept action for call: ${callId}`);
@@ -564,6 +565,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             const isMe = matchesMe(existingCall.receiverId) || matchesMe(existingCall.callerId);
             if (isMe) {
               console.log(`[CALL] Call ${callId} is already in status '${existingCall.status}'. Idempotent recovery.`);
+              console.log(`[CALL_TRACE] Step 7: ActiveCall mounted (idempotent recovery: callId=${existingCall.id}, callState=ACTIVE, bookingId=${existingCall.bookingId || "none"})`);
               setActiveCall(existingCall);
               setCallState("ACTIVE");
               if (existingCall.bookingId) {
@@ -579,6 +581,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Step 4: POST /api/calls/{callId}/accept
+        console.log(`[CALL_TRACE] Step 5: POST /api/calls/${callId}/accept sent (hasAuth=${!!getHeaders().Authorization})`);
         let res: Response;
         try {
           res = await fetch(`/api/calls/${callId}/accept`, {
@@ -592,9 +595,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await res.json().catch(() => ({}));
+        console.log(`[CALL_TRACE] Step 6: POST /accept response received (status=${res.status}, ok=${res.ok}, success=${data?.success}, livekitPresent=${!!data?.livekit}, roomName=${data?.livekit?.roomName || data?.call?.roomName || "none"})`);
 
         if (res.ok && data.success) {
           // Step 5: Obtain/confirm LiveKit credentials and begin room connection
+          console.log(`[CALL_TRACE] Step 7: ActiveCall mounted (callId=${data.call?.id}, callState=ACTIVE, roomName=${data.livekit?.roomName || data.call?.bookingId || "none"})`);
           setActiveCall(data.call);
           setCallState("ACTIVE");
           if (data.livekit) {

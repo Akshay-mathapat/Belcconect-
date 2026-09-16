@@ -32,6 +32,7 @@ public class BelConnectCallPlugin extends Plugin {
     public static volatile String pendingCallId = null;
     public static volatile String pendingBookingId = null;
     public static volatile String latestDeviceToken = null;
+    private static BelConnectCallPlugin instance = null;
 
     public static final String PREFS_NAME = "belconnect_push_prefs";
     public static final String PREF_PENDING_ACTION = "pending_action";
@@ -40,10 +41,20 @@ public class BelConnectCallPlugin extends Plugin {
     public static final String PREF_PENDING_CREATED_AT = "pending_created_at";
     public static final long PENDING_STALENESS_MS = 60_000L;
 
+    public static void notifyPermissionGranted(Context context, String permission) {
+        Log.i(TAG, "[CALL_TRACE] notifyPermissionGranted: " + permission);
+        if (instance != null) {
+            JSObject data = new JSObject();
+            data.put("permission", permission);
+            instance.notifyListeners("permissionGranted", data);
+        }
+    }
+
     public static void setPendingCallAction(Context context, String action, String callId, String bookingId) {
         pendingAction = action;
         pendingCallId = callId;
         pendingBookingId = bookingId;
+        Log.i(TAG, "[CALL_TRACE] Step 3: BelConnectCallPlugin pending action stored: action=" + action + ", callId=" + callId + ", bookingId=" + bookingId);
 
         if (context != null) {
             try {
@@ -74,6 +85,7 @@ public class BelConnectCallPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
+        instance = this;
         createNotificationChannel(getContext());
         SharedPreferences prefs = getContext().getSharedPreferences("belconnect_push_prefs", Context.MODE_PRIVATE);
         latestDeviceToken = prefs.getString("fcm_token", null);
@@ -301,6 +313,7 @@ public class BelConnectCallPlugin extends Plugin {
         ret.put("action", action);
         ret.put("callId", callId);
         ret.put("bookingId", bookingId);
+        Log.i(TAG, "[CALL_TRACE] Step 3b: BelConnectCallPlugin.getPendingCallAction returning: action=" + action + ", callId=" + callId + ", bookingId=" + bookingId);
         call.resolve(ret);
     }
 

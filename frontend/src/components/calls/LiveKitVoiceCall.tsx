@@ -17,6 +17,8 @@ import { CallRecord } from "@/lib/calls";
 import CallTimer from "./CallTimer";
 import CallControls from "./CallControls";
 import { callAudioManager } from "@/lib/callAudioManager";
+import { App } from "@capacitor/app";
+import { nativeCallBridge } from "@/lib/nativeCallBridge";
 import "@livekit/components-styles";
 
 export interface LiveKitCredentials {
@@ -217,6 +219,7 @@ function LiveKitVoiceContent({
       console.log("[LIVEKIT_STATE] connecting");
     } else if (connectionState === ConnectionState.Connected) {
       console.log("[LIVEKIT_STATE] connected");
+      console.log(`[CALL_TRACE] Step 9: LiveKit room connected (roomName=${room?.name}, participant=${localParticipant?.identity || "unknown"})`);
       suppressMediaSession();
     } else if (connectionState === ConnectionState.Reconnecting) {
       console.log("[LIVEKIT_STATE] reconnecting");
@@ -249,6 +252,7 @@ function LiveKitVoiceContent({
     ) => {
       if (track.kind === "audio") {
         console.log(`[LIVEKIT] remote-audio-subscribed trackSid=${track.sid}`);
+        console.log(`[CALL_TRACE] Step 11: Remote audio track received (trackSid=${track.sid}, kind=audio, isSubscribed=${publication.isSubscribed})`);
         suppressMediaSession();
         setRemoteAudioSubscribed(true);
         console.log(`[CALL_PERF] accept_to_remote_audio_ms=${Date.now() - connectTimestampRef.current}`);
@@ -330,7 +334,9 @@ function LiveKitVoiceContent({
     if (connectionState === ConnectionState.Connected && localParticipant) {
       let isMounted = true;
       let retryTimer: ReturnType<typeof setTimeout> | null = null;
+      let permInterval: ReturnType<typeof setInterval> | null = null;
       let retryCount = 0;
+      let permCheckCount = 0;
 
       const publishMicWithRetry = async () => {
         if (!isMounted) return;
@@ -341,6 +347,11 @@ function LiveKitVoiceContent({
           if (isMounted) {
             setMicPermissionError(null);
             console.log(`[LIVEKIT] local-mic-published=true participant=${localParticipant.identity}`);
+            console.log(`[CALL_TRACE] Step 10: Local microphone track published (identity=${localParticipant.identity}, isMicrophoneEnabled=true)`);
+            if (permInterval) {
+              clearInterval(permInterval);
+              permInterval = null;
+            }
           }
         } catch (err: any) {
           const errMsg = err?.message || "";
@@ -360,7 +371,22 @@ function LiveKitVoiceContent({
 
           if (isMounted) {
             if (err?.name === "NotAllowedError" || errMsg.includes("Permission")) {
-              setMicPermissionError("Microphone permission denied. Please allow microphone access.");
+              setMicPermissionError("Microphone permission required. Please allow access in the system dialog.");
+              console.log("[CALL_TRACE] RECORD_AUDIO permission not yet granted. Setting up retry listeners for user grant...");
+
+              // Active bounded retry: check every 1s for up to 15s in case user approves Android system dialog
+              if (!permInterval) {
+                permInterval = setInterval(() => {
+                  permCheckCount += 1;
+                  if (permCheckCount > 15) {
+                    if (permInterval) clearInterval(permInterval);
+                    permInterval = null;
+                    return;
+                  }
+                  console.log(`[CALL_TRACE] Retrying mic enable after permission prompt (attempt ${permCheckCount}/15)...`);
+                  publishMicWithRetry();
+                }, 1000);
+              }
             } else if (err?.name === "NotFoundError") {
               setMicPermissionError("No microphone hardware found on this device.");
             } else if (err?.name === "NotReadableError") {
@@ -374,6 +400,33 @@ function LiveKitVoiceContent({
 
       publishMicWithRetry();
 
+      // Listener for native permission granted event from MainActivity
+      const permListener = nativeCallBridge.addPermissionListener((perm) => {
+        if (perm === "microphone" && isMounted) {
+          console.log("[CALL_TRACE] Received native microphone permission grant event. Immediately publishing mic...");
+          publishMicWithRetry();
+        }
+      });
+
+      // Window focus and app resume triggers (when user taps "Allow" on OS dialog, window regains focus)
+      const onFocus = () => {
+        if (isMounted) {
+          console.log("[CALL_TRACE] Window focused. Checking microphone access...");
+          publishMicWithRetry();
+        }
+      };
+      window.addEventListener("focus", onFocus);
+
+      let appResumeListener: any = null;
+      if (typeof window !== "undefined" && nativeCallBridge.isNative()) {
+        App.addListener("resume", () => {
+          if (isMounted) {
+            console.log("[CALL_TRACE] App resumed. Checking microphone access...");
+            publishMicWithRetry();
+          }
+        }).then((l) => { appResumeListener = l; }).catch(() => {});
+      }
+
       startAudio()
         .then(() => {
           console.log(`[CALL_PERF] accept_to_audio_playable_ms=${Date.now() - connectTimestampRef.current}`);
@@ -385,6 +438,10 @@ function LiveKitVoiceContent({
       return () => {
         isMounted = false;
         if (retryTimer) clearTimeout(retryTimer);
+        if (permInterval) clearInterval(permInterval);
+        permListener.remove();
+        window.removeEventListener("focus", onFocus);
+        if (appResumeListener && appResumeListener.remove) appResumeListener.remove();
       };
     }
   }, [connectionState, localParticipant, startAudio]);
@@ -663,6 +720,8 @@ export default function LiveKitVoiceCall({
       </div>
     );
   }
+
+  console.log(`[CALL_TRACE] Step 8: LiveKitVoiceCall attempting room.connect() (serverUrl=${livekit.serverUrl}, roomName=${livekit.roomName})`);
 
   return (
     <LiveKitRoom
