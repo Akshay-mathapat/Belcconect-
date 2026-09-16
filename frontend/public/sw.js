@@ -131,15 +131,12 @@ self.addEventListener("push", (event) => {
       const callerName = notificationData.callerName || "BelConnect User";
       const serviceName = notificationData.serviceName || "Voice Call";
       const options = {
-        body: body || "Incoming Voice Call...",
         body: body || `${callerName} • ${serviceName}`,
         icon: icon || "/belconnect.png",
         badge: "/belconnect.png",
         tag: `call_${callId}`,
         renotify: true,
         requireInteraction: true,
-        vibrate: [300, 100, 300, 100, 300],
-        data: notificationData,
         timestamp: Date.now(),
         vibrate: [500, 200, 500, 200, 500, 200, 500],
         data: {
@@ -149,13 +146,11 @@ self.addEventListener("push", (event) => {
         },
         actions: [
           { action: "answer", title: "📞 Answer" },
-          { action: "answer", title: "📞 Accept" },
           { action: "decline", title: "❌ Decline" }
         ]
       };
 
       event.waitUntil(
-        self.registration.showNotification(title || "Incoming Voice Call", options)
         self.registration.showNotification(title || `Incoming Call from ${callerName}`, options)
       );
       return;
