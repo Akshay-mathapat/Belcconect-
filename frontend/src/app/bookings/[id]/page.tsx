@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, getStoredAuthToken, getStoredUserId } from "@/store/useAuthStore";
 import { 
   ArrowLeft, Calendar, Clock, MapPin, Phone, MessageSquare, 
   CheckCircle2, ShieldCheck, UserCheck, Radio, AlertCircle, ExternalLink, Navigation
@@ -56,8 +56,21 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   useEffect(() => {
     async function fetchBookingDetail() {
       try {
-        const res = await fetch(`/api/bookings/${id}`);
-        if (!res.ok) throw new Error("Booking not found");
+        const token = currentUser?.token || getStoredAuthToken();
+        const userId = currentUser?.id || getStoredUserId();
+        const headers: Record<string, string> = {};
+        if (userId) headers["x-user-id"] = userId;
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch(`/api/bookings/${id}`, { headers });
+        if (!res.ok) {
+          if (res.status === 401) {
+            router.push(`/auth?mode=login&returnTo=/bookings/${id}`);
+            return;
+          }
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData?.error || "Booking not found");
+        }
         const data = await res.json();
         if (data.booking) {
           setBooking(data.booking);
@@ -75,7 +88,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     // Regular fallback polling every 6s
     const interval = setInterval(fetchBookingDetail, 6000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, currentUser, router]);
 
   // 2. Real-Time Socket Listener for Instant Status Updates
   useEffect(() => {
