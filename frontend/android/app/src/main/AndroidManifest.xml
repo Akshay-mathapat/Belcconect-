@@ -47,7 +47,6 @@
             android:name=".BelConnectLocationService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="location|microphone" />
             android:foregroundServiceType="location" />
 
         <!-- BroadcastReceiver for native incoming call notification actions (e.g. Decline) -->

@@ -165,6 +165,9 @@ public class BelConnectCallPlugin extends Plugin {
         if (callId == null || callId.isEmpty()) return;
         createNotificationChannel(context);
 
+        // Step 8: Persist incoming call to SharedPreferences BEFORE displaying notification
+        setPendingCallAction(context, "incoming", callId, bookingId);
+
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (notificationManager == null) return;
 

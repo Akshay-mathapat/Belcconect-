@@ -112,12 +112,12 @@ self.addEventListener("push", (event) => {
 
   try {
     const payload = event.data.json();
-    const { title, body, icon, data } = payload;
-    const notificationData = data || {};
-    const type = notificationData.type || "general";
+    const notificationData = payload.data || payload || {};
+    const type = notificationData.type || payload.type || "general";
 
-    if (type === "call:cancelled" || type === "call:ended") {
-      const callTag = `call_${notificationData.callId}`;
+    if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled") {
+      const callId = notificationData.callId || payload.callId;
+      const callTag = `call_${callId}`;
       event.waitUntil(
         self.registration.getNotifications({ tag: callTag }).then((notifications) => {
           notifications.forEach((notification) => notification.close());
@@ -126,13 +126,15 @@ self.addEventListener("push", (event) => {
       return;
     }
 
-    if (type === "call:incoming") {
-      const callId = notificationData.callId || "unknown";
-      const callerName = notificationData.callerName || "BelConnect User";
-      const serviceName = notificationData.serviceName || "Voice Call";
+    if (type === "call:incoming" || type === "incoming_call") {
+      const callId = notificationData.callId || payload.callId || "unknown";
+      const callerName = notificationData.callerName || payload.callerName || "BelConnect User";
+      const serviceName = notificationData.serviceName || payload.serviceName || "Voice Call";
+      const displayTitle = payload.title || `Incoming Call from ${callerName}`;
+      const displayBody = payload.body || `${callerName} • ${serviceName}`;
       const options = {
-        body: body || `${callerName} • ${serviceName}`,
-        icon: icon || "/belconnect.png",
+        body: displayBody,
+        icon: payload.icon || "/belconnect.png",
         badge: "/belconnect.png",
         tag: `call_${callId}`,
         renotify: true,
@@ -151,7 +153,7 @@ self.addEventListener("push", (event) => {
       };
 
       event.waitUntil(
-        self.registration.showNotification(title || `Incoming Call from ${callerName}`, options)
+        self.registration.showNotification(displayTitle, options)
       );
       return;
     }
@@ -159,8 +161,8 @@ self.addEventListener("push", (event) => {
     if (type === "chat:message") {
       const convId = notificationData.conversationId || "general";
       const options = {
-        body: body || "You have received a new message.",
-        icon: icon || "/belconnect.png",
+        body: payload.body || "You have received a new message.",
+        icon: payload.icon || "/belconnect.png",
         badge: "/belconnect.png",
         tag: `chat_${convId}`,
         renotify: true,
@@ -168,18 +170,18 @@ self.addEventListener("push", (event) => {
       };
 
       event.waitUntil(
-        self.registration.showNotification(title || "New Message", options)
+        self.registration.showNotification(payload.title || "New Message", options)
       );
       return;
     }
 
     const defaultOptions = {
-      body: body || "New update from BelConnect",
-      icon: icon || "/belconnect.png",
+      body: payload.body || "New update from BelConnect",
+      icon: payload.icon || "/belconnect.png",
       data: notificationData
     };
     event.waitUntil(
-      self.registration.showNotification(title || "BelConnect Alert", defaultOptions)
+      self.registration.showNotification(payload.title || "BelConnect Alert", defaultOptions)
     );
   } catch (err) {
     console.error("[Service Worker] Push event error:", err);
