@@ -32,12 +32,11 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
 
         Log.i(TAG, "Received FCM message type: " + type + ", callId: " + callId);
 
-        if ("incoming_call".equals(type)) {
-            // Deduplication: If the app is actively in the foreground, the in-app
-            // Socket.IO event and CallAudioManager already ring and show IncomingCall UI.
-            // Only trigger native high-priority notification if app is backgrounded or screen locked.
-            if (BelConnectCallPlugin.isAppInForeground) {
-                Log.i(TAG, "App is currently in foreground; delegating incoming call to in-app Socket.IO.");
+        if ("incoming_call".equals(type) || "call:incoming".equals(type)) {
+            // Deduplication: If this call has already been presented (either by in-app
+            // Socket.IO signaling or an earlier push), avoid firing duplicate alerts.
+            if (BelConnectCallPlugin.isCallAlreadyPresented(callId)) {
+                Log.i(TAG, "Call " + callId + " is already presented; skipping duplicate FCM incoming alert.");
                 return;
             }
 
@@ -48,8 +47,11 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
                 serviceName,
                 bookingId
             );
-        } else if ("call:cancelled".equals(type) || "call:ended".equals(type)) {
-            Log.i(TAG, "Call cancellation/end received for call: " + callId);
+        } else if ("call:cancelled".equals(type) || "call_cancelled".equals(type) ||
+                   "call:ended".equals(type) || "call_ended".equals(type) ||
+                   "call:timeout".equals(type) || "call_timeout".equals(type) ||
+                   "call:missed".equals(type) || "call_missed".equals(type)) {
+            Log.i(TAG, "Call dismissal received for call: " + callId + " (type=" + type + ")");
             BelConnectCallPlugin.dismissCall(getApplicationContext(), callId);
         }
     }

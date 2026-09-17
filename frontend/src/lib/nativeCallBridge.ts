@@ -22,6 +22,7 @@ interface BelConnectCallPluginInterface {
     serviceName?: string;
     bookingId?: string;
   }): Promise<{ shown: boolean }>;
+  markCallPresented(options: { callId: string }): Promise<{ success: boolean }>;
   addListener(eventName: "permissionGranted", listenerFunc: (data: { permission: string }) => void): Promise<any>;
 }
 
@@ -105,6 +106,26 @@ export const nativeCallBridge = {
       console.log("[nativeCallBridge] Displayed native incoming call heads-up notification for call:", options.callId);
     } catch (err) {
       console.warn("[nativeCallBridge] Error showing native incoming call notification:", err);
+    }
+  },
+
+  async markCallPresented(callId: string): Promise<void> {
+    if (!this.isNative() || !callId) return;
+    try {
+      await BelConnectCall.markCallPresented({ callId });
+    } catch (err) {
+      console.warn("[nativeCallBridge] Error marking call presented:", err);
+    }
+  },
+
+  async getDevicePushToken(): Promise<string | null> {
+    if (!this.isNative()) return null;
+    try {
+      const res = await BelConnectCall.getDevicePushToken();
+      return res?.token || null;
+    } catch (err) {
+      console.warn("[nativeCallBridge] Error getting device push token:", err);
+      return null;
     }
   },
 

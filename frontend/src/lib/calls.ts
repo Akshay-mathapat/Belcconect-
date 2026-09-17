@@ -139,8 +139,11 @@ export async function getActiveCallForUser(userId: string): Promise<CallRecord |
   const res = await query(
     `SELECT id FROM calls 
      WHERE (caller_id = $1 OR receiver_id = $1)
-       AND status IN ('INITIATED', 'RINGING', 'ACCEPTED', 'CONNECTED')
-       AND created_at >= NOW() - INTERVAL '120 seconds'
+       AND (
+         (status IN ('INITIATED', 'RINGING') AND created_at >= NOW() - INTERVAL '60 seconds')
+         OR
+         (status IN ('ACCEPTED', 'CONNECTED') AND ended_at IS NULL AND created_at >= NOW() - INTERVAL '24 hours')
+       )
      ORDER BY created_at DESC 
      LIMIT 1`,
     [userId]

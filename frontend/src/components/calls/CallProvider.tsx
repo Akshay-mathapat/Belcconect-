@@ -175,6 +175,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       delete nativeAcceptRetryCountRef.current[callId];
       await nativeCallBridge.clearPendingCallAction();
       await nativeCallBridge.dismissNativeCall(callId);
+      await nativeCallBridge.stopActiveCallService();
       callAudioManager.stopAll();
       setCallState("IDLE");
       setActiveCall(null);
@@ -249,7 +250,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               bookingId: call.bookingId
             });
           } else {
-            // Dismiss native notification only if user has app actively open in foreground
+            // Dismiss native notification only if user has app actively open in foreground,
+            // and mark call presented to prevent duplicate FCM background alerts.
+            nativeCallBridge.markCallPresented(call.id);
             if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
           }
 
@@ -288,6 +291,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         }
       } else if (type === "call:reject" || type === "call:end" || type === "call:cancel" || type === "call:missed" || type === "call:busy") {
         if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
+        nativeCallBridge.stopActiveCallService().catch(() => {});
         if (activeCallRef.current && activeCallRef.current.id !== call.id) return;
 
         clearOutgoingTimeout();
@@ -531,6 +535,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         callAudioManager.stopAll();
         setCallState("ACCEPTING");
         acceptInProgressRef.current = true;
+        nativeCallBridge.startActiveCallService({
+          callId,
+          peerName: "BelConnect Caller",
+          serviceName: "BelConnect Voice Call"
+        }).catch(() => {});
         ensureSocketConnected().catch(() => {});
 
         // Step 3: GET /api/calls/{callId} to verify status is INITIATED or RINGING (or already ACCEPTED/CONNECTED by same user)
@@ -552,6 +561,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             console.log(`[CALL] Call ${callId} is conclusively '${existingCall.status}'. Clearing pending action immediately.`);
             await nativeCallBridge.clearPendingCallAction();
             await nativeCallBridge.dismissNativeCall(callId);
+            await nativeCallBridge.stopActiveCallService();
             delete nativeAcceptRetryCountRef.current[callId];
             callAudioManager.stopAll();
             setCallState("IDLE");
@@ -620,6 +630,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             console.warn(`[CALL] Conclusive failure accepting call ${callId} (${errMsg}). Clearing pending action.`);
             await nativeCallBridge.clearPendingCallAction();
             await nativeCallBridge.dismissNativeCall(callId);
+            await nativeCallBridge.stopActiveCallService();
             delete nativeAcceptRetryCountRef.current[callId];
             callAudioManager.stopAll();
             setCallState("IDLE");
@@ -949,7 +960,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setCallState("ACCEPTING");
 
     const callId = activeCallRef.current.id;
-    if (callId) nativeCallBridge.dismissNativeCall(callId).catch(() => {});
+    if (callId) {
+      nativeCallBridge.dismissNativeCall(callId).catch(() => {});
+      nativeCallBridge.startActiveCallService({
+        callId,
+        peerName: activeCallRef.current.callerName || "Customer",
+        serviceName: activeCallRef.current.serviceName || "BelConnect Voice Call"
+      }).catch(() => {});
+    }
 
     ensureSocketConnected().catch(() => {});
 
@@ -978,6 +996,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           bc.close();
         } catch {}
       } else {
+        nativeCallBridge.stopActiveCallService().catch(() => {});
         callAudioManager.stopAll();
         setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
         acceptInProgressRef.current = false;
@@ -997,6 +1016,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       console.error("[CALL_SESSION_FAILED] Error accepting call:", err);
+      nativeCallBridge.stopActiveCallService().catch(() => {});
       callAudioManager.stopAll();
       setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
       acceptInProgressRef.current = false;

@@ -100,6 +100,14 @@ public class MainActivity extends BridgeActivity {
 
             // Stop native ringtone immediately as app has now opened/resumed
             BelConnectCallPlugin.dismissCall(this, callId);
+
+            // Step 15: Start active microphone foreground service immediately on native Accept tap
+            if ("accept".equals(action)) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    Log.i("MainActivity", "[CALL_TRACE] Starting BelConnectCallService early from handleCallIntent for accept action (callId=" + callId + ")");
+                    BelConnectCallService.start(this, callId, "BelConnect Caller", "Voice Call Active");
+                }
+            }
         }
     }
 }

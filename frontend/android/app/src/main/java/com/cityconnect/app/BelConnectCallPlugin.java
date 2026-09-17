@@ -32,7 +32,28 @@ public class BelConnectCallPlugin extends Plugin {
     public static volatile String pendingCallId = null;
     public static volatile String pendingBookingId = null;
     public static volatile String latestDeviceToken = null;
+    public static volatile String activePresentedCallId = null;
     private static BelConnectCallPlugin instance = null;
+
+    public static boolean isCallAlreadyPresented(String callId) {
+        if (callId == null || callId.isEmpty()) return false;
+        return callId.equals(activePresentedCallId);
+    }
+
+    public static void setCallPresented(String callId) {
+        activePresentedCallId = callId;
+        Log.i(TAG, "Call presented: " + callId);
+    }
+
+    public static void clearCallPresented(String callId) {
+        if (callId != null && callId.equals(activePresentedCallId)) {
+            activePresentedCallId = null;
+            Log.i(TAG, "Call presented state cleared for call: " + callId);
+        } else if (callId == null) {
+            activePresentedCallId = null;
+            Log.i(TAG, "Call presented state cleared (all)");
+        }
+    }
 
     public static final String PREFS_NAME = "belconnect_push_prefs";
     public static final String PREF_PENDING_ACTION = "pending_action";
@@ -163,6 +184,7 @@ public class BelConnectCallPlugin extends Plugin {
 
     public static void showIncomingCall(Context context, String callId, String callerName, String serviceName, String bookingId) {
         if (callId == null || callId.isEmpty()) return;
+        setCallPresented(callId);
         createNotificationChannel(context);
 
         // Step 8: Persist incoming call to SharedPreferences BEFORE displaying notification
@@ -263,6 +285,7 @@ public class BelConnectCallPlugin extends Plugin {
 
     public static void dismissCall(Context context, String callId) {
         stopRingtone();
+        clearCallPresented(callId);
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (notificationManager != null) {
             if (callId != null && !callId.isEmpty()) {
@@ -325,9 +348,21 @@ public class BelConnectCallPlugin extends Plugin {
         pendingAction = null;
         pendingCallId = null;
         pendingBookingId = null;
+        clearCallPresented(null);
         setPendingCallAction(getContext(), null, null, null);
         JSObject ret = new JSObject();
         ret.put("cleared", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void markCallPresented(PluginCall call) {
+        String callId = call.getString("callId");
+        if (callId != null && !callId.isEmpty()) {
+            setCallPresented(callId);
+        }
+        JSObject ret = new JSObject();
+        ret.put("success", true);
         call.resolve(ret);
     }
 

@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { nativeCallBridge } from "@/lib/nativeCallBridge";
 
 export type UserRole = "user" | "provider" | "job_provider";
 
@@ -412,6 +413,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        const currentToken = getStoredAuthToken();
+        const currentUid = getStoredUserId();
+
         try {
           if (typeof window !== "undefined") {
             localStorage.removeItem("belconnect-provider-storage-v2");
@@ -422,6 +426,27 @@ export const useAuthStore = create<AuthState>()(
             localStorage.removeItem("user_id");
           }
         } catch (e) {}
+
+        // Unregister device push token and clear native bridge credentials
+        if (typeof window !== "undefined") {
+          try {
+            nativeCallBridge.setAuthCredentials("", "").catch(() => {});
+            if (currentToken && nativeCallBridge.isNative()) {
+              nativeCallBridge.getDevicePushToken().then((devToken: string | null) => {
+                fetch("/api/device/unregister", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${currentToken}`,
+                    ...(currentUid ? { "x-user-id": currentUid } : {})
+                  },
+                  body: JSON.stringify({ token: devToken || undefined })
+                }).catch(() => {});
+              }).catch(() => {});
+            }
+          } catch (e) {}
+        }
+
         set({ currentUser: null });
       }
     }),
