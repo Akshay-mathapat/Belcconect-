@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "292777945943",
-    "project_id": "studio-1888553986-f8bc5",
-    "storage_bucket": "studio-1888553986-f8bc5.firebasestorage.app"
+    "project_number": "866830037822",
+    "project_id": "belconnect-85369",
+    "storage_bucket": "belconnect-85369.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:292777945943:android:ad652247b644b3cde9ec12",
+        "mobilesdk_app_id": "1:866830037822:android:56806c4ae93b6cc273b26f",
         "android_client_info": {
           "package_name": "com.cityconnect.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAn3rsjOccchLjbvwo4hP1rw7AGsMHb-28"
+          "current_key": "AIzaSyDpjayAMoF01W9nMhs0DcBAfSpOKiB_YNo"
         }
       ],
       "services": {

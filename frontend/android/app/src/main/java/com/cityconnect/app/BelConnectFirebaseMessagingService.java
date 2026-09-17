@@ -59,7 +59,7 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
     @Override
     public void onNewToken(@NonNull String token) {
         super.onNewToken(token);
-        Log.i(TAG, "New FCM registration token received: " + token);
+       Log.i(TAG, "New FCM registration token received successfully");
         BelConnectCallPlugin.latestDeviceToken = token;
 
         SharedPreferences prefs = getSharedPreferences("belconnect_push_prefs", Context.MODE_PRIVATE);

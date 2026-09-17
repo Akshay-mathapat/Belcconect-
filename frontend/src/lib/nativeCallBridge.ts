@@ -148,18 +148,33 @@ export const nativeCallBridge = {
             ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token")
             : null;
 
-        await fetch("/api/device/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
-            token: res.token,
-            platform: "android"
-          })
-        });
-        console.log("[nativeCallBridge] Successfully registered native device token for user:", userId);
+       const response = await fetch("/api/device/register", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  },
+  body: JSON.stringify({
+    token: res.token,
+    platform: "android"
+  })
+});
+
+if (!response.ok) {
+  const errorText = await response.text().catch(() => "");
+
+  console.error(
+    "[nativeCallBridge] Device token registration FAILED:",
+    response.status,
+    errorText
+  );
+
+  return;
+}
+
+console.log(
+  "[nativeCallBridge] Native device token registered successfully"
+);
       }
     } catch (err) {
       console.warn("[nativeCallBridge] Could not sync native device push token:", err);

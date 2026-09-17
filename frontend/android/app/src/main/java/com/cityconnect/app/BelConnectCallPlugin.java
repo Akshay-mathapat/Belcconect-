@@ -375,12 +375,29 @@ public class BelConnectCallPlugin extends Plugin {
         call.resolve(ret);
     }
 
-    @PluginMethod
-    public void getDevicePushToken(PluginCall call) {
-        JSObject ret = new JSObject();
-        ret.put("token", latestDeviceToken);
-        call.resolve(ret);
+   @PluginMethod
+public void getDevicePushToken(PluginCall call) {
+    JSObject ret = new JSObject();
+
+    String token = latestDeviceToken;
+
+    if (token == null || token.isEmpty()) {
+        SharedPreferences prefs =
+            getContext().getSharedPreferences(
+                "belconnect_push_prefs",
+                Context.MODE_PRIVATE
+            );
+
+        token = prefs.getString("fcm_token", null);
+
+        if (token != null && !token.isEmpty()) {
+            latestDeviceToken = token;
+        }
     }
+
+    ret.put("token", token);
+    call.resolve(ret);
+}
 
     @PluginMethod
     public void setAuthCredentials(PluginCall call) {
