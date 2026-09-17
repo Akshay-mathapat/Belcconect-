@@ -189,6 +189,7 @@ self.addEventListener("push", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
+  console.log("[CALL_TRACE] SW Step A: notificationclick fired, action=" + event.action + " callId=" + (event.notification.data && event.notification.data.callId));
   event.notification.close();
 
   const action = event.action;
@@ -207,21 +208,27 @@ self.addEventListener("notificationclick", (event) => {
 
   if (action === "answer" && data.callId) {
     targetUrl = `/?activeCall=true&callId=${data.callId}&autoAccept=true`;
+    console.log("[CALL_TRACE] SW Step B: answer action, targetUrl=" + targetUrl);
   }
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      console.log("[CALL_TRACE] SW Step C: found " + clientList.length + " open window client(s)");
       for (const client of clientList) {
         if (client.url && "focus" in client) {
           if ("navigate" in client) {
+            console.log("[CALL_TRACE] SW Step D: navigating existing client to " + targetUrl);
             client.navigate(targetUrl);
           }
           return client.focus();
         }
       }
       if (self.clients.openWindow) {
+        console.log("[CALL_TRACE] SW Step E: opening new window at " + targetUrl);
         return self.clients.openWindow(targetUrl);
       }
+    }).catch((err) => {
+      console.error("[CALL_TRACE] SW Step F: notificationclick handler threw:", err);
     })
   );
 });
