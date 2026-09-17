@@ -6,7 +6,7 @@ import { CheckCircle2, ArrowRight, MapPin, Plus, Navigation, AlertCircle, Sparkl
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, getStoredAuthToken, getStoredUserId } from "@/store/useAuthStore";
 
 import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import LocationPicker, { ConfirmedLocationData } from "@/components/location/LocationPicker";
@@ -94,13 +94,14 @@ function BookingFlow() {
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
-      const customerId = currentUser?.id;
+      const customerId = currentUser?.id || getStoredUserId();
       const customerName = currentUser?.name;
       const customerPhone = currentUser?.phone;
       const customerPhoto = currentUser?.avatar || "";
       const resolvedProviderId = proId;
+      const token = currentUser?.token || getStoredAuthToken();
 
-      if (!customerId) {
+      if (!customerId || !token) {
         const currentPath = `/book?${searchParams.toString()}`;
         router.push(`/auth?mode=login&returnTo=${encodeURIComponent(currentPath)}`);
         setIsSubmitting(false);
@@ -145,9 +146,19 @@ function BookingFlow() {
         }
       }
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      if (customerId) {
+        headers["x-user-id"] = customerId;
+      }
+
       const res = await fetch("/api/bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           customerId,
           providerId: resolvedProviderId,
@@ -173,6 +184,12 @@ function BookingFlow() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (res.status === 401) {
+          const currentPath = `/book?${searchParams.toString()}`;
+          router.push(`/auth?mode=login&returnTo=${encodeURIComponent(currentPath)}`);
+          setIsSubmitting(false);
+          return;
+        }
         throw new Error(data.error || t("booking.createBookingError"));
       }
 
