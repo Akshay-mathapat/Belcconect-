@@ -541,14 +541,14 @@ export default function AccountPage() {
                             </p>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-2.5 w-full md:w-auto mt-4 md:mt-0 justify-start md:justify-end">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 w-full md:w-auto mt-2.5 md:mt-0 justify-start md:justify-end">
                             {/* Communication Actions: Call & Chat */}
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                               <CallButton
                                 bookingId={booking.id}
                                 bookingStatus={booking.status}
                                 title={t("account.callProvider")}
-                                className="min-h-[44px] min-w-[44px]"
+                                className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0"
                               />
                               <ChatButton
                                 customerId={activeUser.id}
@@ -558,14 +558,14 @@ export default function AccountPage() {
                                 serviceName={booking.service}
                                 bookingStatus={booking.status}
                                 title={t("account.chatWithProvider")}
-                                className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                className="flex-1 sm:flex-initial h-11 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                               />
                             </div>
 
                             {["Accepted", "OnTheWay", "Started"].includes(booking.status) && (
                               <Link
                                 href={`/bookings/${booking.id}`}
-                                className="min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
+                                className="w-full sm:w-auto h-11 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer"
                               >
                                 <Radio className="w-3.5 h-3.5 animate-pulse text-white" />
                                 <span>Track Live Order</span>
@@ -579,13 +579,13 @@ export default function AccountPage() {
                                     setRescheduleBookingId(booking.id);
                                     setShowRescheduleModal(true);
                                   }}
-                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
+                                  className="flex-1 sm:flex-initial h-11 min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
                                 >
                                   {t("account.reschedule")}
                                 </button>
                                 <button
                                   onClick={() => handleCancelBooking(booking.id)}
-                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-500 hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  className="flex-1 sm:flex-initial h-11 min-h-[44px] px-4 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-sm font-semibold hover:bg-rose-500 hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center"
                                 >
                                   {t("account.cancel")}
                                 </button>
@@ -594,7 +594,7 @@ export default function AccountPage() {
                               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                 <button
                                   onClick={() => handleRebook(booking.service)}
-                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
+                                  className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm whitespace-nowrap"
                                 >
                                   {t("account.rebook")}
                                 </button>
@@ -605,9 +605,9 @@ export default function AccountPage() {
                                       return (
                                         <button
                                           onClick={() => handleRateService(booking.id, booking.rating || 5, booking.reviewComment || "", booking.id)}
-                                          className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                                          className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
                                         >
-                                          <Star className="h-3.5 w-3.5" /> {t("account.editReview")}
+                                          <Star className="h-3.5 w-3.5 shrink-0" /> <span>{t("account.editReview")}</span>
                                         </button>
                                       );
                                     }
@@ -619,9 +619,9 @@ export default function AccountPage() {
                                       return (
                                         <button
                                           onClick={() => handleRateService(previouslyReviewed.id, previouslyReviewed.rating || 5, previouslyReviewed.reviewComment || "", booking.id)}
-                                          className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                                          className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
                                         >
-                                          <Star className="h-3.5 w-3.5" /> {t("account.editReview")}
+                                          <Star className="h-3.5 w-3.5 shrink-0" /> <span>{t("account.editReview")}</span>
                                         </button>
                                       );
                                     }
@@ -629,9 +629,9 @@ export default function AccountPage() {
                                     return (
                                       <button
                                         onClick={() => handleRateService(booking.id, 5, "", booking.id)}
-                                        className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                                        className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
                                       >
-                                        <Star className="h-3.5 w-3.5" /> {t("account.rateService")}
+                                        <Star className="h-3.5 w-3.5 shrink-0" /> <span>{t("account.rateService")}</span>
                                       </button>
                                     );
                                   })()
@@ -639,11 +639,11 @@ export default function AccountPage() {
                                 {(booking.status === "Completed" || booking.status === "ReviewSubmitted") && (
                                   <button
                                     onClick={() => handleDeleteBooking(booking.id)}
-                                    className="min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-600 dark:text-rose-400 text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                    className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-600 dark:text-rose-400 text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                                     title="Delete Completed Service Record"
                                     aria-label="Delete Completed Service Record"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
                                     <span>Delete</span>
                                   </button>
                                 )}
