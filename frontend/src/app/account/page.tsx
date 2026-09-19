@@ -579,7 +579,7 @@ export default function AccountPage() {
                                     setRescheduleBookingId(booking.id);
                                     setShowRescheduleModal(true);
                                   }}
-                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
+                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
                                 >
                                   {t("account.reschedule")}
                                 </button>
@@ -594,7 +594,7 @@ export default function AccountPage() {
                               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                 <button
                                   onClick={() => handleRebook(booking.service)}
-                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
+                                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-xs font-bold transition-colors cursor-pointer inline-flex items-center justify-center shadow-sm"
                                 >
                                   {t("account.rebook")}
                                 </button>
