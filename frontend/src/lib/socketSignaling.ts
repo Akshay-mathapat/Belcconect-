@@ -5,6 +5,7 @@ export interface SocketSignalPayload {
     | "call:accept"
     | "call:reject"
     | "call:end"
+    | "call:ended"
     | "call:cancel"
     | "call:missed"
     | "call:busy"
@@ -17,6 +18,11 @@ export interface SocketSignalPayload {
     participantToken: string;
     roomName: string;
   };
+  reason?: string;
+  endedByUserId?: string;
+  endedByRole?: string;
+  endedByName?: string;
+  endedAt?: string;
 }
 
 const SIGNALING_SERVER_URL = process.env.SIGNALING_SERVER_URL || process.env.NEXT_PUBLIC_SIGNALING_URL || "http://localhost:4001";
@@ -47,6 +53,11 @@ export async function sendCallSignal(payload: SocketSignalPayload): Promise<bool
         targetUserIds: payload.targetUserIds,
         call: payload.call,
         livekit: payload.livekit,
+        reason: payload.reason,
+        endedByUserId: payload.endedByUserId,
+        endedByRole: payload.endedByRole,
+        endedByName: payload.endedByName,
+        endedAt: payload.endedAt,
         timestamp: Date.now()
       })
     });

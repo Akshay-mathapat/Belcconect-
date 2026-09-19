@@ -7,6 +7,7 @@ export type SignalingEventType =
   | "call:accept"
   | "call:reject"
   | "call:end"
+  | "call:ended"
   | "call:missed"
   | "call:busy"
   | "call:cancel";
@@ -14,6 +15,11 @@ export type SignalingEventType =
 export interface SignalingEvent {
   type: SignalingEventType;
   call: CallRecord;
+  reason?: string;
+  endedByUserId?: string;
+  endedByRole?: string;
+  endedByName?: string;
+  endedAt?: string;
   livekit?: {
     serverUrl: string;
     participantToken: string;

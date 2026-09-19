@@ -12,6 +12,8 @@ class CallAudioManager {
   private hasLoggedOutgoingAutoplayBlock = false;
   private hasLoggedOutgoingMissingAsset = false;
   private unlocked = false;
+  private disconnectAudioCtx: AudioContext | null = null;
+  private isPlayingEndedSound = false;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -286,6 +288,90 @@ class CallAudioManager {
     this.stopIncoming();
     this.stopOutgoing();
     this.currentCallId = null;
+  }
+
+  /**
+   * Plays a standard telecom dual-frequency call disconnect tone (480Hz + 620Hz).
+   * Duration: 0.8s, non-looping, synthesized cleanly via Web Audio API.
+   * Safe to call multiple times (idempotent; ignores duplicate calls while playing).
+   */
+  public playCallEndedSound(): void {
+    if (typeof window === "undefined") return;
+
+    // Immediately silence incoming or outgoing ringing
+    this.stopAll();
+
+    if (this.isPlayingEndedSound) {
+      return;
+    }
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      const ctx = new AudioContextClass();
+      this.disconnectAudioCtx = ctx;
+      this.isPlayingEndedSound = true;
+
+      // Resume audio context if suspended by browser autoplay policy
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      const now = ctx.currentTime;
+      const duration = 0.8; // 800ms standard disconnect duration
+
+      // Master gain node with smooth attack and exponential decay
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.001, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.25, now + 0.05);
+      masterGain.gain.setValueAtTime(0.25, now + duration - 0.1);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      masterGain.connect(ctx.destination);
+
+      // Dual-frequency call progress disconnect tone (480 Hz + 620 Hz)
+      const osc1 = ctx.createOscillator();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(480, now);
+      osc1.connect(masterGain);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(620, now);
+      osc2.connect(masterGain);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + duration);
+      osc2.stop(now + duration);
+
+      osc1.onended = () => {
+        try {
+          ctx.close().catch(() => {});
+        } catch {}
+        this.disconnectAudioCtx = null;
+        this.isPlayingEndedSound = false;
+        console.log("[CallAudio] disconnect tone finished");
+      };
+
+      console.log("[CallAudio] disconnect tone started (0.8s dual-tone 480Hz+620Hz)");
+    } catch (err) {
+      console.warn("[CallAudio] Could not play synthesized disconnect tone:", err);
+      this.isPlayingEndedSound = false;
+    }
+  }
+
+  /**
+   * Immediately silences the disconnect tone if currently playing.
+   */
+  public stopCallEndedSound(): void {
+    if (this.disconnectAudioCtx) {
+      try {
+        this.disconnectAudioCtx.close().catch(() => {});
+      } catch {}
+      this.disconnectAudioCtx = null;
+    }
+    this.isPlayingEndedSound = false;
   }
 }
 

@@ -183,6 +183,103 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const [callEndedNotice, setCallEndedNotice] = useState<string | null>(null);
+  const callEndedNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processedTerminalCallIdsRef = useRef<Set<string>>(new Set());
+
+  const showCallEndedNotice = useCallback((message: string) => {
+    if (callEndedNoticeTimerRef.current) {
+      clearTimeout(callEndedNoticeTimerRef.current);
+    }
+    setCallEndedNotice(message);
+    callEndedNoticeTimerRef.current = setTimeout(() => {
+      setCallEndedNotice(null);
+      callEndedNoticeTimerRef.current = null;
+    }, 3000);
+  }, []);
+
+  const handleRemoteCallEnded = useCallback((data: {
+    callId?: string;
+    call?: any;
+    reason?: string;
+    endedByUserId?: string;
+    endedByRole?: string;
+    endedByName?: string;
+    endedAt?: string;
+  }) => {
+    const rawCallId = data.callId || data.call?.id;
+    const currentActiveCallId = activeCallRef.current?.id;
+    const targetCallId = rawCallId ? String(rawCallId).trim() : (currentActiveCallId ? String(currentActiveCallId).trim() : undefined);
+    if (!targetCallId) return;
+
+    const normalizedActiveCallId = currentActiveCallId ? String(currentActiveCallId).trim() : null;
+    const matchesActiveCall = !normalizedActiveCallId ||
+      targetCallId === normalizedActiveCallId ||
+      targetCallId.startsWith("temp-") ||
+      normalizedActiveCallId.startsWith("temp-");
+
+    console.log(`[CALL-END] event received callId=${targetCallId} reason=${data.reason || "ended"}`);
+    console.log(`[CALL-END] matches active call=${matchesActiveCall} (currentActiveCallId=${normalizedActiveCallId})`);
+
+    // If an active call is present locally and does not match this event's callId, skip teardown
+    if (normalizedActiveCallId && !matchesActiveCall) {
+      console.log(`[CALL-END] Skipping terminal event because targetCallId=${targetCallId} != activeCallId=${normalizedActiveCallId}`);
+      return;
+    }
+
+    if (processedTerminalCallIdsRef.current.has(targetCallId)) {
+      console.log(`[CALL] Terminal call ${targetCallId} already handled. Skipping duplicate.`);
+      return;
+    }
+    processedTerminalCallIdsRef.current.add(targetCallId);
+
+    console.log(`[CALL] Remote call terminated: callId=${targetCallId} reason=${data.reason || "ended"}`);
+    console.log(`[CALL-END] processing terminal event for callId=${targetCallId} reason=${data.reason || "ended"}`);
+
+    // 1. Immediately silence ringtone and ringback
+    clearOutgoingTimeout();
+    callAudioManager.stopAll();
+    ringtonePlayer.stopRingtone();
+
+    // 2. Play synthesized telecom disconnect sound (0.8s dual-tone Web Audio API)
+    callAudioManager.playCallEndedSound();
+
+    // 3. Clear native Android notifications and foreground service for this call
+    nativeCallBridge.dismissNativeCall(targetCallId).catch(() => {});
+    nativeCallBridge.stopActiveCallService().catch(() => {});
+
+    // 4. Teardown active call UI & LiveKit state locally WITHOUT firing any API endpoint
+    setCallState("IDLE");
+    setActiveCall(null);
+    setLivekitCredentials(null);
+
+    callStartInProgressRef.current = false;
+    acceptInProgressRef.current = false;
+    endInProgressRef.current = false;
+    fetchingTokenForRef.current = null;
+
+    // 5. Display user-facing status notice for 2.5–3 seconds
+    const reason = data.reason || data.call?.endReason || "ended";
+    const endedByName = data.endedByName || (data.endedByRole === "provider" ? "Service Provider" : "Customer");
+
+    let message = "Call ended";
+    if (reason === "declined") {
+      message = `Call declined by ${endedByName}`;
+    } else if (reason === "cancelled") {
+      message = "Call cancelled";
+    } else if (reason === "missed") {
+      message = "Call missed";
+    } else if (reason === "timeout") {
+      message = "Call timed out";
+    } else if (reason === "connection_failed") {
+      message = "Call connection failed";
+    } else {
+      message = `Call ended by ${endedByName}`;
+    }
+
+    showCallEndedNotice(message);
+  }, [clearOutgoingTimeout, showCallEndedNotice]);
+
   // ─── LiveKit token fetch (fallback only) ──────────────────────────────────
   // ─── LiveKit token fetch (Recovery & manual retry) ──────────────────────────
   const fetchMyLiveKitToken = useCallback((bookingId: string) => {
@@ -303,9 +400,29 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         acceptInProgressRef.current = false;
         endInProgressRef.current = false;
         fetchingTokenForRef.current = null;
+      } else if (
+        type === "call:ended" ||
+        type === "call:reject" ||
+        type === "call:end" ||
+        type === "call:cancel" ||
+        type === "call:missed" ||
+        type === "call:busy"
+      ) {
+        const targetCallId = call?.id || activeCallRef.current?.id;
+        if (targetCallId) {
+          handleRemoteCallEnded({
+            callId: targetCallId,
+            call,
+            reason: data.reason || (type === "call:reject" ? "declined" : (type === "call:cancel" ? "cancelled" : "ended")),
+            endedByUserId: data.endedByUserId,
+            endedByRole: data.endedByRole,
+            endedByName: data.endedByName,
+            endedAt: data.endedAt
+          });
+        }
       }
     };
-  }, [clearOutgoingTimeout, fetchMyLiveKitToken]);
+  }, [clearOutgoingTimeout, fetchMyLiveKitToken, handleRemoteCallEnded]);
 
   // ─── Socket.IO Initialization ──────────────────────────────────────────────
   const initializeSocket = useCallback((): Promise<void> => {
@@ -395,6 +512,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       "call:ring",
       "call:initiate",
       "call:accept",
+      "call:ended",
       "call:reject",
       "call:end",
       "call:cancel",
@@ -829,21 +947,46 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               }
             }
           } else if (["REJECTED","ENDED","CANCELLED","COMPLETED","BUSY","MISSED"].includes(call.status)) {
-            // CRITICAL BUG FIX 22: Validate call.id before tearing down
-            if (activeCallRef.current && activeCallRef.current.id === call.id) {
-              console.log(`[CALL] Server reported call status '${call.status}'. Clearing call.`);
-              clearOutgoingTimeout();
-              setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
-              ringtonePlayer.stopRingtone();
-              callAudioManager.stopAll();
-              callStartInProgressRef.current = false;
-              acceptInProgressRef.current = false;
-              endInProgressRef.current = false;
-              fetchingTokenForRef.current = null;
+            const activeId = activeCallRef.current?.id ? String(activeCallRef.current.id).trim() : null;
+            const reportedId = call.id ? String(call.id).trim() : null;
+            const matchesCurrent = !activeId || activeId === reportedId || activeId.startsWith("temp-") || (reportedId && reportedId.startsWith("temp-"));
+            if (matchesCurrent) {
+              console.log(`[CALL] Polling detected terminal call status '${call.status}' for call ${reportedId}. Triggering handleRemoteCallEnded.`);
+              const reason = call.endReason || (call.status === "REJECTED" ? "declined" : (call.status === "CANCELLED" ? "cancelled" : "ended"));
+              handleRemoteCallEnded({
+                callId: reportedId || activeId || undefined,
+                call,
+                reason,
+                endedByUserId: call.endedByUserId,
+                endedByRole: call.endedByRole
+              });
             }
           }
         } else {
-          // CRITICAL BUG FIX 2: Active call missing counter / grace period before cleanup
+          // If we locally believe a call is active/outgoing/incoming, actively check the specific call ID
+          const activeCurrent = activeCallRef.current;
+          if (activeCurrent && activeCurrent.id && !activeCurrent.id.startsWith("temp-")) {
+            try {
+              const specificRes = await fetch(`/api/calls/${activeCurrent.id}`, { headers: getHeaders() });
+              if (specificRes.ok) {
+                const specificData = await specificRes.json();
+                const specificCall = specificData?.call;
+                if (specificCall && ["REJECTED", "ENDED", "CANCELLED", "COMPLETED", "BUSY", "MISSED"].includes(specificCall.status)) {
+                  console.log(`[CALL] Polling check confirmed call ${specificCall.id} is terminal '${specificCall.status}'. Tearing down immediately.`);
+                  const reason = specificCall.endReason || (specificCall.status === "REJECTED" ? "declined" : (specificCall.status === "CANCELLED" ? "cancelled" : "ended"));
+                  handleRemoteCallEnded({
+                    callId: specificCall.id,
+                    call: specificCall,
+                    reason,
+                    endedByUserId: specificCall.endedByUserId,
+                    endedByRole: specificCall.endedByRole
+                  });
+                  return;
+                }
+              }
+            } catch {}
+          }
+
           activeCallMissingCountRef.current += 1;
           const currentState = callStateRef.current;
           const isTransientState = currentState === "CREATING" || currentState === "OUTGOING" || currentState === "INCOMING" || currentState === "ACCEPTING";
@@ -851,14 +994,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           
           if (!isTransientState && !isTempCall && currentState === "ACTIVE" && activeCallMissingCountRef.current >= 5) {
             console.log("[CALL] 5 consecutive null responses during ACTIVE state. Clearing call.");
-            clearOutgoingTimeout();
-            setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
-            ringtonePlayer.stopRingtone();
-            callAudioManager.stopAll();
-            callStartInProgressRef.current = false;
-            acceptInProgressRef.current = false;
-            endInProgressRef.current = false;
-            fetchingTokenForRef.current = null;
+            handleRemoteCallEnded({
+              callId: activeCallRef.current?.id,
+              reason: "ended"
+            });
           }
         }
       } catch {}
@@ -867,7 +1006,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     syncCallStatus();
     const interval = setInterval(syncCallStatus, 2000);
     return () => clearInterval(interval);
-  }, [currentUserId, getHeaders, fetchMyLiveKitToken, clearOutgoingTimeout]);
+  }, [currentUserId, getHeaders, fetchMyLiveKitToken, clearOutgoingTimeout, handleRemoteCallEnded]);
 
   // ─── startCall ────────────────────────────────────────────────────────────
   const startCall = useCallback(async (bookingId: string) => {
@@ -1027,15 +1166,35 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   // ─── rejectCall ───────────────────────────────────────────────────────────
   const rejectCall = useCallback(async () => {
     if (!activeCallRef.current) return;
-    const callId = activeCallRef.current.id;
+    const callToReject = activeCallRef.current;
+    const callId = callToReject.id;
 
+    processedTerminalCallIdsRef.current.add(callId);
     clearOutgoingTimeout();
     callAudioManager.stopAll();
+    ringtonePlayer.stopRingtone();
+    callAudioManager.playCallEndedSound();
+
     nativeCallBridge.dismissNativeCall(callId).catch(() => {});
     nativeCallBridge.stopActiveCallService().catch(() => {});
-    setCallState("IDLE"); setActiveCall(null); setLivekitCredentials(null);
+    setCallState("IDLE");
+    setActiveCall(null);
+    setLivekitCredentials(null);
+
+    const endedAt = new Date().toISOString();
+    const isCaller = matchesMe(callToReject.callerId);
+    const endedByName = currentUser?.name || (isCaller ? "Customer" : "Service Provider");
+    const endedByRole = isCaller ? "customer" : "provider";
 
     if (socketRef.current && socketConnectedRef.current) {
+      socketRef.current.emit("call:ended", {
+        call: callToReject,
+        reason: "declined",
+        endedByUserId: currentUserIdRef.current,
+        endedByRole,
+        endedByName,
+        endedAt
+      });
       socketRef.current.emit("call:reject", { call: { id: callId } });
     }
 
@@ -1048,7 +1207,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.warn("[CALL] Reject call API notice:", err);
     }
-  }, [getHeaders, clearOutgoingTimeout]);
+  }, [getHeaders, clearOutgoingTimeout, currentUser?.name, matchesMe]);
 
   // ─── endCall ──────────────────────────────────────────────────────────────
   const endCall = useCallback(async () => {
@@ -1057,29 +1216,61 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     clearOutgoingTimeout();
     callAudioManager.stopAll();
+    ringtonePlayer.stopRingtone();
+    callAudioManager.playCallEndedSound();
+
     const callToClose = activeCallRef.current;
-    if (callToClose?.id) nativeCallBridge.dismissNativeCall(callToClose.id).catch(() => {});
+    const callId = callToClose?.id;
+
+    if (callId) {
+      processedTerminalCallIdsRef.current.add(callId);
+      nativeCallBridge.dismissNativeCall(callId).catch(() => {});
+    }
     nativeCallBridge.stopActiveCallService().catch(() => {});
 
     setCallState("IDLE");
     setActiveCall(null);
     setLivekitCredentials(null);
 
-    if (callToClose && callToClose.id && !callToClose.id.startsWith("temp-")) {
+    if (callToClose && callId && !callId.startsWith("temp-")) {
+      const endedAt = new Date().toISOString();
+      const isCaller = matchesMe(callToClose.callerId);
+      const endedByName = currentUser?.name || (isCaller ? "Customer" : "Service Provider");
+      const endedByRole = isCaller ? "customer" : "provider";
+      const isCancel = callStateRef.current === "OUTGOING" || callToClose.status === "INITIATED" || callToClose.status === "RINGING";
+      const reason = isCancel ? "cancelled" : "ended";
+      const signalType = isCancel ? "call:cancel" : "call:end";
+
       if (socketRef.current && socketConnectedRef.current) {
-        socketRef.current.emit("call:end", { call: callToClose });
+        socketRef.current.emit("call:ended", {
+          call: callToClose,
+          reason,
+          endedByUserId: currentUserIdRef.current,
+          endedByRole,
+          endedByName,
+          endedAt
+        });
+        socketRef.current.emit(signalType, { call: callToClose });
       }
       try {
         const bc = new BroadcastChannel("cityconnect-calls-global-sync");
-        bc.postMessage({ type: "call:end", call: callToClose });
+        bc.postMessage({
+          type: "call:ended",
+          call: callToClose,
+          reason,
+          endedByUserId: currentUserIdRef.current,
+          endedByRole,
+          endedByName,
+          endedAt
+        });
         bc.close();
       } catch {}
 
       try {
-        await fetch(`/api/calls/${callToClose.id}/end`, {
+        await fetch(`/api/calls/${callId}/end`, {
           method: "POST",
           headers: getHeaders(),
-          body: JSON.stringify({})
+          body: JSON.stringify({ reason })
         });
       } catch (err) {
         console.warn("[CALL] End call API notice:", err);
@@ -1090,7 +1281,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     acceptInProgressRef.current = false;
     endInProgressRef.current = false;
     fetchingTokenForRef.current = null;
-  }, [getHeaders, clearOutgoingTimeout]);
+  }, [getHeaders, clearOutgoingTimeout, currentUser?.name, matchesMe]);
 
   return (
     <CallContext.Provider
@@ -1131,6 +1322,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           currentUserId={currentUserId}
           onEndCall={endCall}
         />
+      )}
+
+      {/* Call Ended / Declined Floating Toast Notice */}
+      {callEndedNotice && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999999] pointer-events-none animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-slate-700/80 shadow-2xl backdrop-blur-xl text-white text-xs font-semibold tracking-wide">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            <span>{callEndedNotice}</span>
+          </div>
+        </div>
       )}
     </CallContext.Provider>
   );

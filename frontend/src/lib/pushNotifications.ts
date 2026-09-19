@@ -77,11 +77,16 @@ export interface PushNotificationPayload {
 }
 
 export interface NativeCallPushData {
-  type: "incoming_call" | "call:cancelled" | "call:ended";
+  type: "incoming_call" | "call:cancelled" | "call:ended" | "call_ended" | "call_cancelled";
   callId: string;
   bookingId?: string;
   callerName?: string;
   serviceName?: string;
+  reason?: string;
+  endedByUserId?: string;
+  endedByRole?: string;
+  endedByName?: string;
+  endedAt?: string;
   [key: string]: any;
 }
 
@@ -174,10 +179,15 @@ export async function sendNativePushToUser(userId: string, data: NativeCallPushD
           },
           data: {
             type: data.type,
-            callId: data.callId,
-            bookingId: data.bookingId || "",
-            callerName: data.callerName || "BelConnect User",
-            serviceName: data.serviceName || "Voice Call"
+            callId: String(data.callId || ""),
+            bookingId: String(data.bookingId || ""),
+            callerName: String(data.callerName || "BelConnect User"),
+            serviceName: String(data.serviceName || "Voice Call"),
+            reason: String(data.reason || ""),
+            endedByUserId: String(data.endedByUserId || ""),
+            endedByRole: String(data.endedByRole || ""),
+            endedByName: String(data.endedByName || ""),
+            endedAt: String(data.endedAt || "")
           }
         };
 
@@ -223,10 +233,15 @@ export async function sendNativePushToUser(userId: string, data: NativeCallPushD
             content_available: true,
             data: {
               type: data.type,
-              callId: data.callId,
-              bookingId: data.bookingId || "",
-              callerName: data.callerName || "BelConnect User",
-              serviceName: data.serviceName || "Voice Call"
+              callId: String(data.callId || ""),
+              bookingId: String(data.bookingId || ""),
+              callerName: String(data.callerName || "BelConnect User"),
+              serviceName: String(data.serviceName || "Voice Call"),
+              reason: String(data.reason || ""),
+              endedByUserId: String(data.endedByUserId || ""),
+              endedByRole: String(data.endedByRole || ""),
+              endedByName: String(data.endedByName || ""),
+              endedAt: String(data.endedAt || "")
             }
           })
         });
@@ -258,30 +273,48 @@ export async function sendNativePushToUser(userId: string, data: NativeCallPushD
  * Unified call wake-up helper: dispatches both Web Push and Native Android Push in parallel.
  */
 export async function sendCallPushWakeUp(receiverId: string, callData: {
-  type: "incoming_call" | "call:cancelled" | "call:ended";
+  type: "incoming_call" | "call:cancelled" | "call:ended" | "call_ended" | "call_cancelled";
   callId: string;
   bookingId?: string;
   callerName?: string;
   serviceName?: string;
+  reason?: string;
+  endedByUserId?: string;
+  endedByRole?: string;
+  endedByName?: string;
+  endedAt?: string;
+  [key: string]: any;
 }): Promise<void> {
   const isIncoming = callData.type === "incoming_call";
   const webPayload: PushNotificationPayload = {
     title: isIncoming ? "Incoming Voice Call 📞" : "Call Ended",
     body: isIncoming
       ? `Incoming call from ${callData.callerName || "User"} for ${callData.serviceName || "Service"}`
-      : "Call was ended or declined",
+      : (callData.reason === "declined" ? "Call was declined" : "Call was ended"),
     data: {
-      type: isIncoming ? "call:incoming" : "call:cancelled",
+      type: isIncoming ? "call:incoming" : "call:ended",
       callId: callData.callId,
       bookingId: callData.bookingId,
       callerName: callData.callerName || "User",
       serviceName: callData.serviceName || "Service",
-      url: `/?activeCall=true&callId=${callData.callId}`
+      reason: callData.reason || "ended",
+      endedByUserId: callData.endedByUserId,
+      endedByRole: callData.endedByRole,
+      endedByName: callData.endedByName,
+      endedAt: callData.endedAt,
+      url: `/?callEnded=true&callId=${callData.callId}`
     }
   };
 
+  const nativeType = isIncoming
+    ? "incoming_call"
+    : (callData.type === "call:cancelled" ? "call:cancelled" : "call_ended");
+
   await Promise.allSettled([
     sendPushToUser(receiverId, webPayload),
-    sendNativePushToUser(receiverId, callData)
+    sendNativePushToUser(receiverId, {
+      ...callData,
+      type: nativeType
+    })
   ]);
 }

@@ -89,6 +89,8 @@ io.on("connection", (socket) => {
   socket.join(userRoom);
 
   console.log(`[Signaling Server] User connected: ${userId} (Socket ID: ${socket.id}, Room: ${userRoom})`);
+  console.log(`[SOCKET] authenticated user=${userId}`);
+  console.log(`[SOCKET] joined room=${userRoom}`);
 
   // Allow client to join a specific call session room
   socket.on("call:join_session", (data) => {
@@ -98,6 +100,52 @@ io.on("connection", (socket) => {
       console.log(`[Signaling Server] User ${userId} joined room ${callRoom}`);
     }
   });
+
+  // Direct client-to-server call signaling event handlers
+  const handleClientCallTermination = (event, data) => {
+    if (!data) return;
+    const call = data.call || {};
+    const callId = call.id || data.callId;
+    const callerId = call.callerId || (data.endedByRole === "customer" ? userId : null);
+    const receiverId = call.receiverId || (data.endedByRole === "provider" ? userId : null);
+    const reason = data.reason || (event === "call:reject" ? "declined" : event === "call:cancel" ? "cancelled" : "ended");
+
+    console.log(`[CALL-END] forwarding callId=${callId} event=${event} from user=${userId}`);
+    if (callerId) console.log(`[CALL-END] target customer room=user:${callerId}`);
+    if (receiverId) console.log(`[CALL-END] target provider room=user:${receiverId}`);
+
+    const payload = {
+      type: "call:ended",
+      call: { ...call, id: callId, status: reason === "declined" ? "REJECTED" : reason === "cancelled" ? "CANCELLED" : "ENDED" },
+      reason,
+      endedByUserId: data.endedByUserId || userId,
+      endedByRole: data.endedByRole || (userId === callerId ? "customer" : "provider"),
+      endedByName: data.endedByName || null,
+      endedAt: data.endedAt || new Date().toISOString(),
+      timestamp: data.timestamp || Date.now()
+    };
+
+    if (callerId) {
+      io.to(`user:${callerId}`).emit("call:ended", payload);
+      io.to(`user:${callerId}`).emit("call:signal", payload);
+      io.to(`user:${callerId}`).emit(event, payload);
+    }
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit("call:ended", payload);
+      io.to(`user:${receiverId}`).emit("call:signal", payload);
+      io.to(`user:${receiverId}`).emit(event, payload);
+    }
+    if (callId) {
+      io.to(`call:${callId}`).emit("call:ended", payload);
+      io.to(`call:${callId}`).emit("call:signal", payload);
+      io.to(`call:${callId}`).emit(event, payload);
+    }
+  };
+
+  socket.on("call:ended", (data) => handleClientCallTermination("call:ended", data));
+  socket.on("call:reject", (data) => handleClientCallTermination("call:reject", data));
+  socket.on("call:end", (data) => handleClientCallTermination("call:end", data));
+  socket.on("call:cancel", (data) => handleClientCallTermination("call:cancel", data));
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
   socket.on("booking:subscribe", async (data) => {
@@ -520,6 +568,7 @@ app.post("/api/location/broadcast", (req, res) => {
 // REST API for Next.js backend to push call signaling events
 app.post("/api/signal", (req, res) => {
   const { secret, type, targetUserId, targetUserIds, call, livekit, timestamp } = req.body;
+  const { secret, type, targetUserId, targetUserIds, call, livekit, timestamp, reason, endedByUserId, endedByRole, endedByName, endedAt } = req.body;
 
   if (secret !== SIGNALING_SECRET) {
     return res.status(403).json({ error: "Forbidden: Invalid internal secret" });
@@ -533,8 +582,20 @@ app.post("/api/signal", (req, res) => {
     type,
     call,
     livekit,
+    reason: reason || call.endReason || (call.status === "REJECTED" ? "declined" : call.status === "CANCELLED" ? "cancelled" : "ended"),
+    endedByUserId: endedByUserId || call.endedByUserId || null,
+    endedByRole: endedByRole || call.endedByRole || null,
+    endedByName: endedByName || null,
+    endedAt: endedAt || call.endedAt || new Date().toISOString(),
     timestamp: timestamp || Date.now()
   };
+
+  const isTerminalSignal = type === "call:ended" || type === "call:reject" || type === "call:end" || type === "call:cancel" || type === "call:missed" || type === "call:busy";
+  if (isTerminalSignal) {
+    console.log(`[CALL-END] forwarding callId=${call.id} type=${type} reason=${payload.reason}`);
+    if (call.callerId) console.log(`[CALL-END] target customer room=user:${call.callerId}`);
+    if (call.receiverId) console.log(`[CALL-END] target provider room=user:${call.receiverId}`);
+  }
 
   if (targetUserIds && Array.isArray(targetUserIds)) {
     targetUserIds.forEach((uid) => {

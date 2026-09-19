@@ -286,15 +286,18 @@ public class BelConnectCallPlugin extends Plugin {
     public static void dismissCall(Context context, String callId) {
         stopRingtone();
         clearCallPresented(callId);
-        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (notificationManager != null) {
-            if (callId != null && !callId.isEmpty()) {
-                notificationManager.cancel(Math.abs(callId.hashCode()));
-            } else {
-                notificationManager.cancelAll();
+        if (context != null) {
+            BelConnectCallService.stopIfMatchingCall(context, callId);
+            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager != null) {
+                if (callId != null && !callId.isEmpty()) {
+                    notificationManager.cancel(Math.abs(callId.hashCode()));
+                } else {
+                    notificationManager.cancelAll();
+                }
             }
         }
-        Log.i(TAG, "Dismissed call notification: " + callId);
+        Log.i(TAG, "Dismissed call notification and checked service: " + callId);
     }
 
     @PluginMethod

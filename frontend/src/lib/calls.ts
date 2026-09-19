@@ -12,6 +12,16 @@ export type CallStatus =
   | "CANCELLED"
   | "BUSY";
 
+export type CallEndReason =
+  | "ended"
+  | "declined"
+  | "cancelled"
+  | "missed"
+  | "timeout"
+  | "connection_failed";
+
+export type CallParticipantRole = "customer" | "provider";
+
 export interface CallRecord {
   id: string;
   callerId: string;
@@ -28,6 +38,9 @@ export interface CallRecord {
   receiverName?: string;
   receiverAvatar?: string;
   serviceName?: string;
+  endReason?: CallEndReason | null;
+  endedByUserId?: string | null;
+  endedByRole?: CallParticipantRole | null;
 }
 
 function generateCallId(): string {
@@ -81,26 +94,48 @@ export async function getCallById(callId: string): Promise<CallRecord | null> {
 export async function updateCallStatus(
   callId: string,
   status: CallStatus,
-  extra?: { answeredAt?: Date; endedAt?: Date; durationSeconds?: number }
+  extra?: {
+    answeredAt?: Date;
+    endedAt?: Date;
+    durationSeconds?: number;
+    endReason?: CallEndReason;
+    endedByUserId?: string;
+    endedByRole?: CallParticipantRole;
+  }
 ): Promise<CallRecord | null> {
   const current = await getCallById(callId);
   if (!current) return null;
 
+  // Idempotency: if call is already in a terminal status, do not overwrite the original terminal state
+  const terminalStatuses: CallStatus[] = ["ENDED", "REJECTED", "MISSED", "CANCELLED", "FAILED", "BUSY"];
+  const isCurrentlyTerminal = terminalStatuses.includes(current.status);
+  if (isCurrentlyTerminal) {
+    return current;
+  }
+
   let answeredAt = extra?.answeredAt ? extra.answeredAt.toISOString() : current.answeredAt;
   let endedAt = extra?.endedAt ? extra.endedAt.toISOString() : current.endedAt;
   let durationSeconds = extra?.durationSeconds ?? current.durationSeconds;
+  let endReason = extra?.endReason ?? current.endReason ?? null;
+  let endedByUserId = extra?.endedByUserId ?? current.endedByUserId ?? null;
+  let endedByRole = extra?.endedByRole ?? current.endedByRole ?? null;
 
   if (status === "ACCEPTED" && !answeredAt) {
     answeredAt = new Date().toISOString();
   }
 
-  if ((status === "ENDED" || status === "REJECTED" || status === "MISSED" || status === "CANCELLED" || status === "FAILED" || status === "BUSY") && !endedAt) {
+  const isTransitioningToTerminal = terminalStatuses.includes(status);
+  if (isTransitioningToTerminal && !endedAt) {
     endedAt = new Date().toISOString();
-    if (answeredAt) {
-      const startMs = new Date(answeredAt).getTime();
-      const endMs = new Date(endedAt).getTime();
-      durationSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
-    }
+  }
+
+  // Duration is strictly calculated as acceptedAt (answeredAt) -> endedAt
+  if (answeredAt && endedAt) {
+    const startMs = new Date(answeredAt).getTime();
+    const endMs = new Date(endedAt).getTime();
+    durationSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
+  } else if (isTransitioningToTerminal && !answeredAt) {
+    durationSeconds = 0;
   }
 
   const res = await query(
@@ -108,10 +143,13 @@ export async function updateCallStatus(
      SET status = $1, 
          answered_at = COALESCE($2, answered_at),
          ended_at = COALESCE($3, ended_at),
-         duration_seconds = $4
-     WHERE id = $5
+         duration_seconds = $4,
+         end_reason = COALESCE($5, end_reason),
+         ended_by_user_id = COALESCE($6, ended_by_user_id),
+         ended_by_role = COALESCE($7, ended_by_role)
+     WHERE id = $8
      RETURNING *`,
-    [status, answeredAt, endedAt, durationSeconds, callId]
+    [status, answeredAt, endedAt, durationSeconds, endReason, endedByUserId, endedByRole, callId]
   );
 
   if (res.rows.length === 0) return null;
@@ -147,6 +185,23 @@ export async function getActiveCallForUser(userId: string): Promise<CallRecord |
      ORDER BY created_at DESC 
      LIMIT 1`,
     [userId]
+  );
+
+  if (res.rows.length === 0) return null;
+  return getCallById(res.rows[0].id);
+}
+
+export async function getRecentTerminalCallForUser(userId: string, secondsAgo = 20): Promise<CallRecord | null> {
+  if (!userId) return null;
+  const safeSeconds = Math.max(1, Math.min(60, Number(secondsAgo) || 20));
+  const res = await query(
+    `SELECT id FROM calls 
+     WHERE (caller_id = $1 OR receiver_id = $1)
+       AND status IN ('REJECTED', 'CANCELLED', 'ENDED', 'MISSED', 'BUSY', 'FAILED')
+       AND (ended_at >= NOW() - ($2 || ' seconds')::INTERVAL OR created_at >= NOW() - ($2 || ' seconds')::INTERVAL)
+     ORDER BY COALESCE(ended_at, created_at) DESC 
+     LIMIT 1`,
+    [userId, safeSeconds.toString()]
   );
 
   if (res.rows.length === 0) return null;
@@ -194,6 +249,9 @@ export async function autoExpireStaleCalls(timeoutSeconds = 45): Promise<CallRec
     `UPDATE calls
      SET status = 'MISSED',
          ended_at = NOW()
+         end_reason = 'timeout',
+         ended_at = NOW(),
+         duration_seconds = 0
      WHERE status IN ('INITIATED', 'RINGING')
        AND created_at <= NOW() - INTERVAL '${timeoutSeconds} seconds'
      RETURNING id`,
@@ -237,5 +295,8 @@ function mapRowToCallRecord(row: any): CallRecord {
     receiverName: row.receiver_name,
     receiverAvatar: row.receiver_avatar,
     serviceName: row.service_name,
+    endReason: row.end_reason as CallEndReason | null,
+    endedByUserId: row.ended_by_user_id || null,
+    endedByRole: row.ended_by_role as CallParticipantRole | null,
   };
 }

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getCallById, updateCallStatus } from "@/lib/calls";
+import { getCallById, updateCallStatus, CallParticipantRole } from "@/lib/calls";
 import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
-import { sendPushToUser, sendCallPushWakeUp } from "@/lib/pushNotifications";
+import { sendCallPushWakeUp } from "@/lib/pushNotifications";
+
+const TERMINAL_STATUSES = ["ENDED", "REJECTED", "CANCELLED", "MISSED", "FAILED"];
 
 export async function POST(
   request: Request,
@@ -15,41 +17,91 @@ export async function POST(
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }
+    console.log(`[CALL-DECLINE] authenticated user=${authUser.userId}`);
 
     const call = await getCallById(callId);
     if (!call) {
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
+    console.log(`[CALL-DECLINE] call found id=${call.id} status=${call.status}`);
 
     if (authUser.userId !== call.receiverId && authUser.userId !== call.callerId) {
       return NextResponse.json({ error: "Forbidden: You are not a participant in this call" }, { status: 403 });
     }
 
-    const updatedCall = await updateCallStatus(callId, "REJECTED");
+    // Idempotent: If already in a terminal state, return current record without error
+    if (TERMINAL_STATUSES.includes(call.status)) {
+      return NextResponse.json({
+        success: true,
+        call,
+        alreadyEnded: true
+      });
+    }
+
+    const endedByRole: CallParticipantRole = authUser.userId === call.callerId ? "customer" : "provider";
+    const endedByName = authUser.userId === call.callerId
+      ? (call.callerName || "Customer")
+      : (call.receiverName || "Service Provider");
+
+    const updatedCall = await updateCallStatus(callId, "REJECTED", {
+      endReason: "declined",
+      endedByUserId: authUser.userId,
+      endedByRole
+    });
+
     if (!updatedCall) {
       return NextResponse.json({ error: "Failed to update call" }, { status: 500 });
     }
+    console.log(`[CALL-DECLINE] DB terminal update success callId=${callId} status=REJECTED`);
 
-    // Non-blocking fire-and-forget Socket.IO signal dispatch
-    sendCallSignal({
-      type: "call:reject",
-      targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
-      call: updatedCall
-    }).catch((err) => console.error("[Reject API] Signal relay failed:", err));
+    const endedAt = updatedCall.endedAt || new Date().toISOString();
+
+    // 1. Canonical call:ended and legacy signal relays (awaited so Vercel does not terminate before delivery)
+    await Promise.allSettled([
+      sendCallSignal({
+        type: "call:ended",
+        targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
+        call: updatedCall,
+        reason: "declined",
+        endedByUserId: authUser.userId,
+        endedByRole,
+        endedByName,
+        endedAt
+      }).catch((err) => console.error("[Reject API] Canonical signal relay failed:", err)),
+
+      sendCallSignal({
+        type: "call:reject",
+        targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
+        call: updatedCall
+      }).catch((err) => console.error("[Reject API] Legacy signal relay failed:", err))
+    ]);
 
     callSignaling.emitCallEvent({
-      type: "call:reject",
+      type: "call:ended",
       call: updatedCall,
+      reason: "declined",
+      endedByUserId: authUser.userId,
+      endedByRole,
+      endedByName,
+      endedAt,
       timestamp: Date.now()
     });
 
-    // Dismiss Web Push and Native Android Push notification banners for both participants
+    // 3. Dismiss Web Push and Native Android Push notification banners for both participants (awaited)
     const pushCancelData = {
-      type: "call:cancelled" as const,
-      callId: updatedCall.id
+      type: "call_ended" as const,
+      callId: updatedCall.id,
+      bookingId: updatedCall.bookingId,
+      reason: "declined",
+      endedByUserId: authUser.userId,
+      endedByRole,
+      endedByName,
+      endedAt
     };
-    sendCallPushWakeUp(updatedCall.callerId, pushCancelData).catch(() => {});
-    sendCallPushWakeUp(updatedCall.receiverId, pushCancelData).catch(() => {});
+    await Promise.allSettled([
+      sendCallPushWakeUp(updatedCall.callerId, pushCancelData).catch(() => {}),
+      sendCallPushWakeUp(updatedCall.receiverId, pushCancelData).catch(() => {})
+    ]);
 
     return NextResponse.json({
       success: true,

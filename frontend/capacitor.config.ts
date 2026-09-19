@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.cityconnect.app',
-  appName: 'CityConnect',
+  appName: 'BelConnect',
   webDir: 'public',
   ...(process.env.CAPACITOR_SERVER_URL
     ? {

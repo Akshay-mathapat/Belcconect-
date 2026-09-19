@@ -116,6 +116,7 @@ self.addEventListener("push", (event) => {
     const type = notificationData.type || payload.type || "general";
 
     if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled") {
+    if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled" || type === "call_ended") {
       const callId = notificationData.callId || payload.callId;
       const callTag = `call_${callId}`;
       event.waitUntil(
