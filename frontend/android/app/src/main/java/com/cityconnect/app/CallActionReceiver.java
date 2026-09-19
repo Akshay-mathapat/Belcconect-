@@ -19,7 +19,7 @@ import okhttp3.Response;
 
 public class CallActionReceiver extends BroadcastReceiver {
     private static final String TAG = "CallActionReceiver";
-    public static final String DEFAULT_PRODUCTION_URL = "https://belconnect.vercel.app";
+    public static final String DEFAULT_PRODUCTION_URL = "https://belcconect.vercel.app";
 
     private static final OkHttpClient httpClient = new OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)

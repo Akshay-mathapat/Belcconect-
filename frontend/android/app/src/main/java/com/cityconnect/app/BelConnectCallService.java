@@ -8,6 +8,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
+import android.os.PowerManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -27,6 +31,10 @@ public class BelConnectCallService extends Service {
     private String peerName;
     private String serviceName;
     private long callStartTime = 0;
+
+    private AudioManager audioManager = null;
+    private AudioFocusRequest audioFocusRequest = null;
+    private PowerManager.WakeLock wakeLock = null;
 
     public static boolean isServiceRunning() {
         return isRunning;
@@ -104,6 +112,7 @@ public class BelConnectCallService extends Service {
                     startForeground(NOTIFICATION_ID, notification);
                 }
                 isRunning = true;
+                acquireAudioAndWakeLock();
                 Log.i(TAG, "Started active call foreground service for callId: " + callId);
             } else if ("STOP_CALL".equals(action)) {
                 stopInternal();
@@ -112,11 +121,83 @@ public class BelConnectCallService extends Service {
         return START_NOT_STICKY;
     }
 
+    private void acquireAudioAndWakeLock() {
+        try {
+            if (audioManager == null) {
+                audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            }
+            if (audioManager != null) {
+                audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    AudioAttributes playbackAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build();
+                    audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                        .setAudioAttributes(playbackAttributes)
+                        .setAcceptsDelayedFocusGain(true)
+                        .setOnAudioFocusChangeListener(focusChange -> {
+                            Log.i(TAG, "[CALL_TRACE] BelConnectCallService audio focus changed: " + focusChange);
+                        })
+                        .build();
+                    audioManager.requestAudioFocus(audioFocusRequest);
+                } else {
+                    audioManager.requestAudioFocus(null, AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN);
+                }
+                Log.i(TAG, "[CALL_TRACE] Audio focus requested and MODE_IN_COMMUNICATION set.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error acquiring audio focus: " + e.getMessage());
+        }
+
+        try {
+            if (wakeLock == null) {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BelConnect:CallWakeLock");
+                    wakeLock.setReferenceCounted(false);
+                    wakeLock.acquire(4 * 60 * 60 * 1000L); // Safety timeout 4 hours
+                    Log.i(TAG, "[CALL_TRACE] Acquired PARTIAL_WAKE_LOCK for ongoing call.");
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error acquiring wake lock: " + e.getMessage());
+        }
+    }
+
+    private void releaseAudioAndWakeLock() {
+        try {
+            if (audioManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && audioFocusRequest != null) {
+                    audioManager.abandonAudioFocusRequest(audioFocusRequest);
+                    audioFocusRequest = null;
+                } else {
+                    audioManager.abandonAudioFocus(null);
+                }
+                audioManager.setMode(AudioManager.MODE_NORMAL);
+                Log.i(TAG, "[CALL_TRACE] Abandoned audio focus and restored MODE_NORMAL.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error releasing audio focus: " + e.getMessage());
+        }
+
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+                Log.i(TAG, "[CALL_TRACE] Released PARTIAL_WAKE_LOCK.");
+            }
+            wakeLock = null;
+        } catch (Exception e) {
+            Log.w(TAG, "Error releasing wake lock: " + e.getMessage());
+        }
+    }
+
     private void stopInternal() {
         Log.i(TAG, "Stopping active call foreground service");
         isRunning = false;
         activeServiceCallId = null;
         callStartTime = 0;
+        releaseAudioAndWakeLock();
         stopForeground(true);
         stopSelf();
     }
@@ -127,6 +208,7 @@ public class BelConnectCallService extends Service {
         isRunning = false;
         activeServiceCallId = null;
         callStartTime = 0;
+        releaseAudioAndWakeLock();
     }
 
     private Notification buildNotification() {

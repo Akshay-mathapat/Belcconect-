@@ -138,6 +138,34 @@ function suppressMediaSession() {
 }
 
 /**
+ * Configures Chromium MediaSession to reflect active two-way call status.
+ * Marking playbackState = "playing" prevents Chromium WebView from suspending
+ * the WebRTC audio thread when the user switches apps or minimizes the screen.
+ */
+function setCallMediaSessionActive(peerName: string, onEndCall: () => void) {
+  if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+    try {
+      navigator.mediaSession.playbackState = "playing";
+      if (typeof MediaMetadata !== "undefined") {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: `BelConnect Call: ${peerName}`,
+          artist: "BelConnect",
+          album: "Active Voice Call"
+        });
+      }
+      try {
+        navigator.mediaSession.setActionHandler("hangup" as any, () => onEndCall());
+      } catch {}
+      try {
+        navigator.mediaSession.setActionHandler("stop", () => onEndCall());
+      } catch {}
+    } catch (e) {
+      console.warn("[MediaSession] Error setting active media session:", e);
+    }
+  }
+}
+
+/**
  * Main active call content rendered INSIDE LiveKitRoom context.
  * Uses LiveKit React hooks safely.
  */
@@ -185,19 +213,17 @@ function LiveKitVoiceContent({
   const remoteParticipantPresent = remoteParticipants.length > 0;
   const isAudioReady = roomConnected && localMicPublished && remoteParticipantPresent && remoteAudioSubscribed && canPlayAudio === true;
 
-  // Immediately suppress Chromium MediaSession on mount, room connection, and unmount
+  // Maintain active media session status when audio is ready
   useEffect(() => {
-    suppressMediaSession();
+    if (isAudioReady) {
+      setCallMediaSessionActive(peerName, onEndCall);
+    } else {
+      suppressMediaSession();
+    }
     return () => {
       suppressMediaSession();
     };
-  }, []);
-
-  useEffect(() => {
-    if (roomConnected || remoteAudioSubscribed || isAudioReady) {
-      suppressMediaSession();
-    }
-  }, [roomConnected, remoteAudioSubscribed, isAudioReady]);
+  }, [isAudioReady, peerName, onEndCall]);
 
   // Dev Logging for LiveKit session details and state transitions
   useEffect(() => {

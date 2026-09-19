@@ -78,6 +78,14 @@ public class MainActivity extends BridgeActivity {
         // Initialize Call Notification Channel.
         BelConnectCallPlugin.createNotificationChannel(this);
 
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
+            }
+        } catch (Exception e) {
+            Log.w("MainActivity", "Could not set media playback gesture setting: " + e.getMessage());
+        }
+
         // Ensure RECORD_AUDIO runtime permission is granted
         // for WebRTC / voice calling on Android 6+.
         if (
@@ -184,6 +192,23 @@ public class MainActivity extends BridgeActivity {
         super.onPause();
 
         BelConnectCallPlugin.isAppInForeground = false;
+
+        if (BelConnectCallService.isServiceRunning() && getBridge() != null && getBridge().getWebView() != null) {
+            Log.i("MainActivity", "[CALL_TRACE] Call in progress during onPause: keeping WebView active for background audio");
+            getBridge().getWebView().onResume();
+            getBridge().getWebView().resumeTimers();
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        if (BelConnectCallService.isServiceRunning() && getBridge() != null && getBridge().getWebView() != null) {
+            Log.i("MainActivity", "[CALL_TRACE] Call in progress during onStop: keeping WebView active for background audio");
+            getBridge().getWebView().onResume();
+            getBridge().getWebView().resumeTimers();
+        }
     }
 
     private void handleCallIntent(Intent intent) {

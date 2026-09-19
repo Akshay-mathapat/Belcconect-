@@ -25,7 +25,10 @@ export interface SocketSignalPayload {
   endedAt?: string;
 }
 
-const SIGNALING_SERVER_URL = process.env.SIGNALING_SERVER_URL || process.env.NEXT_PUBLIC_SIGNALING_URL || "http://localhost:4001";
+const SIGNALING_SERVER_URL =
+  process.env.SIGNALING_SERVER_URL ||
+  process.env.NEXT_PUBLIC_SIGNALING_URL ||
+  (process.env.NODE_ENV === "production" ? "https://belcconect-backend.onrender.com" : "http://localhost:4001");
 // DO NOT FALL BACK TO ANY DEFAULT VALUE, EMPTY STRING INCLUDED, FOR A SECRET USED IN AN AUTHORIZATION OR SIGNATURE CHECK — FAIL STARTUP INSTEAD.
 const SIGNALING_INTERNAL_SECRET = process.env.SIGNALING_INTERNAL_SECRET;
 

@@ -250,8 +250,9 @@ export default function CustomerBookingsPage() {
                       {isCompleted && (
                         <button
                           onClick={() => handleDeleteBooking(booking.id)}
-                          className="px-3.5 py-2 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          className="min-h-[44px] min-w-[44px] px-3.5 py-2 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                           title="Delete Completed Booking"
+                          aria-label="Delete Completed Booking"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Delete</span>

@@ -10,6 +10,17 @@ const parseCoord = (val: any): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+// Helper to normalize and sanitize booking IDs
+function normalizeBookingId(rawId: string): { raw: string; clean: string } {
+  const raw = rawId ? String(rawId) : "";
+  let clean = raw;
+  try {
+    clean = decodeURIComponent(raw);
+  } catch {}
+  clean = clean.trim().replace(/^#+/, "");
+  return { raw, clean };
+}
+
 // Helper to map DB row to Frontend Booking type
 function mapRowToBooking(row: any) {
   return {
@@ -50,10 +61,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
+
   try {
     // 1. Enforce authentication via JWT session token
     const authUser = getAuthenticatedUser(request);
     if (!authUser) {
+      console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=GET rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(
         { error: "Unauthorized: Missing or invalid authentication token" },
         { status: 401 }
@@ -97,22 +111,28 @@ export async function GET(
         FROM addresses 
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
-      WHERE b.id = $1`,
-      [id]
+      WHERE (b.id = $1 OR LOWER(b.id) = LOWER($1) OR b.id = $2 OR LOWER(b.id) = LOWER($2))
+      LIMIT 1`,
+      [cleanId, rawId]
     );
 
     if (res.rows.length === 0) {
+      console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=GET rawId=${rawId} cleanId=${cleanId} userId=${authUser.userId} role=${authUser.role} found=false`);
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     const bookingRow = res.rows[0];
+    const canonicalId = bookingRow.id;
 
     // 2. Enforce server-side authorization: only assigned customer, assigned provider, or admin
     const isCustomer = authUser.userId === bookingRow.customer_id;
     const isProvider = authUser.userId === bookingRow.provider_id;
     const isAdmin = authUser.role === "admin";
+    const authorized = isCustomer || isProvider || isAdmin;
 
-    if (!isCustomer && !isProvider && !isAdmin) {
+    console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=GET bookingId=${canonicalId} userId=${authUser.userId} role=${authUser.role} found=true authorized=${authorized}`);
+
+    if (!authorized) {
       return NextResponse.json(
         { error: "Forbidden: You are not authorized to view this booking" },
         { status: 403 }
@@ -121,7 +141,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, booking: mapRowToBooking(bookingRow) });
   } catch (error: any) {
-    console.error(`Error fetching booking ${id}:`, error);
+    console.error(`Error fetching booking ${cleanId}:`, error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
@@ -131,10 +151,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
+
   try {
     // 1. Enforce authentication via JWT session token
     const authUser = getAuthenticatedUser(request);
     if (!authUser) {
+      console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=PATCH rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(
         { error: "Unauthorized: Missing or invalid authentication token" },
         { status: 401 }
@@ -144,13 +167,18 @@ export async function PATCH(
     const body = await request.json();
     const { status, date, time, rating, reviewComment } = body;
 
-    // Check if booking exists and fetch previous record
-    const checkRes = await query("SELECT * FROM bookings WHERE id = $1", [id]);
+    // Check if booking exists and fetch previous record with flexible ID match
+    const checkRes = await query(
+      "SELECT * FROM bookings WHERE (id = $1 OR LOWER(id) = LOWER($1) OR id = $2 OR LOWER(id) = LOWER($2)) LIMIT 1",
+      [cleanId, rawId]
+    );
     if (checkRes.rows.length === 0) {
+      console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=PATCH rawId=${rawId} cleanId=${cleanId} userId=${authUser.userId} role=${authUser.role} found=false`);
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     const previousBooking = checkRes.rows[0];
+    const canonicalId = previousBooking.id;
     const previousStatus = previousBooking.status;
     const customerId = previousBooking.customer_id;
     const providerId = previousBooking.provider_id;
@@ -159,8 +187,11 @@ export async function PATCH(
     const isCustomer = authUser.userId === customerId;
     const isProvider = authUser.userId === providerId;
     const isAdmin = authUser.role === "admin";
+    const authorized = isCustomer || isProvider || isAdmin;
 
-    if (!isCustomer && !isProvider && !isAdmin) {
+    console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=PATCH bookingId=${canonicalId} userId=${authUser.userId} role=${authUser.role} found=true authorized=${authorized}`);
+
+    if (!authorized) {
       return NextResponse.json(
         { error: "Forbidden: You are not authorized to update this booking" },
         { status: 403 }
@@ -213,7 +244,7 @@ export async function PATCH(
 
     // Build update parameters dynamically
     let updateFields: string[] = [];
-    let queryParams: any[] = [id];
+    let queryParams: any[] = [canonicalId];
     let paramIndex = 2;
 
     if (status !== undefined) {
@@ -271,7 +302,7 @@ export async function PATCH(
           await query(
             `INSERT INTO notifications (id, user_id, type, title, body, booking_id, is_read)
              VALUES ($1, $2, $3, $4, $5, $6, FALSE)`,
-            [notificationId, customerId, 'booking_confirmed', notifTitle, notifBody, id]
+            [notificationId, customerId, 'booking_confirmed', notifTitle, notifBody, canonicalId]
           ).catch((e) => console.error("[Notifications] DB insert error:", e));
 
           // b) Send web push notification (graceful degradation if push fails)
@@ -280,14 +311,14 @@ export async function PATCH(
             body: notifBody,
             data: {
               type: "booking_confirmed",
-              bookingId: id,
+              bookingId: canonicalId,
               url: `/account`
             }
           }).catch((e) => console.error("[Notifications] Push notification dispatch error:", e));
 
           // c) Send transactional SMS to customer's registered phone number (authoritative DB query, idempotent)
-          sendBookingConfirmationSms(id, customerId, {
-            bookingId: id,
+          sendBookingConfirmationSms(canonicalId, customerId, {
+            bookingId: canonicalId,
             serviceName,
             date: dateVal,
             time: timeVal,
@@ -305,7 +336,7 @@ export async function PATCH(
         b.id, 
         b.customer_id, 
         b.provider_id, 
-        b.provider_name,
+        b.provider_name, 
         b.service_name, 
         b.category, 
         b.date, 
@@ -333,7 +364,7 @@ export async function PATCH(
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
       WHERE b.id = $1`,
-      [id]
+      [canonicalId]
     );
 
     return NextResponse.json({ 
@@ -342,7 +373,7 @@ export async function PATCH(
       notification: status === "Accepted" ? { sms: "QUEUED" } : undefined
     });
   } catch (error: any) {
-    console.error(`Error updating booking ${id}:`, error);
+    console.error(`Error updating booking ${cleanId}:`, error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
@@ -352,36 +383,47 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
+
   try {
     const authUser = getAuthenticatedUser(request);
     if (!authUser) {
+      console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=DELETE rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(
         { error: "Unauthorized: Missing or invalid authentication token" },
         { status: 401 }
       );
     }
 
-    const checkRes = await query("SELECT customer_id, provider_id FROM bookings WHERE id = $1", [id]);
+    const checkRes = await query(
+      "SELECT id, customer_id, provider_id FROM bookings WHERE (id = $1 OR LOWER(id) = LOWER($1) OR id = $2 OR LOWER(id) = LOWER($2)) LIMIT 1",
+      [cleanId, rawId]
+    );
     if (checkRes.rows.length === 0) {
+      console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=DELETE rawId=${rawId} cleanId=${cleanId} userId=${authUser.userId} role=${authUser.role} found=false`);
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     const booking = checkRes.rows[0];
+    const canonicalId = booking.id;
     const isCustomer = authUser.userId === booking.customer_id;
     const isProvider = authUser.userId === booking.provider_id;
     const isAdmin = authUser.role === "admin";
+    const authorized = isCustomer || isProvider || isAdmin;
 
-    if (!isCustomer && !isProvider && !isAdmin) {
+    console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=DELETE bookingId=${canonicalId} userId=${authUser.userId} role=${authUser.role} found=true authorized=${authorized}`);
+
+    if (!authorized) {
       return NextResponse.json(
         { error: "Forbidden: You are not authorized to delete this booking" },
         { status: 403 }
       );
     }
 
-    const res = await query("DELETE FROM bookings WHERE id = $1 RETURNING id", [id]);
-    return NextResponse.json({ success: true, message: "Booking deleted successfully", id });
+    await query("DELETE FROM bookings WHERE id = $1 RETURNING id", [canonicalId]);
+    return NextResponse.json({ success: true, message: "Booking deleted successfully", id: canonicalId });
   } catch (error: any) {
-    console.error(`Error deleting booking ${id}:`, error);
+    console.error(`Error deleting booking ${cleanId}:`, error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

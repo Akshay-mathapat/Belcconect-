@@ -9,14 +9,26 @@ let chatSocket: Socket | null = null;
 // Falls back to localhost:4001 ONLY when browser is also on localhost (desktop dev).
 export const getSignalingUrl = (): string => {
   const envUrl = process.env.NEXT_PUBLIC_SIGNALING_URL?.trim();
-  if (envUrl && envUrl.length > 0) {
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
     return envUrl;
   }
-  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "http://127.0.0.1:4001";
+  if (typeof window !== "undefined") {
+    const browserHost = window.location.hostname;
+    if (browserHost === "localhost" || browserHost === "127.0.0.1") {
+      return "http://127.0.0.1:4001";
+    }
+    if (
+      browserHost.includes("vercel.app") ||
+      browserHost.includes("belcconect") ||
+      browserHost.includes("cityconnect") ||
+      (!browserHost.endsWith(".local") &&
+        !browserHost.startsWith("192.168.") &&
+        !browserHost.startsWith("10."))
+    ) {
+      return "https://belcconect-backend.onrender.com";
+    }
   }
-  // No env var + not localhost = misconfigured; caller must handle
-  return "http://127.0.0.1:4001";
+  return "https://belcconect-backend.onrender.com";
 };
 
 export const getChatSocket = (userId?: string): Socket => {

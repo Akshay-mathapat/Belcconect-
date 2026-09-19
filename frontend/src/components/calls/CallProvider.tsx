@@ -45,33 +45,43 @@ export const useCallContext = () => useContext(CallContext);
 function resolveSignalingUrl(): string | null {
   const envUrl = process.env.NEXT_PUBLIC_SIGNALING_URL?.trim();
 
+  // If environment variable is explicitly set to a non-localhost remote URL, honor it
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl;
+  }
+
   if (typeof window !== "undefined") {
     const browserHost = window.location.hostname;
     const protocol = window.location.protocol;
     const isLocalBrowser = browserHost === "localhost" || browserHost === "127.0.0.1";
 
     if (browserHost.includes("devtunnels.ms")) {
-      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
-        const derivedSignalingHost = browserHost.replace(/-3000(?=\.|\b)/, "-4001");
-        return `${protocol}//${derivedSignalingHost}`;
-      }
+      const derivedSignalingHost = browserHost.replace(/-3000(?=\.|\b)/, "-4001");
+      return `${protocol}//${derivedSignalingHost}`;
     }
 
-    if (!isLocalBrowser) {
-      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
-        return `${protocol}//${browserHost}:4001`;
-      }
+    // Production domains, Vercel deployments, or standalone Android APK
+    if (
+      browserHost.includes("vercel.app") ||
+      browserHost.includes("belcconect") ||
+      browserHost.includes("cityconnect") ||
+      (!isLocalBrowser &&
+        !browserHost.endsWith(".local") &&
+        !browserHost.startsWith("192.168.") &&
+        !browserHost.startsWith("10."))
+    ) {
+      return "https://belcconect-backend.onrender.com";
     }
 
     if (isLocalBrowser) {
-      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
-        return `http://${browserHost}:4001`;
-      }
+      return `http://${browserHost}:4001`;
     }
+
+    return `${protocol}//${browserHost}:4001`;
   }
 
   if (envUrl && envUrl.length > 0) return envUrl;
-  return null;
+  return "https://belcconect-backend.onrender.com";
 }
 
 export function CallProvider({ children }: { children: React.ReactNode }) {

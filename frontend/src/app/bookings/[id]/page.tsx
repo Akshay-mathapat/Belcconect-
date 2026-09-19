@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore, getStoredAuthToken, getStoredUserId } from "@/store/useAuthStore";
@@ -19,6 +19,11 @@ import { useLiveLocationBroadcast } from "@/hooks/useLiveLocationBroadcast";
 
 export default function CustomerTrackingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const cleanBookingId = useMemo(() => {
+    if (!id) return "";
+    return decodeURIComponent(id).trim().replace(/^#/, "");
+  }, [id]);
+
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuthStore();
@@ -40,13 +45,13 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   useEffect(() => {
     if (!isHydrated) return;
     if (!currentUser) {
-      router.push(`/auth?mode=login&returnTo=/bookings/${id}`);
+      router.push(`/auth?mode=login&returnTo=/bookings/${encodeURIComponent(cleanBookingId || id)}`);
     }
-  }, [currentUser, router, id, isHydrated]);
+  }, [currentUser, router, id, cleanBookingId, isHydrated]);
 
   // Activate Customer Live GPS Broadcast when booking tracking window is active and customer grants permission
   const { isTracking: isCustomerBroadcasting, error: gpsError } = useLiveLocationBroadcast(
-    booking?.id,
+    booking?.id || cleanBookingId || id,
     booking?.status,
     "customer",
     shareLiveLocation
@@ -56,16 +61,19 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   useEffect(() => {
     async function fetchBookingDetail() {
       try {
+        const targetId = cleanBookingId || id;
+        if (!targetId) return;
+
         const token = currentUser?.token || getStoredAuthToken();
         const userId = currentUser?.id || getStoredUserId();
         const headers: Record<string, string> = {};
         if (userId) headers["x-user-id"] = userId;
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch(`/api/bookings/${id}`, { headers });
+        const res = await fetch(`/api/bookings/${encodeURIComponent(targetId)}`, { headers });
         if (!res.ok) {
           if (res.status === 401) {
-            router.push(`/auth?mode=login&returnTo=/bookings/${id}`);
+            router.push(`/auth?mode=login&returnTo=/bookings/${encodeURIComponent(targetId)}`);
             return;
           }
           const errData = await res.json().catch(() => ({}));
@@ -88,17 +96,20 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     // Regular fallback polling every 6s
     const interval = setInterval(fetchBookingDetail, 6000);
     return () => clearInterval(interval);
-  }, [id, currentUser, router]);
+  }, [id, cleanBookingId, currentUser, router]);
 
   // 2. Real-Time Socket Listener for Instant Status Updates
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
 
-    socket.emit("booking:subscribe", { bookingId: id });
+    const targetId = cleanBookingId || id;
+    if (!targetId) return;
+
+    socket.emit("booking:subscribe", { bookingId: targetId });
 
     const handleStatusUpdated = (data: any) => {
-      if (data && data.bookingId === id && data.status) {
+      if (data && (data.bookingId === targetId || data.bookingId === id) && data.status) {
         setBooking((prev) => (prev ? { ...prev, status: data.status as BookingStatus } : prev));
       }
     };
@@ -106,10 +117,10 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     socket.on("booking:status_updated", handleStatusUpdated);
 
     return () => {
-      socket.emit("booking:unsubscribe", { bookingId: id });
+      socket.emit("booking:unsubscribe", { bookingId: targetId });
       socket.off("booking:status_updated", handleStatusUpdated);
     };
-  }, [id]);
+  }, [id, cleanBookingId]);
 
   if (loading) {
     return (

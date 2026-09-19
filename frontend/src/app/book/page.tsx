@@ -44,7 +44,7 @@ function BookingFlow() {
   
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [payment, setPayment] = useState("online");
+  const [payment, setPayment] = useState("cash");
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -420,24 +420,17 @@ function BookingFlow() {
             <>
               <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">{t("booking.paymentMethod")}</h1>
               <div className="space-y-3 mb-8">
-                <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${payment === "online" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/50"}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="block font-semibold text-foreground mb-1">{t("booking.payOnline")}</span>
-                      <span className="text-sm text-muted-foreground">{t("booking.payOnlineDetails")}</span>
-                    </div>
-                    <input type="radio" name="payment" checked={payment === "online"} onChange={() => setPayment("online")} className="text-blue-600 focus:ring-blue-600" />
-                  </div>
-                </label>
-                <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${payment === "cash" ? "border-blue-600 bg-blue-600/5" : "border-border hover:border-blue-600/50"}`}>
+                <div className="border border-blue-600/30 bg-blue-600/5 dark:border-blue-500/30 dark:bg-blue-950/20 rounded-xl p-4 transition-all">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="block font-semibold text-foreground mb-1">{t("booking.payAfterService")}</span>
                       <span className="text-sm text-muted-foreground">{t("booking.payAfterServiceDetails")}</span>
                     </div>
-                    <input type="radio" name="payment" checked={payment === "cash"} onChange={() => setPayment("cash")} className="text-blue-600 focus:ring-blue-600" />
+                    <div className="w-5 h-5 rounded-full border-2 border-blue-600 flex items-center justify-center shrink-0">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    </div>
                   </div>
-                </label>
+                </div>
               </div>
               <button onClick={handleConfirm} disabled={isSubmitting} className="w-full flex justify-center py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer">
                 {isSubmitting ? (
