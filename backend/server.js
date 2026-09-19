@@ -567,7 +567,6 @@ app.post("/api/location/broadcast", (req, res) => {
 
 // REST API for Next.js backend to push call signaling events
 app.post("/api/signal", (req, res) => {
-  const { secret, type, targetUserId, targetUserIds, call, livekit, timestamp } = req.body;
   const { secret, type, targetUserId, targetUserIds, call, livekit, timestamp, reason, endedByUserId, endedByRole, endedByName, endedAt } = req.body;
 
   if (secret !== SIGNALING_SECRET) {
