@@ -61,6 +61,7 @@ public class BelConnectLocationService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        // Set reasonable timeouts and retry logic for native HTTP client
         
         httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
@@ -94,10 +95,12 @@ public class BelConnectLocationService extends Service {
                     }
                 }
                 if (bestLocation != null) {
-                    Log.i(TAG, "[LocationService] GPS update: lat=" + bestLocation.getLatitude() + 
-                               ", lng=" + bestLocation.getLongitude() + 
-                               ", accuracy=" + (bestLocation.hasAccuracy() ? bestLocation.getAccuracy() : "N/A") + "m" +
-                               ", time=" + bestLocation.getTime());
+                    Log.i(TAG, "[LocationService] GPS update: lat=" + bestLocation.getLatitude() +
+                            ", lng=" + bestLocation.getLongitude() +
+                            ", accuracy=" +
+                            (bestLocation.hasAccuracy() ? bestLocation.getAccuracy() : "N/A") +
+                            "m, time=" + bestLocation.getTime());
+
                     sendLocationToBackend(bestLocation);
                 }
             }
@@ -159,7 +162,7 @@ public class BelConnectLocationService extends Service {
             bookingId = prefs.getString("bookingId", null);
             token = prefs.getString("token", null);
             apiUrl = prefs.getString("apiUrl", null);
-            if (bookingId != null && token != null) {
+            if (bookingId != null && token != null && apiUrl != null) {
                 createNotificationChannel();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     startForeground(NOTIFICATION_ID, getNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
@@ -230,7 +233,7 @@ public class BelConnectLocationService extends Service {
     }
 
     private void sendLocationToBackend(Location location) {
-        if (bookingId == null || token == null) return;
+        if (bookingId == null || token == null || apiUrl == null) return;
         
         // Single flight queueing: don't start new upload if one is actively pending
         if (isRequestPending) {
@@ -299,7 +302,25 @@ public class BelConnectLocationService extends Service {
                                 }
                             } catch (Exception ignored) {}
                             Log.w(TAG, "[LocationService] Backend returned 400: " + bodyStr);
-                            if (bodyStr.contains("not in active tracking window") || bodyStr.contains("Completed") || bodyStr.contains("Cancelled")) {
+
+                            boolean shouldStop = false;
+                            try {
+                                JSONObject errJson = new JSONObject(bodyStr);
+                                String bookingStatus = errJson.optString("status", "");
+                                if ("Completed".equalsIgnoreCase(bookingStatus) ||
+                                    "Cancelled".equalsIgnoreCase(bookingStatus) ||
+                                    "Rejected".equalsIgnoreCase(bookingStatus)) {
+                                    shouldStop = true;
+                                } else if (errJson.optString("error", "").contains("not in active tracking window")) {
+                                    shouldStop = true;
+                                }
+                            } catch (Exception e) {
+                                if (bodyStr.contains("not in active tracking window")) {
+                                    shouldStop = true;
+                                }
+                            }
+
+                            if (shouldStop) {
                                 Log.i(TAG, "[LocationService] Booking is no longer active. Stopping tracking.");
                                 stopTracking();
                                 isRequestPending = false;
@@ -342,7 +363,7 @@ public class BelConnectLocationService extends Service {
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("BelConnect - Active Service Tracking")
+                .setContentTitle("BelConnect - Active Service")
                 .setContentText("Sharing live GPS location with customer...")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(pendingIntent)
