@@ -43,7 +43,15 @@ function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number
   return ((θ * 180) / Math.PI + 360) % 360;
 }
 
-// Distance in meters between two lat/lng pairs (Haversine formula)
+// Distance formatting helper: meters below 1km, km above 1km (never 0 km)
+function formatDistance(meters: number | null): string {
+  if (meters === null || !Number.isFinite(meters)) return "";
+  if (meters < 100) return "< 100 m";
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+// Haversine formula to compute distance in meters between two lat/lng pairs
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -97,19 +105,19 @@ export default function CustomerTrackingMap({
   const [heading, setHeading] = useState<number>(135);
   const [accuracy, setAccuracy] = useState<number | null>(null);
 
-  // Real-Time Freshness Tracking (Live <= 15s | Updating <= 60s | Unavailable > 60s)
+  // Real-Time Freshness Tracking (Live <= 15s | Updating <= 30s | Unavailable > 30s)
   const [lastPingTimestamp, setLastPingTimestamp] = useState<number | null>(initialDbTs);
   const [freshnessStatus, setFreshnessStatus] = useState<"live" | "updating" | "unavailable">(
     initialDbTs !== null && (Date.now() - initialDbTs) <= 15000
       ? "live"
-      : initialDbTs !== null && (Date.now() - initialDbTs) <= 60000
+      : initialDbTs !== null && (Date.now() - initialDbTs) <= 30000
       ? "updating"
       : "unavailable"
   );
   const [secsAgo, setSecsAgo] = useState<number>(0);
 
   // Routing Metrics State
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
   const [etaMins, setEtaMins] = useState<number | null>(null);
   const [routeAvailable, setRouteAvailable] = useState<boolean>(true);
   const [providerLocationName, setProviderLocationName] = useState<string | null>(null);
@@ -179,7 +187,10 @@ export default function CustomerTrackingMap({
     socket.on("connect", subscribeRoom);
 
     const handleLocationUpdate = (data: any) => {
-      if (data && data.bookingId === bookingId && isValidCoord(data.latitude, data.longitude)) {
+      const matchBooking = data && data.bookingId && (
+        String(data.bookingId).toLowerCase().replace(/^#+/, "") === String(bookingId).toLowerCase().replace(/^#+/, "")
+      );
+      if (matchBooking && isValidCoord(data.latitude, data.longitude)) {
         const newLat = Number(data.latitude);
         const newLng = Number(data.longitude);
         const acc = typeof data.accuracy === "number" && Number.isFinite(data.accuracy) ? data.accuracy : null;
@@ -285,7 +296,7 @@ export default function CustomerTrackingMap({
     return () => clearInterval(interval);
   }, [bookingId]);
 
-  // 3. Strict 1-Second Freshness State Timer (Live <= 15s | Updating <= 60s | Unavailable > 60s)
+  // 3. Strict 1-Second Freshness State Timer (Live <= 15s | Updating <= 30s | Unavailable > 30s)
   useEffect(() => {
     const updateFreshness = () => {
       if (!lastPingTimestamp) {
@@ -299,7 +310,7 @@ export default function CustomerTrackingMap({
 
       if (diffSecs <= 15) {
         setFreshnessStatus("live");
-      } else if (diffSecs <= 60) {
+      } else if (diffSecs <= 30) {
         setFreshnessStatus("updating");
       } else {
         setFreshnessStatus("unavailable");
@@ -342,10 +353,10 @@ export default function CustomerTrackingMap({
         if (!isMounted || !data.routes || data.routes.length === 0) return;
 
         const route = data.routes[0];
-        const distKmVal = Number((route.distance / 1000).toFixed(1));
+        const distMetersVal = Math.round(route.distance);
         const durationMinsVal = Math.ceil(route.duration / 60);
 
-        setDistanceKm(distKmVal);
+        setDistanceMeters(distMetersVal);
         setEtaMins(durationMinsVal);
         setRouteAvailable(true);
 
@@ -661,8 +672,8 @@ export default function CustomerTrackingMap({
   const getHeaderTitle = () => {
     if (!providerCoords) return t("location.waitingProvider");
     if (freshnessStatus === "unavailable") return t("location.unavailable");
-    if (etaMins !== null && distanceKm !== null) {
-      return t("location.arrivingIn", { eta: etaMins, dist: `${distanceKm} km` });
+    if (etaMins !== null && distanceMeters !== null) {
+      return t("location.arrivingIn", { eta: etaMins, dist: formatDistance(distanceMeters) });
     }
     return t("location.providerOnTheWay");
   };

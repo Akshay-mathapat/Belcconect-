@@ -74,6 +74,7 @@ public class ProviderLocationPlugin extends Plugin {
         String bookingId = call.getString("bookingId");
         String token = call.getString("token");
         String apiUrl = call.getString("apiUrl");
+        android.util.Log.i("ProviderLocationPlugin", "startTracking called for bookingId=" + bookingId);
 
         Intent serviceIntent = new Intent(getContext(), BelConnectLocationService.class);
         serviceIntent.putExtra("bookingId", bookingId);

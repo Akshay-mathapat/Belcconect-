@@ -122,7 +122,10 @@ export async function POST(
       source: "android-native"
     };
 
-    const signalingUrl = process.env.SIGNALING_SERVER_URL || process.env.NEXT_PUBLIC_SIGNALING_URL || "https://belcconect-backend.onrender.com";
+    let signalingUrl = process.env.SIGNALING_SERVER_URL || process.env.NEXT_PUBLIC_SIGNALING_URL || "https://belcconect-backend.onrender.com";
+    if (process.env.NODE_ENV === "production" && (signalingUrl.includes("localhost") || signalingUrl.includes("127.0.0.1"))) {
+      signalingUrl = "https://belcconect-backend.onrender.com";
+    }
     const internalSecret = process.env.SIGNALING_INTERNAL_SECRET || process.env.INTERNAL_API_SECRET || "cityconnect_signaling_secret_key_2026";
 
     if (internalSecret) {
@@ -137,7 +140,11 @@ export async function POST(
                 event: "provider:location:update",
                 payload
             })
-        }).catch(err => console.error("[Native Location] Failed to broadcast to signaling server", err));
+        })
+        .then(() => {
+          console.log(`[Native Location] Broadcasted lat=${lat} lng=${lng} to signaling server for booking ${canonicalId}`);
+        })
+        .catch(err => console.error("[Native Location] Failed to broadcast to signaling server", err));
     }
 
     return NextResponse.json({
