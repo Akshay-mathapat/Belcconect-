@@ -12,6 +12,7 @@ interface BelConnectCallPluginInterface {
   getPendingCallAction(): Promise<PendingCallAction>;
   clearPendingCallAction(): Promise<{ cleared: boolean }>;
   dismissCallNotification(options: { callId: string }): Promise<{ dismissed: boolean }>;
+  stopIncomingRingtone(): Promise<{ stopped: boolean }>;
   getDevicePushToken(): Promise<{ token: string | null }>;
   setAuthCredentials(options: { token: string; apiUrl?: string }): Promise<{ success: boolean }>;
   startActiveCallService(options: { callId: string; peerName?: string; serviceName?: string }): Promise<{ started: boolean }>;
@@ -91,6 +92,16 @@ export const nativeCallBridge = {
       await BelConnectCall.dismissCallNotification({ callId });
     } catch (err) {
       console.warn("[nativeCallBridge] Error dismissing native notification:", err);
+    }
+  },
+
+  async stopIncomingRingtone(): Promise<void> {
+    if (!this.isNative()) return;
+    try {
+      await BelConnectCall.stopIncomingRingtone();
+      console.log("[nativeCallBridge] Stopped native ringtone");
+    } catch (err) {
+      console.warn("[nativeCallBridge] Error stopping native ringtone:", err);
     }
   },
 

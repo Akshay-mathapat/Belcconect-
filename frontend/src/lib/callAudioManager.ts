@@ -1,6 +1,8 @@
 // Reusable client-side call audio manager for incoming ringtone and caller ringback
 // Strictly client-only, lazy-created, reused, looped, idempotent.
 
+import { nativeCallBridge } from "./nativeCallBridge";
+
 class CallAudioManager {
   private incomingAudio: HTMLAudioElement | null = null;
   private outgoingAudio: HTMLAudioElement | null = null;
@@ -80,9 +82,14 @@ class CallAudioManager {
     if (typeof window === "undefined") return null;
     if (!this.incomingAudio) {
       try {
-        const audio = new Audio("/sounds/phone-ringing.mp3");
+        const audio = new Audio("/sounds/belconnect_incoming_call.mp3");
         audio.loop = true;
         audio.preload = "auto";
+        audio.addEventListener("error", () => {
+          if (audio.src.indexOf("phone-ringing.mp3") === -1) {
+            audio.src = "/sounds/phone-ringing.mp3";
+          }
+        });
         this.incomingAudio = audio;
       } catch (err) {
         console.warn("[CallAudio] Failed to initialize incoming audio element:", err);
@@ -180,6 +187,8 @@ class CallAudioManager {
    */
   public stopIncoming(): void {
     if (typeof window === "undefined") return;
+
+    nativeCallBridge.stopIncomingRingtone().catch(() => {});
 
     if (!this.incomingPlaying && (!this.incomingAudio || this.incomingAudio.paused)) {
       return;

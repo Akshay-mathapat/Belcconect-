@@ -24,7 +24,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "BelConnectCall")
 public class BelConnectCallPlugin extends Plugin {
     private static final String TAG = "BelConnectCallPlugin";
-    public static final String CHANNEL_ID = "belconnect_calls";
+    public static final String CHANNEL_ID = "belconnect_calls_v2";
     public static final String CHANNEL_NAME = "BelConnect Incoming Calls";
 
     public static volatile boolean isAppInForeground = false;
@@ -116,6 +116,11 @@ public class BelConnectCallPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null) {
+                // Delete legacy channel with attached sound if it exists
+                try {
+                    notificationManager.deleteNotificationChannel("belconnect_calls");
+                } catch (Exception ignored) {}
+
                 NotificationChannel existing = notificationManager.getNotificationChannel(CHANNEL_ID);
                 if (existing == null) {
                     NotificationChannel channel = new NotificationChannel(
@@ -127,17 +132,8 @@ public class BelConnectCallPlugin extends Plugin {
                     channel.enableVibration(true);
                     channel.setVibrationPattern(new long[]{0, 1000, 500, 1000, 500, 1000});
 
-                    try {
-                        Uri soundUri = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.phone_ringing);
-                        AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .build();
-                        channel.setSound(soundUri, audioAttributes);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Could not set custom sound for notification channel", e);
-                    }
-
+                    // Sound is handled directly and exclusively by MediaPlayer to prevent dual ringtones and allow instant stop
+                    channel.setSound(null, null);
                     channel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
                     channel.setBypassDnd(true);
                     notificationManager.createNotificationChannel(channel);
@@ -147,10 +143,32 @@ public class BelConnectCallPlugin extends Plugin {
         }
     }
 
+    private static volatile String currentRingingCallId = null;
+
     public static synchronized void startRingtone(Context context) {
+        startRingtone(context, null);
+    }
+
+    public static synchronized void startRingtone(Context context, String callId) {
+        if (context == null) return;
+        if (callId != null && callId.equals(currentRingingCallId) && mediaPlayer != null && mediaPlayer.isPlaying()) {
+            Log.i(TAG, "Native ringtone already playing for call: " + callId + "; ignoring duplicate start.");
+            return;
+        }
+
         try {
             stopRingtone();
-            Uri soundUri = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.phone_ringing);
+            currentRingingCallId = callId;
+
+            int soundResId = context.getResources().getIdentifier("belconnect_incoming_call", "raw", context.getPackageName());
+            if (soundResId == 0) {
+                soundResId = context.getResources().getIdentifier("phone_ringing", "raw", context.getPackageName());
+            }
+            if (soundResId == 0) {
+                soundResId = R.raw.phone_ringing;
+            }
+
+            Uri soundUri = Uri.parse("android.resource://" + context.getPackageName() + "/" + soundResId);
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setDataSource(context, soundUri);
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -161,13 +179,14 @@ public class BelConnectCallPlugin extends Plugin {
             mediaPlayer.setLooping(true);
             mediaPlayer.prepare();
             mediaPlayer.start();
-            Log.i(TAG, "Native ringtone started.");
+            Log.i(TAG, "Native ringtone started for call: " + callId);
         } catch (Exception e) {
             Log.w(TAG, "Could not play native media player ringtone: " + e.getMessage());
         }
     }
 
     public static synchronized void stopRingtone() {
+        currentRingingCallId = null;
         try {
             if (mediaPlayer != null) {
                 if (mediaPlayer.isPlaying()) {
@@ -179,6 +198,7 @@ public class BelConnectCallPlugin extends Plugin {
             }
         } catch (Exception e) {
             Log.w(TAG, "Error stopping native ringtone: " + e.getMessage());
+            mediaPlayer = null;
         }
     }
 
@@ -240,8 +260,6 @@ public class BelConnectCallPlugin extends Plugin {
         String displayName = (callerName != null && !callerName.trim().isEmpty()) ? callerName.trim() : "BelConnect User";
         String displayContent = (serviceName != null && !serviceName.trim().isEmpty()) ? serviceName.trim() : "Incoming Voice Call";
 
-        Uri soundUri = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.phone_ringing);
-
         Person caller = new Person.Builder()
             .setName(displayName)
             .setImportant(true)
@@ -256,7 +274,8 @@ public class BelConnectCallPlugin extends Plugin {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setOngoing(true)
-            .setSound(soundUri)
+            .setSound(null)
+            .setOnlyAlertOnce(true)
             .setVibrate(new long[]{0, 1000, 500, 1000, 500, 1000})
             .setFullScreenIntent(fullScreenPendingIntent, true)
             .setContentIntent(fullScreenPendingIntent)
@@ -279,7 +298,7 @@ public class BelConnectCallPlugin extends Plugin {
         }
 
         notificationManager.notify(notificationId, builder.build());
-        startRingtone(context);
+        startRingtone(context, callId);
         Log.i(TAG, "Incoming call notification displayed for call: " + callId);
     }
 
@@ -453,6 +472,14 @@ public void getDevicePushToken(PluginCall call) {
         showIncomingCall(getContext(), callId, callerName, serviceName, bookingId);
         JSObject ret = new JSObject();
         ret.put("shown", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void stopIncomingRingtone(PluginCall call) {
+        stopRingtone();
+        JSObject ret = new JSObject();
+        ret.put("stopped", true);
         call.resolve(ret);
     }
 }
