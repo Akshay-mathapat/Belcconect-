@@ -131,7 +131,6 @@ public class BelConnectCallPlugin extends Plugin {
                     channel.setDescription("Incoming voice calls for BelConnect");
                     channel.enableVibration(true);
                     channel.setVibrationPattern(new long[]{0, 1000, 500, 1000, 500, 1000});
-
                     // Sound is handled directly and exclusively by MediaPlayer to prevent dual ringtones and allow instant stop
                     channel.setSound(null, null);
                     channel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
@@ -258,7 +257,9 @@ public class BelConnectCallPlugin extends Plugin {
         );
 
         String displayName = (callerName != null && !callerName.trim().isEmpty()) ? callerName.trim() : "BelConnect User";
-        String displayContent = (serviceName != null && !serviceName.trim().isEmpty()) ? serviceName.trim() : "Incoming Voice Call";
+        String displayContent = (serviceName != null && !serviceName.trim().isEmpty() && serviceName.length() <= 24 && !serviceName.toLowerCase().contains("want to") && !serviceName.equalsIgnoreCase("Voice Call") && !serviceName.equalsIgnoreCase("Incoming Voice Call"))
+            ? "Incoming voice call • " + serviceName.trim()
+            : "Incoming voice call";
 
         Person caller = new Person.Builder()
             .setName(displayName)
@@ -269,6 +270,7 @@ public class BelConnectCallPlugin extends Plugin {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(displayName)
             .setContentText(displayContent)
+            .setSubText("BelConnect")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -285,9 +287,7 @@ public class BelConnectCallPlugin extends Plugin {
                     declinePendingIntent,
                     acceptPendingIntent
                 )
-            )
-            .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Decline", declinePendingIntent);
+            );
 
         boolean canFullScreen = true;
         if (Build.VERSION.SDK_INT >= 34) {

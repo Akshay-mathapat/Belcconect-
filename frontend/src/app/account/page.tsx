@@ -541,7 +541,7 @@ export default function AccountPage() {
                             </p>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 w-full md:w-auto mt-2.5 md:mt-0 justify-start md:justify-end">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 w-full md:w-auto mt-2 md:mt-0 justify-start md:justify-end">
                             {/* Communication Actions: Call & Chat */}
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                               <CallButton
@@ -558,14 +558,14 @@ export default function AccountPage() {
                                 serviceName={booking.service}
                                 bookingStatus={booking.status}
                                 title={t("account.chatWithProvider")}
-                                className="flex-1 sm:flex-initial h-11 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                                className="flex-1 sm:flex-initial h-11 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                               />
                             </div>
 
                             {["Accepted", "OnTheWay", "Started"].includes(booking.status) && (
                               <Link
                                 href={`/bookings/${booking.id}`}
-                                className="w-full sm:w-auto h-11 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                                className="w-full sm:w-auto h-11 min-h-[44px] px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                               >
                                 <Radio className="w-3.5 h-3.5 animate-pulse text-white" />
                                 <span>Track Live Order</span>
