@@ -24,6 +24,13 @@ interface BelConnectCallPluginInterface {
     bookingId?: string;
   }): Promise<{ shown: boolean }>;
   markCallPresented(options: { callId: string }): Promise<{ success: boolean }>;
+  showMissedCallNotification(options: {
+    callId: string;
+    callerName?: string;
+    serviceName?: string;
+    bookingId?: string;
+  }): Promise<{ shown: boolean }>;
+  clearMissedCalls(options?: { callerName?: string }): Promise<{ cleared: boolean }>;
   addListener(eventName: "permissionGranted", listenerFunc: (data: { permission: string }) => void): Promise<any>;
 }
 
@@ -126,6 +133,31 @@ export const nativeCallBridge = {
       await BelConnectCall.markCallPresented({ callId });
     } catch (err) {
       console.warn("[nativeCallBridge] Error marking call presented:", err);
+    }
+  },
+
+  async showMissedCallNotification(options: {
+    callId: string;
+    callerName?: string;
+    serviceName?: string;
+    bookingId?: string;
+  }): Promise<void> {
+    if (!this.isNative() || !options.callId) return;
+    try {
+      await BelConnectCall.showMissedCallNotification(options);
+      console.log("[nativeCallBridge] Displayed native missed call notification for call:", options.callId);
+    } catch (err) {
+      console.warn("[nativeCallBridge] Error showing missed call notification:", err);
+    }
+  },
+
+  async clearMissedCalls(callerName?: string): Promise<void> {
+    if (!this.isNative()) return;
+    try {
+      await BelConnectCall.clearMissedCalls(callerName ? { callerName } : undefined);
+      console.log("[nativeCallBridge] Cleared native missed call notifications");
+    } catch (err) {
+      console.warn("[nativeCallBridge] Error clearing missed call notifications:", err);
     }
   },
 

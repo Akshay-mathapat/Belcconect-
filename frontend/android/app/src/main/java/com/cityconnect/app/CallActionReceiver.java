@@ -37,7 +37,10 @@ public class CallActionReceiver extends BroadcastReceiver {
         if ("com.cityconnect.app.ACTION_DECLINE".equals(action)) {
             Log.i(TAG, "ACTION_DECLINE received for call: " + callId);
             // 1. Immediately silence ringtone and dismiss native incoming notification
+            // 1. Immediately record declined state, silence ringtone and dismiss native incoming notification
             if (callId != null && !callId.isEmpty()) {
+                SharedPreferences terminalPrefs = context.getSharedPreferences("belconnect_call_terminal_prefs", Context.MODE_PRIVATE);
+                terminalPrefs.edit().putString("term_" + callId, "declined").commit();
                 BelConnectCallPlugin.dismissCall(context, callId);
             }
 
@@ -48,6 +51,11 @@ public class CallActionReceiver extends BroadcastReceiver {
         } else if ("com.cityconnect.app.ACTION_END_CALL".equals(action)) {
             Log.i(TAG, "ACTION_END_CALL received for call: " + callId);
             // 1. Stop active call foreground service immediately
+            // 1. Record ended state and stop active call foreground service immediately
+            if (callId != null && !callId.isEmpty()) {
+                SharedPreferences terminalPrefs = context.getSharedPreferences("belconnect_call_terminal_prefs", Context.MODE_PRIVATE);
+                terminalPrefs.edit().putString("term_" + callId, "ended").commit();
+            }
             BelConnectCallService.stop(context);
 
             if (callId == null || callId.isEmpty()) return;
@@ -57,7 +65,7 @@ public class CallActionReceiver extends BroadcastReceiver {
         }
     }
 
-    private static void sendCallStatusUpdate(Context context, String callId, String actionEndpoint) {
+    public static void sendCallStatusUpdate(Context context, String callId, String actionEndpoint) {
         SharedPreferences prefs = context.getSharedPreferences("belconnect_auth_prefs", Context.MODE_PRIVATE);
         String token = prefs.getString("auth_token", null);
         String apiUrl = prefs.getString("api_url", DEFAULT_PRODUCTION_URL);

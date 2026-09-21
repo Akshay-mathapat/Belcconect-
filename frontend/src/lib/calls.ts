@@ -179,6 +179,7 @@ export async function getActiveCallForUser(userId: string): Promise<CallRecord |
      WHERE (caller_id = $1 OR receiver_id = $1)
        AND (
          (status IN ('INITIATED', 'RINGING') AND created_at >= NOW() - INTERVAL '60 seconds')
+         (status IN ('INITIATED', 'RINGING') AND created_at >= NOW() - INTERVAL '45 seconds')
          OR
          (status IN ('ACCEPTED', 'CONNECTED') AND ended_at IS NULL AND created_at >= NOW() - INTERVAL '24 hours')
        )
@@ -242,6 +243,57 @@ export async function getUserRateLimitCount(userId: string, windowHours = 1): Pr
     [userId]
   );
   return parseInt(res.rows[0]?.count || "0", 10);
+}
+
+export async function acceptCall(callId: string): Promise<{ success: boolean; call: CallRecord | null; error?: string }> {
+  if (!callId) return { success: false, call: null, error: "Missing callId" };
+
+  const res = await query(
+    `UPDATE calls
+     SET status = 'ACCEPTED',
+         answered_at = NOW()
+     WHERE id = $1
+       AND status IN ('INITIATED', 'RINGING')
+     RETURNING id`,
+    [callId]
+  );
+
+  if (res.rows.length > 0) {
+    const updated = await getCallById(callId);
+    return { success: true, call: updated };
+  }
+
+  const current = await getCallById(callId);
+  if (!current) {
+    return { success: false, call: null, error: "Call not found" };
+  }
+
+  if (current.status === "ACCEPTED" || current.status === "CONNECTED") {
+    return { success: true, call: current };
+  }
+
+  return {
+    success: false,
+    call: current,
+    error: `Cannot accept call in status '${current.status}'`
+  };
+}
+
+export async function timeoutCall(callId: string): Promise<CallRecord | null> {
+  if (!callId) return null;
+  const res = await query(
+    `UPDATE calls
+     SET status = 'MISSED',
+         end_reason = 'timeout',
+         ended_at = NOW(),
+         duration_seconds = 0
+     WHERE id = $1
+       AND status IN ('INITIATED', 'RINGING')
+     RETURNING id`,
+    [callId]
+  );
+  if (res.rows.length === 0) return null;
+  return getCallById(callId);
 }
 
 export async function autoExpireStaleCalls(timeoutSeconds = 45): Promise<CallRecord[]> {

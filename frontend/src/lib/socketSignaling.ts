@@ -8,6 +8,7 @@ export interface SocketSignalPayload {
     | "call:ended"
     | "call:cancel"
     | "call:missed"
+    | "call:timeout"
     | "call:busy"
     | "call:connected";
   targetUserId?: string;

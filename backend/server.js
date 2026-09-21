@@ -109,14 +109,33 @@ io.on("connection", (socket) => {
     const callerId = call.callerId || (data.endedByRole === "customer" ? userId : null);
     const receiverId = call.receiverId || (data.endedByRole === "provider" ? userId : null);
     const reason = data.reason || (event === "call:reject" ? "declined" : event === "call:cancel" ? "cancelled" : "ended");
+    const isTimeout = event === "call:timeout" || event === "call:missed" || data.reason === "timeout";
+    const reason = data.reason || (event === "call:reject" ? "declined" : event === "call:cancel" ? "cancelled" : (isTimeout ? "timeout" : "ended"));
+    const status = reason === "declined" ? "REJECTED" : reason === "cancelled" ? "CANCELLED" : (isTimeout ? "MISSED" : "ENDED");
 
     console.log(`[CALL-END] forwarding callId=${callId} event=${event} from user=${userId}`);
     if (callerId) console.log(`[CALL-END] target customer room=user:${callerId}`);
     if (receiverId) console.log(`[CALL-END] target provider room=user:${receiverId}`);
+    console.log(`[CALL_TIMEOUT] forwarding callId=${callId} event=${event} reason=${reason} from user=${userId}`);
+    if (callerId) console.log(`[CALL_TIMEOUT] target customer room=user:${callerId}`);
+    if (receiverId) console.log(`[CALL_TIMEOUT] target provider room=user:${receiverId}`);
+
+    if (isTimeout && callId) {
+      pool.query(
+        `UPDATE calls
+         SET status = 'MISSED',
+             end_reason = 'timeout',
+             ended_at = NOW(),
+             duration_seconds = 0
+         WHERE id = $1 AND status IN ('INITIATED', 'RINGING')`,
+        [callId]
+      ).catch((err) => console.error("[CALL_TIMEOUT] Database update failed in handleClientCallTermination:", err.message));
+    }
 
     const payload = {
       type: "call:ended",
       call: { ...call, id: callId, status: reason === "declined" ? "REJECTED" : reason === "cancelled" ? "CANCELLED" : "ENDED" },
+      call: { ...call, id: callId, status },
       reason,
       endedByUserId: data.endedByUserId || userId,
       endedByRole: data.endedByRole || (userId === callerId ? "customer" : "provider"),
@@ -129,11 +148,13 @@ io.on("connection", (socket) => {
       io.to(`user:${callerId}`).emit("call:ended", payload);
       io.to(`user:${callerId}`).emit("call:signal", payload);
       io.to(`user:${callerId}`).emit(event, payload);
+      io.to(`user:${callerId}`).emit(isTimeout ? "call:timeout" : event, payload);
     }
     if (receiverId) {
       io.to(`user:${receiverId}`).emit("call:ended", payload);
       io.to(`user:${receiverId}`).emit("call:signal", payload);
       io.to(`user:${receiverId}`).emit(event, payload);
+      io.to(`user:${receiverId}`).emit(isTimeout ? "call:missed" : event, payload);
     }
     if (callId) {
       io.to(`call:${callId}`).emit("call:ended", payload);
@@ -146,6 +167,8 @@ io.on("connection", (socket) => {
   socket.on("call:reject", (data) => handleClientCallTermination("call:reject", data));
   socket.on("call:end", (data) => handleClientCallTermination("call:end", data));
   socket.on("call:cancel", (data) => handleClientCallTermination("call:cancel", data));
+  socket.on("call:timeout", (data) => handleClientCallTermination("call:timeout", data));
+  socket.on("call:missed", (data) => handleClientCallTermination("call:missed", data));
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
   socket.on("booking:subscribe", async (data) => {
@@ -620,6 +643,67 @@ app.post("/api/signal", (req, res) => {
 
   return res.json({ success: true, delivered: true });
 });
+
+// ═══════ Authoritative Stale Call Expiry Background Worker (45-second timeout) ═══════
+let isStaleCallCleanupRunning = false;
+const runStaleCallCleanup = async () => {
+  if (isStaleCallCleanupRunning) return;
+  isStaleCallCleanupRunning = true;
+  try {
+    const res = await pool.query(
+      `UPDATE calls
+       SET status = 'MISSED',
+           end_reason = 'timeout',
+           ended_at = NOW(),
+           duration_seconds = 0
+       WHERE status IN ('INITIATED', 'RINGING')
+         AND created_at <= NOW() - INTERVAL '45 seconds'
+       RETURNING id, caller_id, receiver_id, booking_id, created_at, ended_at`
+    );
+
+    if (res.rows.length > 0) {
+      for (const call of res.rows) {
+        console.log(`[CALL_TIMEOUT] Server background worker expired stale call: callId=${call.id} callerId=${call.caller_id} receiverId=${call.receiver_id}`);
+        const payload = {
+          type: "call:ended",
+          call: {
+            id: call.id,
+            callerId: call.caller_id,
+            receiverId: call.receiver_id,
+            bookingId: call.booking_id,
+            status: "MISSED",
+            endReason: "timeout",
+            endedAt: call.ended_at || new Date().toISOString()
+          },
+          reason: "timeout",
+          endedByRole: "system",
+          endedByName: "System Timeout",
+          endedAt: call.ended_at || new Date().toISOString(),
+          timestamp: Date.now()
+        };
+
+        if (call.caller_id) {
+          io.to(`user:${call.caller_id}`).emit("call:ended", payload);
+          io.to(`user:${call.caller_id}`).emit("call:signal", payload);
+          io.to(`user:${call.caller_id}`).emit("call:timeout", payload);
+        }
+        if (call.receiver_id) {
+          io.to(`user:${call.receiver_id}`).emit("call:ended", payload);
+          io.to(`user:${call.receiver_id}`).emit("call:signal", payload);
+          io.to(`user:${call.receiver_id}`).emit("call:missed", payload);
+        }
+        io.to(`call:${call.id}`).emit("call:ended", payload);
+        io.to(`call:${call.id}`).emit("call:signal", payload);
+      }
+    }
+  } catch (err) {
+    console.error("[CALL_TIMEOUT] Error in background stale call cleanup:", err.message);
+  } finally {
+    isStaleCallCleanupRunning = false;
+  }
+};
+
+setInterval(runStaleCallCleanup, 5000);
 
 app.get("/health", (req, res) => {
   res.json({ 

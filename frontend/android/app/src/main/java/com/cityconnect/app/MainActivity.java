@@ -3,6 +3,9 @@ package com.cityconnect.app;
 import com.getcapacitor.BridgeActivity;
 import com.google.firebase.messaging.FirebaseMessaging;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.content.Intent;
@@ -259,9 +262,17 @@ public class MainActivity extends BridgeActivity {
                     callId
             );
 
+            if ("view_missed_call".equals(action)) {
+                BelConnectCallPlugin.clearMissedCalls(this, null);
+            }
+
             // Start active microphone foreground service
             // when Accept was pressed.
             if ("accept".equals(action)) {
+                if (callId != null && !callId.isEmpty()) {
+                    SharedPreferences terminalPrefs = getSharedPreferences("belconnect_call_terminal_prefs", Context.MODE_PRIVATE);
+                    terminalPrefs.edit().putString("term_" + callId, "accepted").commit();
+                }
 
                 if (
                         ContextCompat.checkSelfPermission(

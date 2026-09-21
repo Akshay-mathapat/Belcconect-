@@ -77,7 +77,16 @@ export interface PushNotificationPayload {
 }
 
 export interface NativeCallPushData {
-  type: "incoming_call" | "call:cancelled" | "call:ended" | "call_ended" | "call_cancelled";
+  type:
+    | "incoming_call"
+    | "call:cancelled"
+    | "call:ended"
+    | "call_ended"
+    | "call_cancelled"
+    | "missed_call"
+    | "call_timeout"
+    | "call:timeout"
+    | "call:missed";
   callId: string;
   bookingId?: string;
   callerName?: string;
@@ -272,32 +281,30 @@ export async function sendNativePushToUser(userId: string, data: NativeCallPushD
 /**
  * Unified call wake-up helper: dispatches both Web Push and Native Android Push in parallel.
  */
-export async function sendCallPushWakeUp(receiverId: string, callData: {
-  type: "incoming_call" | "call:cancelled" | "call:ended" | "call_ended" | "call_cancelled";
-  callId: string;
-  bookingId?: string;
-  callerName?: string;
-  serviceName?: string;
-  reason?: string;
-  endedByUserId?: string;
-  endedByRole?: string;
-  endedByName?: string;
-  endedAt?: string;
-  [key: string]: any;
-}): Promise<void> {
+export async function sendCallPushWakeUp(receiverId: string, callData: NativeCallPushData): Promise<void> {
   const isIncoming = callData.type === "incoming_call";
+  const isMissed = callData.type === "missed_call" || callData.type === "call_timeout" || callData.type === "call:timeout" || callData.type === "call:missed";
+
+  const webTitle = isIncoming
+    ? "Incoming Voice Call 📞"
+    : (isMissed ? "Missed Call" : "Call Ended");
+
+  const webBody = isIncoming
+    ? `Incoming call from ${callData.callerName || "User"} for ${callData.serviceName || "Service"}`
+    : (isMissed
+        ? `You have a missed call from ${callData.callerName || "User"}`
+        : (callData.reason === "declined" ? "Call was declined" : "Call was ended"));
+
   const webPayload: PushNotificationPayload = {
-    title: isIncoming ? "Incoming Voice Call 📞" : "Call Ended",
-    body: isIncoming
-      ? `Incoming call from ${callData.callerName || "User"} for ${callData.serviceName || "Service"}`
-      : (callData.reason === "declined" ? "Call was declined" : "Call was ended"),
+    title: webTitle,
+    body: webBody,
     data: {
-      type: isIncoming ? "call:incoming" : "call:ended",
+      type: isIncoming ? "call:incoming" : (isMissed ? "call:missed" : "call:ended"),
       callId: callData.callId,
       bookingId: callData.bookingId,
       callerName: callData.callerName || "User",
       serviceName: callData.serviceName || "Service",
-      reason: callData.reason || "ended",
+      reason: callData.reason || (isMissed ? "timeout" : "ended"),
       endedByUserId: callData.endedByUserId,
       endedByRole: callData.endedByRole,
       endedByName: callData.endedByName,
@@ -308,7 +315,9 @@ export async function sendCallPushWakeUp(receiverId: string, callData: {
 
   const nativeType = isIncoming
     ? "incoming_call"
-    : (callData.type === "call:cancelled" ? "call:cancelled" : "call_ended");
+    : (isMissed
+        ? "missed_call"
+        : (callData.type === "call:cancelled" ? "call:cancelled" : "call_ended"));
 
   await Promise.allSettled([
     sendPushToUser(receiverId, webPayload),

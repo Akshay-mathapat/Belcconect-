@@ -148,11 +148,19 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const fetchingTokenForRef = useRef<string | null>(null);
   const activeCallMissingCountRef = useRef(0);
   const outgoingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const incomingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearOutgoingTimeout = useCallback(() => {
     if (outgoingTimeoutRef.current) {
       clearTimeout(outgoingTimeoutRef.current);
       outgoingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearIncomingTimeout = useCallback(() => {
+    if (incomingTimeoutRef.current) {
+      clearTimeout(incomingTimeoutRef.current);
+      incomingTimeoutRef.current = null;
     }
   }, []);
 
@@ -218,7 +226,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     endedAt?: string;
   }) => {
     const rawCallId = data.callId || data.call?.id;
-    const currentActiveCallId = activeCallRef.current?.id;
+    const currentActiveCall = activeCallRef.current;
+    const currentActiveCallId = currentActiveCall?.id;
     const targetCallId = rawCallId ? String(rawCallId).trim() : (currentActiveCallId ? String(currentActiveCallId).trim() : undefined);
     if (!targetCallId) return;
 
@@ -244,10 +253,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     processedTerminalCallIdsRef.current.add(targetCallId);
 
     console.log(`[CALL] Remote call terminated: callId=${targetCallId} reason=${data.reason || "ended"}`);
+    // Capture caller identity BEFORE clearing active call or call state
+    const uid = currentUserIdRef.current;
+    const wasCaller = !!(uid && (data.call?.callerId === uid || currentActiveCall?.callerId === uid || callStateRef.current === "OUTGOING"));
+
+    console.log(`[CALL] Remote call terminated: callId=${targetCallId} reason=${data.reason || "ended"} wasCaller=${wasCaller}`);
     console.log(`[CALL-END] processing terminal event for callId=${targetCallId} reason=${data.reason || "ended"}`);
 
     // 1. Immediately silence ringtone and ringback
     clearOutgoingTimeout();
+    clearIncomingTimeout();
     callAudioManager.stopAll();
     ringtonePlayer.stopRingtone();
 
@@ -269,18 +284,26 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     fetchingTokenForRef.current = null;
 
     // 5. Display user-facing status notice for 2.5–3 seconds
-    const reason = data.reason || data.call?.endReason || "ended";
+    const reason = data.reason || data.call?.endReason || (data.call?.status === "MISSED" ? "timeout" : "ended");
     const endedByName = data.endedByName || (data.endedByRole === "provider" ? "Service Provider" : "Customer");
+    const isCaller = wasCaller || !!(uid && (data.call?.callerId === uid || activeCallRef.current?.callerId === uid));
 
     let message = "Call ended";
     if (reason === "declined") {
       message = `Call declined by ${endedByName}`;
     } else if (reason === "cancelled") {
       message = "Call cancelled";
-    } else if (reason === "missed") {
-      message = "Call missed";
-    } else if (reason === "timeout") {
-      message = "Call timed out";
+    } else if (reason === "missed" || reason === "timeout") {
+      message = isCaller ? "Call not answered" : "Missed call";
+      message = wasCaller ? "Call not answered" : "Missed call";
+      if (!wasCaller && targetCallId && nativeCallBridge.isNative()) {
+        nativeCallBridge.showMissedCallNotification({
+          callId: targetCallId,
+          callerName: data.call?.callerName || "Customer",
+          serviceName: data.call?.serviceName || "Voice Call",
+          bookingId: data.call?.bookingId || ""
+        }).catch(() => {});
+      }
     } else if (reason === "connection_failed") {
       message = "Call connection failed";
     } else {
@@ -288,7 +311,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
 
     showCallEndedNotice(message);
-  }, [clearOutgoingTimeout, showCallEndedNotice]);
+  }, [clearOutgoingTimeout, clearIncomingTimeout, showCallEndedNotice]);
 
   // ─── LiveKit token fetch (fallback only) ──────────────────────────────────
   // ─── LiveKit token fetch (Recovery & manual retry) ──────────────────────────
@@ -368,15 +391,61 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           if (callStateRef.current === "IDLE") {
+            const createdAtMs = call.createdAt ? new Date(call.createdAt).getTime() : Date.now();
+            const elapsed = Math.max(0, Date.now() - createdAtMs);
+            const remaining = 45000 - elapsed;
+
+            if (remaining <= 0) {
+              console.log(`[CALL_TIMEOUT] Incoming call ${call.id} already expired (${elapsed}ms elapsed). Ignoring.`);
+              if (call?.id) {
+                nativeCallBridge.dismissNativeCall(call.id);
+                nativeCallBridge.showMissedCallNotification({
+                  callId: call.id,
+                  callerName: call.callerName || "Customer",
+                  serviceName: call.serviceName || "Voice Call",
+                  bookingId: call.bookingId || ""
+                }).catch(() => {});
+              }
+              return;
+            }
+
             setActiveCall(call);
             setCallState("INCOMING");
-            callAudioManager.playIncoming();
             callAudioManager.playIncoming(call.id);
+
+            clearIncomingTimeout();
+            incomingTimeoutRef.current = setTimeout(() => {
+              if (callStateRef.current === "INCOMING" && activeCallRef.current?.id === call.id) {
+                console.log(`[CALL_TIMEOUT] Incoming call ${call.id} timed out locally after 45s`);
+                clearIncomingTimeout();
+                callAudioManager.stopAll();
+                ringtonePlayer.stopRingtone();
+                nativeCallBridge.stopIncomingRingtone();
+                if (call?.id) {
+                  nativeCallBridge.dismissNativeCall(call.id);
+                  nativeCallBridge.showMissedCallNotification({
+                    callId: call.id,
+                    callerName: call.callerName || "Customer",
+                    serviceName: call.serviceName || "Voice Call",
+                    bookingId: call.bookingId || ""
+                  }).catch(() => {});
+                  fetch(`/api/calls/${call.id}/timeout`, {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({})
+                  }).catch(() => {});
+                }
+                setCallState("IDLE");
+                setActiveCall(null);
+                showCallEndedNotice("Missed call");
+              }
+            }, remaining);
           }
         }
       } else if (type === "call:accept") {
         if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
         clearOutgoingTimeout();
+        clearIncomingTimeout();
         callAudioManager.stopAll();
 
         // Idempotency check: if already active for same call, don't restart media session
@@ -396,34 +465,25 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             fetchMyLiveKitToken(call.bookingId);
           }
         }
-      } else if (type === "call:reject" || type === "call:end" || type === "call:cancel" || type === "call:missed" || type === "call:busy") {
-        if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
-        nativeCallBridge.stopActiveCallService().catch(() => {});
-        if (activeCallRef.current && activeCallRef.current.id !== call.id) return;
-
-        clearOutgoingTimeout();
-        callAudioManager.stopAll();
-        setCallState("IDLE");
-        setActiveCall(null);
-        setLivekitCredentials(null);
-        callStartInProgressRef.current = false;
-        acceptInProgressRef.current = false;
-        endInProgressRef.current = false;
-        fetchingTokenForRef.current = null;
       } else if (
         type === "call:ended" ||
         type === "call:reject" ||
         type === "call:end" ||
         type === "call:cancel" ||
         type === "call:missed" ||
-        type === "call:busy"
+        type === "call:busy" ||
+        type === "call:timeout"
       ) {
+        if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
+        nativeCallBridge.stopActiveCallService().catch(() => {});
+        clearOutgoingTimeout();
+        clearIncomingTimeout();
         const targetCallId = call?.id || activeCallRef.current?.id;
         if (targetCallId) {
           handleRemoteCallEnded({
             callId: targetCallId,
             call,
-            reason: data.reason || (type === "call:reject" ? "declined" : (type === "call:cancel" ? "cancelled" : "ended")),
+            reason: data.reason || (type === "call:reject" ? "declined" : (type === "call:cancel" ? "cancelled" : (type === "call:timeout" || type === "call:missed" ? "timeout" : "ended"))),
             endedByUserId: data.endedByUserId,
             endedByRole: data.endedByRole,
             endedByName: data.endedByName,
@@ -777,6 +837,55 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           setActiveCall(data.call);
           setCallState("INCOMING");
           callAudioManager.playIncoming(data.call.id);
+          const call = data.call;
+          const createdAtMs = call.createdAt ? new Date(call.createdAt).getTime() : Date.now();
+          const elapsed = Math.max(0, Date.now() - createdAtMs);
+          const remaining = 45000 - elapsed;
+
+          if (remaining <= 0) {
+            console.log(`[CALL_TIMEOUT] Native incoming call ${call.id} already expired (${elapsed}ms). Dismissing.`);
+            callAudioManager.stopAll();
+            setCallState("IDLE");
+            setActiveCall(null);
+            nativeCallBridge.showMissedCallNotification({
+              callId: call.id,
+              callerName: call.callerName || "Customer",
+              serviceName: call.serviceName || "Voice Call",
+              bookingId: call.bookingId || ""
+            }).catch(() => {});
+          } else {
+            setActiveCall(call);
+            setCallState("INCOMING");
+            callAudioManager.playIncoming(call.id);
+
+            clearIncomingTimeout();
+            incomingTimeoutRef.current = setTimeout(() => {
+              if (callStateRef.current === "INCOMING" && activeCallRef.current?.id === call.id) {
+                console.log(`[CALL_TIMEOUT] Incoming call ${call.id} timed out locally after 45s`);
+                clearIncomingTimeout();
+                callAudioManager.stopAll();
+                ringtonePlayer.stopRingtone();
+                nativeCallBridge.stopIncomingRingtone();
+                if (call?.id) {
+                  nativeCallBridge.dismissNativeCall(call.id);
+                  nativeCallBridge.showMissedCallNotification({
+                    callId: call.id,
+                    callerName: call.callerName || "Customer",
+                    serviceName: call.serviceName || "Voice Call",
+                    bookingId: call.bookingId || ""
+                  }).catch(() => {});
+                  fetch(`/api/calls/${call.id}/timeout`, {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({})
+                  }).catch(() => {});
+                }
+                setCallState("IDLE");
+                setActiveCall(null);
+                showCallEndedNotice("Missed call");
+              }
+            }, remaining);
+          }
         } else {
           console.log(`[CALL] Stale incoming notification (status: ${data?.call?.status || "unknown"}). Dismissing.`);
           callAudioManager.stopAll();
@@ -926,17 +1035,61 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
           if (call.status === "INITIATED" || call.status === "RINGING") {
             if (isReceiver && callStateRef.current === "IDLE") {
-              setActiveCall(call); setCallState("INCOMING"); callAudioManager.playIncoming();
-              setActiveCall(call);
-              setCallState("INCOMING");
-              callAudioManager.playIncoming(call.id);
-              if (typeof document !== "undefined" && document.hidden) {
-                nativeCallBridge.showIncomingCallNotification({
-                  callId: call.id,
-                  callerName: call.callerName || "Customer",
-                  serviceName: call.serviceName || "Voice Call",
-                  bookingId: call.bookingId
-                });
+              const createdAtMs = call.createdAt ? new Date(call.createdAt).getTime() : Date.now();
+              const elapsed = Math.max(0, Date.now() - createdAtMs);
+              const remaining = 45000 - elapsed;
+
+              if (remaining <= 0) {
+                console.log(`[CALL_TIMEOUT] Polling detected expired call ${call.id} (${elapsed}ms).`);
+                if (call?.id && nativeCallBridge.isNative()) {
+                  nativeCallBridge.showMissedCallNotification({
+                    callId: call.id,
+                    callerName: call.callerName || "Customer",
+                    serviceName: call.serviceName || "Voice Call",
+                    bookingId: call.bookingId || ""
+                  }).catch(() => {});
+                }
+              } else {
+                if (typeof document !== "undefined" && document.hidden) {
+                  nativeCallBridge.showIncomingCallNotification({
+                    callId: call.id,
+                    callerName: call.callerName || "Customer",
+                    serviceName: call.serviceName || "Voice Call",
+                    bookingId: call.bookingId
+                  });
+                } else {
+                  setActiveCall(call);
+                  setCallState("INCOMING");
+                  callAudioManager.playIncoming(call.id);
+
+                  clearIncomingTimeout();
+                  incomingTimeoutRef.current = setTimeout(() => {
+                    if (callStateRef.current === "INCOMING" && activeCallRef.current?.id === call.id) {
+                      console.log(`[CALL_TIMEOUT] Incoming call ${call.id} timed out locally after 45s`);
+                      clearIncomingTimeout();
+                      callAudioManager.stopAll();
+                      ringtonePlayer.stopRingtone();
+                      nativeCallBridge.stopIncomingRingtone();
+                      if (call?.id) {
+                        nativeCallBridge.dismissNativeCall(call.id);
+                        nativeCallBridge.showMissedCallNotification({
+                          callId: call.id,
+                          callerName: call.callerName || "Customer",
+                          serviceName: call.serviceName || "Voice Call",
+                          bookingId: call.bookingId || ""
+                        }).catch(() => {});
+                        fetch(`/api/calls/${call.id}/timeout`, {
+                          method: "POST",
+                          headers: getHeaders(),
+                          body: JSON.stringify({})
+                        }).catch(() => {});
+                      }
+                      setCallState("IDLE");
+                      setActiveCall(null);
+                      showCallEndedNotice("Missed call");
+                    }
+                  }, remaining);
+                }
               }
             } else if (isCaller && callStateRef.current === "IDLE") {
               setActiveCall(call); setCallState("OUTGOING"); callAudioManager.playOutgoing();
@@ -962,7 +1115,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             const matchesCurrent = !activeId || activeId === reportedId || activeId.startsWith("temp-") || (reportedId && reportedId.startsWith("temp-"));
             if (matchesCurrent) {
               console.log(`[CALL] Polling detected terminal call status '${call.status}' for call ${reportedId}. Triggering handleRemoteCallEnded.`);
-              const reason = call.endReason || (call.status === "REJECTED" ? "declined" : (call.status === "CANCELLED" ? "cancelled" : "ended"));
+              const reason = call.endReason || (call.status === "REJECTED" ? "declined" : (call.status === "CANCELLED" ? "cancelled" : (call.status === "MISSED" ? "timeout" : "ended")));
               handleRemoteCallEnded({
                 callId: reportedId || activeId || undefined,
                 call,
@@ -983,7 +1136,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
                 const specificCall = specificData?.call;
                 if (specificCall && ["REJECTED", "ENDED", "CANCELLED", "COMPLETED", "BUSY", "MISSED"].includes(specificCall.status)) {
                   console.log(`[CALL] Polling check confirmed call ${specificCall.id} is terminal '${specificCall.status}'. Tearing down immediately.`);
-                  const reason = specificCall.endReason || (specificCall.status === "REJECTED" ? "declined" : (specificCall.status === "CANCELLED" ? "cancelled" : "ended"));
+                  const reason = specificCall.endReason || (specificCall.status === "REJECTED" ? "declined" : (specificCall.status === "CANCELLED" ? "cancelled" : (specificCall.status === "MISSED" ? "timeout" : "ended")));
                   handleRemoteCallEnded({
                     callId: specificCall.id,
                     call: specificCall,
@@ -1049,16 +1202,36 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setCallState("OUTGOING");
     callAudioManager.playOutgoing();
 
-    // Outgoing ring timeout (30 seconds)
+    // Outgoing ring timeout (45 seconds)
     clearOutgoingTimeout();
-    outgoingTimeoutRef.current = setTimeout(() => {
+    outgoingTimeoutRef.current = setTimeout(async () => {
       if (callStateRef.current === "OUTGOING") {
-        console.log("[CALL] Outgoing ring timed out after 30s");
+        console.log("[CALL] Outgoing ring timed out after 45s");
+        const callToTimeout = activeCallRef.current;
+        clearOutgoingTimeout();
+        clearIncomingTimeout();
         callAudioManager.stopAll();
-        setCallState("IDLE"); setActiveCall(null);
+        ringtonePlayer.stopRingtone();
+        callAudioManager.playCallEndedSound();
+        setCallState("IDLE");
+        setActiveCall(null);
         callStartInProgressRef.current = false;
+        showCallEndedNotice("Call not answered");
+
+        const targetId = callToTimeout?.id;
+        if (targetId && !targetId.startsWith("temp-")) {
+          try {
+            await fetch(`/api/calls/${targetId}/timeout`, {
+              method: "POST",
+              headers: getHeaders(),
+              body: JSON.stringify({})
+            });
+          } catch (e) {
+            console.warn("[CALL] Error notifying server of call timeout:", e);
+          }
+        }
       }
-    }, 30000);
+    }, 45000);
 
     try {
       const res = await fetch("/api/calls", {
@@ -1074,6 +1247,39 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         callAudioManager.setCallId(data.call.id);
         if (data.livekit) {
           setLivekitCredentials(data.livekit);
+        }
+        // Synchronize outgoing timeout to server's authoritative createdAt
+        if (data.call.createdAt) {
+          clearOutgoingTimeout();
+          const createdAtMs = new Date(data.call.createdAt).getTime();
+          const remaining = Math.max(1000, 45000 - (Date.now() - createdAtMs));
+          outgoingTimeoutRef.current = setTimeout(async () => {
+            if (callStateRef.current === "OUTGOING") {
+              console.log("[CALL_TIMEOUT] Outgoing ring timed out after 45s (server-synced)");
+              const targetId = activeCallRef.current?.id || data.call.id;
+              clearOutgoingTimeout();
+              clearIncomingTimeout();
+              callAudioManager.stopAll();
+              ringtonePlayer.stopRingtone();
+              callAudioManager.playCallEndedSound();
+              setCallState("IDLE");
+              setActiveCall(null);
+              callStartInProgressRef.current = false;
+              showCallEndedNotice("Call not answered");
+
+              if (targetId && !targetId.startsWith("temp-")) {
+                try {
+                  await fetch(`/api/calls/${targetId}/timeout`, {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({})
+                  });
+                } catch (e) {
+                  console.warn("[CALL] Error notifying server of call timeout:", e);
+                }
+              }
+            }
+          }, remaining);
         }
         if (socketRef.current && socketConnectedRef.current) {
           socketRef.current.emit("call:initiate", { call: data.call });
@@ -1105,6 +1311,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const acceptStartTime = Date.now();
     acceptInProgressRef.current = true;
     clearOutgoingTimeout();
+    clearIncomingTimeout();
     callAudioManager.stopAll();
     setCallState("ACCEPTING");
 
@@ -1181,6 +1388,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     processedTerminalCallIdsRef.current.add(callId);
     clearOutgoingTimeout();
+    clearIncomingTimeout();
     callAudioManager.stopAll();
     ringtonePlayer.stopRingtone();
     callAudioManager.playCallEndedSound();
@@ -1217,7 +1425,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.warn("[CALL] Reject call API notice:", err);
     }
-  }, [getHeaders, clearOutgoingTimeout, currentUser?.name, matchesMe]);
+  }, [getHeaders, clearOutgoingTimeout, clearIncomingTimeout, currentUser?.name, matchesMe]);
 
   // ─── endCall ──────────────────────────────────────────────────────────────
   const endCall = useCallback(async () => {
@@ -1225,6 +1433,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     endInProgressRef.current = true;
 
     clearOutgoingTimeout();
+    clearIncomingTimeout();
     callAudioManager.stopAll();
     ringtonePlayer.stopRingtone();
     callAudioManager.playCallEndedSound();
@@ -1291,7 +1500,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     acceptInProgressRef.current = false;
     endInProgressRef.current = false;
     fetchingTokenForRef.current = null;
-  }, [getHeaders, clearOutgoingTimeout, currentUser?.name, matchesMe]);
+  }, [getHeaders, clearOutgoingTimeout, clearIncomingTimeout, currentUser?.name, matchesMe]);
 
   return (
     <CallContext.Provider

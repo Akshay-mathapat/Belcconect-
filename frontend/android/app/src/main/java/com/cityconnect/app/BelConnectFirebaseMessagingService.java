@@ -47,11 +47,26 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
                 serviceName,
                 bookingId
             );
+        } else if ("missed_call".equals(type) || "call_timeout".equals(type) ||
+                   "call:timeout".equals(type) || "call:missed".equals(type) ||
+                   "call_missed".equals(type)) {
+            Log.i(TAG, "Call timeout / missed call received for call: " + callId + " (type=" + type + ")");
+            BelConnectCallPlugin.dismissCall(getApplicationContext(), callId);
+            BelConnectCallPlugin.showMissedCallNotification(
+                getApplicationContext(),
+                callId,
+                callerName,
+                serviceName,
+                bookingId
+            );
         } else if ("call:cancelled".equals(type) || "call_cancelled".equals(type) ||
-                   "call:ended".equals(type) || "call_ended".equals(type) ||
-                   "call:timeout".equals(type) || "call_timeout".equals(type) ||
-                   "call:missed".equals(type) || "call_missed".equals(type)) {
+                   "call:ended".equals(type) || "call_ended".equals(type)) {
             Log.i(TAG, "Call dismissal received for call: " + callId + " (type=" + type + ")");
+            if (callId != null && !callId.isEmpty()) {
+                String term = ("call:cancelled".equals(type) || "call_cancelled".equals(type)) ? "cancelled" : "ended";
+                SharedPreferences terminalPrefs = getSharedPreferences("belconnect_call_terminal_prefs", Context.MODE_PRIVATE);
+                terminalPrefs.edit().putString("term_" + callId, term).commit();
+            }
             BelConnectCallPlugin.dismissCall(getApplicationContext(), callId);
         }
     }

@@ -10,6 +10,8 @@ import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -21,11 +23,19 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 @CapacitorPlugin(name = "BelConnectCall")
 public class BelConnectCallPlugin extends Plugin {
     private static final String TAG = "BelConnectCallPlugin";
     public static final String CHANNEL_ID = "belconnect_calls_v2";
     public static final String CHANNEL_NAME = "BelConnect Incoming Calls";
+    public static final String MISSED_CHANNEL_ID = "belconnect_missed_calls";
+    public static final String MISSED_CHANNEL_NAME = "BelConnect Missed Calls";
 
     public static volatile boolean isAppInForeground = false;
     public static volatile String pendingAction = null;
@@ -33,6 +43,10 @@ public class BelConnectCallPlugin extends Plugin {
     public static volatile String pendingBookingId = null;
     public static volatile String latestDeviceToken = null;
     public static volatile String activePresentedCallId = null;
+    private static final Handler incomingWatchdogHandler = new Handler(Looper.getMainLooper());
+    private static final Map<String, Runnable> incomingWatchdogRunnables = new ConcurrentHashMap<>();
+    private static final Set<String> memorySeenMissedCallIds = Collections.synchronizedSet(new HashSet<>());
+    private static final Set<String> terminalOrAcceptedCallIds = Collections.synchronizedSet(new HashSet<>());
     private static BelConnectCallPlugin instance = null;
 
     public static boolean isCallAlreadyPresented(String callId) {
@@ -137,6 +151,20 @@ public class BelConnectCallPlugin extends Plugin {
                     channel.setBypassDnd(true);
                     notificationManager.createNotificationChannel(channel);
                     Log.i(TAG, "Notification channel '" + CHANNEL_ID + "' created.");
+                }
+
+                NotificationChannel existingMissed = notificationManager.getNotificationChannel(MISSED_CHANNEL_ID);
+                if (existingMissed == null) {
+                    NotificationChannel missedChannel = new NotificationChannel(
+                        MISSED_CHANNEL_ID,
+                        MISSED_CHANNEL_NAME,
+                        NotificationManager.IMPORTANCE_HIGH
+                    );
+                    missedChannel.setDescription("Missed voice calls for BelConnect");
+                    missedChannel.enableVibration(true);
+                    missedChannel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+                    notificationManager.createNotificationChannel(missedChannel);
+                    Log.i(TAG, "Notification channel '" + MISSED_CHANNEL_ID + "' created.");
                 }
             }
         }
@@ -300,9 +328,53 @@ public class BelConnectCallPlugin extends Plugin {
         notificationManager.notify(notificationId, builder.build());
         startRingtone(context, callId);
         Log.i(TAG, "Incoming call notification displayed for call: " + callId);
+
+        // Cancel any previous watchdog for this call
+        Runnable existingWatchdog = incomingWatchdogRunnables.remove(callId);
+        if (existingWatchdog != null) {
+            incomingWatchdogHandler.removeCallbacks(existingWatchdog);
+        }
+        terminalOrAcceptedCallIds.remove(callId);
+
+        // Arm 45-second native watchdog timer for unanswered incoming call
+        Runnable timeoutRunnable = new Runnable() {
+            @Override
+            public void run() {
+                incomingWatchdogRunnables.remove(callId);
+                if (terminalOrAcceptedCallIds.contains(callId)) {
+                    Log.i(TAG, "[CALL_WATCHDOG] Call " + callId + " is already terminal/accepted. Ignoring watchdog.");
+                    return;
+                }
+                if (isCallAlreadyPresented(callId)) {
+                    Log.i(TAG, "Native 45s watchdog expired for unanswered call: " + callId);
+                    Log.i(TAG, "[CALL_WATCHDOG] Native 45s watchdog expired for unanswered call: " + callId);
+                    terminalOrAcceptedCallIds.add(callId);
+                    dismissCall(context, callId);
+                    showMissedCallNotification(context, callId, callerName, serviceName, bookingId);
+                    CallActionReceiver.sendCallStatusUpdate(context, callId, "timeout");
+                }
+            }
+        };
+        incomingWatchdogRunnables.put(callId, timeoutRunnable);
+        incomingWatchdogHandler.postDelayed(timeoutRunnable, 45_000L);
     }
 
     public static void dismissCall(Context context, String callId) {
+        if (callId != null && !callId.isEmpty()) {
+            terminalOrAcceptedCallIds.add(callId);
+            Runnable watchdog = incomingWatchdogRunnables.remove(callId);
+            if (watchdog != null) {
+                incomingWatchdogHandler.removeCallbacks(watchdog);
+                Log.i(TAG, "Watchdog timer cancelled for call: " + callId);
+                Log.i(TAG, "[CALL_WATCHDOG] Watchdog timer cancelled for call: " + callId);
+            }
+        } else {
+            for (Runnable r : incomingWatchdogRunnables.values()) {
+                incomingWatchdogHandler.removeCallbacks(r);
+            }
+            incomingWatchdogRunnables.clear();
+        }
+
         stopRingtone();
         clearCallPresented(callId);
         if (context != null) {
@@ -317,6 +389,113 @@ public class BelConnectCallPlugin extends Plugin {
             }
         }
         Log.i(TAG, "Dismissed call notification and checked service: " + callId);
+        Log.i(TAG, "[CALL_DISMISS] Dismissed call notification and checked service: " + callId);
+    }
+
+    public static synchronized void showMissedCallNotification(Context context, String callId, String callerName, String serviceName, String bookingId) {
+        if (context == null) return;
+        createNotificationChannel(context);
+
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) return;
+
+        // Check if call was explicitly accepted, declined, or cancelled
+        SharedPreferences terminalPrefs = context.getSharedPreferences("belconnect_call_terminal_prefs", Context.MODE_PRIVATE);
+        if (callId != null && !callId.isEmpty()) {
+            String termReason = terminalPrefs.getString("term_" + callId, null);
+            if ("accepted".equals(termReason) || "declined".equals(termReason) || "cancelled".equals(termReason)) {
+                Log.i(TAG, "[CALL_MISSED] Skipping missed call notification because call " + callId + " was " + termReason);
+                return;
+            }
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences("belconnect_missed_prefs", Context.MODE_PRIVATE);
+
+        // Deduplication by callId: in-memory and SharedPreferences
+        if (callId != null && !callId.isEmpty()) {
+            if (memorySeenMissedCallIds.contains(callId)) {
+                Log.i(TAG, "[CALL_MISSED] In-memory deduplication: callId=" + callId + " already recorded; skipping duplicate.");
+                return;
+            }
+            Set<String> seen = prefs.getStringSet("seen_missed_call_ids", new HashSet<String>());
+            if (seen != null && seen.contains(callId)) {
+                Log.i(TAG, "[CALL_MISSED] Prefs deduplication: callId=" + callId + " already recorded; skipping duplicate.");
+                memorySeenMissedCallIds.add(callId);
+                return;
+            }
+            memorySeenMissedCallIds.add(callId);
+            Set<String> updatedSeen = seen != null ? new HashSet<>(seen) : new HashSet<String>();
+            updatedSeen.add(callId);
+            prefs.edit().putStringSet("seen_missed_call_ids", updatedSeen).commit();
+        }
+
+        // Aggregation count per caller
+        String displayName = (callerName != null && !callerName.trim().isEmpty()) ? callerName.trim() : "BelConnect User";
+        String countKey = "count_" + displayName;
+        int count = prefs.getInt(countKey, 0) + 1;
+        prefs.edit().putInt(countKey, count).commit();
+
+        String title = count > 1 ? count + " Missed Calls" : "Missed Call";
+        String content = count > 1 ? "You have " + count + " missed calls from " + displayName : "You have a missed call from " + displayName;
+
+        int notificationId = 3000 + Math.abs(displayName.hashCode() % 5000);
+
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("action", "view_missed_call");
+        intent.putExtra("callId", callId != null ? callId : "");
+        intent.putExtra("bookingId", bookingId != null ? bookingId : "");
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setSubText("BelConnect")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent);
+
+        notificationManager.notify(notificationId, builder.build());
+        Log.i(TAG, "[CALL_MISSED] Missed call notification displayed for " + displayName + " (count=" + count + ", callId=" + callId + ")");
+    }
+
+    public static void clearMissedCalls(Context context, String callerName) {
+        if (context == null) return;
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("belconnect_missed_prefs", Context.MODE_PRIVATE);
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (callerName != null && !callerName.trim().isEmpty()) {
+                String cleanName = callerName.trim();
+                prefs.edit().remove("count_" + cleanName).commit();
+                int notificationId = 3000 + Math.abs(cleanName.hashCode() % 5000);
+                if (nm != null) nm.cancel(notificationId);
+                Log.i(TAG, "[CALL_MISSED] Cleared missed calls for: " + cleanName);
+            } else {
+                SharedPreferences.Editor editor = prefs.edit();
+                for (String key : prefs.getAll().keySet()) {
+                    if (key.startsWith("count_")) {
+                        editor.remove(key);
+                        String name = key.substring(6);
+                        int nid = 3000 + Math.abs(name.hashCode() % 5000);
+                        if (nm != null) nm.cancel(nid);
+                    }
+                }
+                editor.commit();
+                Log.i(TAG, "[CALL_MISSED] Cleared all missed calls");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error clearing missed calls: " + e.getMessage());
+        }
     }
 
     @PluginMethod
@@ -480,6 +659,29 @@ public void getDevicePushToken(PluginCall call) {
         stopRingtone();
         JSObject ret = new JSObject();
         ret.put("stopped", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void clearMissedCalls(PluginCall call) {
+        String callerName = call.getString("callerName", null);
+        clearMissedCalls(getContext(), callerName);
+        JSObject ret = new JSObject();
+        ret.put("cleared", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void showMissedCallNotification(PluginCall call) {
+        String callId = call.getString("callId");
+        String callerName = call.getString("callerName");
+        String serviceName = call.getString("serviceName");
+        String bookingId = call.getString("bookingId");
+
+        showMissedCallNotification(getContext(), callId, callerName, serviceName, bookingId);
+
+        JSObject ret = new JSObject();
+        ret.put("shown", true);
         call.resolve(ret);
     }
 }

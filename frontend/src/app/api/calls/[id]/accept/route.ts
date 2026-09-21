@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCallById, updateCallStatus } from "@/lib/calls";
+import { getCallById, acceptCall } from "@/lib/calls";
 import { generateLiveKitToken } from "@/lib/livekitToken";
 import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
@@ -51,18 +51,17 @@ export async function POST(
       });
     }
 
-    // Call status check: must be INITIATED or RINGING
-    if (call.status !== "INITIATED" && call.status !== "RINGING") {
+    // Atomic conditional status update: only transition if still INITIATED or RINGING
+    const acceptResult = await acceptCall(callId);
+    if (!acceptResult.success || !acceptResult.call) {
+      console.warn(`[CALL_ACCEPT_RACE] Failed to accept call ${callId}: ${acceptResult.error}`);
       return NextResponse.json(
-        { error: `Cannot accept call in status '${call.status}'` },
-        { status: 400 }
+        { error: acceptResult.error || "Failed to update call status", call: acceptResult.call },
+        { status: 409 }
       );
     }
 
-    const updatedCall = await updateCallStatus(callId, "ACCEPTED");
-    if (!updatedCall) {
-      return NextResponse.json({ error: "Failed to update call status" }, { status: 500 });
-    }
+    const updatedCall = acceptResult.call;
 
     const [callerLiveKit, receiverLiveKit] = await Promise.all([
       generateLiveKitToken(updatedCall.bookingId, updatedCall.callerId),
