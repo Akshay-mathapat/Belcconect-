@@ -178,7 +178,6 @@ export async function getActiveCallForUser(userId: string): Promise<CallRecord |
     `SELECT id FROM calls 
      WHERE (caller_id = $1 OR receiver_id = $1)
        AND (
-         (status IN ('INITIATED', 'RINGING') AND created_at >= NOW() - INTERVAL '60 seconds')
          (status IN ('INITIATED', 'RINGING') AND created_at >= NOW() - INTERVAL '45 seconds')
          OR
          (status IN ('ACCEPTED', 'CONNECTED') AND ended_at IS NULL AND created_at >= NOW() - INTERVAL '24 hours')
@@ -304,7 +303,6 @@ export async function autoExpireStaleCalls(timeoutSeconds = 45): Promise<CallRec
   const res = await query(
     `UPDATE calls
      SET status = 'MISSED',
-         ended_at = NOW()
          end_reason = 'timeout',
          ended_at = NOW(),
          duration_seconds = 0

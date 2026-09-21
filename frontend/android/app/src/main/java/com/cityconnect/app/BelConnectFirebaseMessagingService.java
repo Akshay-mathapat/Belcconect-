@@ -31,6 +31,7 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
         String bookingId = data.get("bookingId");
 
         Log.i(TAG, "Received FCM message type: " + type + ", callId: " + callId);
+        Log.i(TAG, "[CALL_TRACE] callId=" + callId + " stage=fcm_received");
 
         if ("incoming_call".equals(type) || "call:incoming".equals(type)) {
             // Deduplication: If this call has already been presented (either by in-app
@@ -52,6 +53,7 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
                    "call_missed".equals(type)) {
             Log.i(TAG, "Call timeout / missed call received for call: " + callId + " (type=" + type + ")");
             BelConnectCallPlugin.dismissCall(getApplicationContext(), callId);
+            BelConnectCallPlugin.dismissCall(getApplicationContext(), callId, "fcm_missed_or_timeout");
             BelConnectCallPlugin.showMissedCallNotification(
                 getApplicationContext(),
                 callId,
@@ -68,6 +70,7 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
                 terminalPrefs.edit().putString("term_" + callId, term).commit();
             }
             BelConnectCallPlugin.dismissCall(getApplicationContext(), callId);
+            BelConnectCallPlugin.dismissCall(getApplicationContext(), callId, "fcm_ended_or_cancelled");
         }
     }
 

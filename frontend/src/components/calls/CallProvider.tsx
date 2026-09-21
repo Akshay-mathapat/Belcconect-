@@ -362,6 +362,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       if (type === "call:ring" || type === "call:initiate") {
         const isReceiver = matchesMe(call.receiverId);
         if (isReceiver) {
+          console.log(`[CALL_TRACE] callId=${call.id} stage=receiver_invite_received`);
           // Connected Call Protection: Never interrupt active or accepting call
           if (callStateRef.current === "ACTIVE" || callStateRef.current === "ACCEPTING") {
             return;
@@ -377,10 +378,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               bookingId: call.bookingId
             });
           } else {
-            // Dismiss native notification only if user has app actively open in foreground,
-            // and mark call presented to prevent duplicate FCM background alerts.
+            // Mark call presented to prevent duplicate FCM background alerts.
+            // Do NOT dismiss native call here as native ringtone is authoritative on Android.
             nativeCallBridge.markCallPresented(call.id);
-            if (call?.id) nativeCallBridge.dismissNativeCall(call.id);
           }
 
           // Duplicate-event protection: If this call ID is already ringing, do not restart ringtone
@@ -851,6 +851,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               serviceName: call.serviceName || "Voice Call",
               bookingId: call.bookingId || ""
             }).catch(() => {});
+            await nativeCallBridge.dismissNativeCall(callId);
           } else {
             setActiveCall(call);
             setCallState("INCOMING");
@@ -889,9 +890,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           callAudioManager.stopAll();
           setCallState("IDLE");
           setActiveCall(null);
+          await nativeCallBridge.dismissNativeCall(callId);
         }
         await nativeCallBridge.clearPendingCallAction();
-        await nativeCallBridge.dismissNativeCall(callId);
       }
     } catch (err) {
       console.warn("[CALL] Error checking native call action:", err);
@@ -1109,7 +1110,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           } else if (["REJECTED","ENDED","CANCELLED","COMPLETED","BUSY","MISSED"].includes(call.status)) {
             const activeId = activeCallRef.current?.id ? String(activeCallRef.current.id).trim() : null;
             const reportedId = call.id ? String(call.id).trim() : null;
-            const matchesCurrent = !activeId || activeId === reportedId || activeId.startsWith("temp-") || (reportedId && reportedId.startsWith("temp-"));
+            const matchesCurrent = Boolean(activeId && reportedId && activeId === reportedId && !activeId.startsWith("temp-"));
             if (matchesCurrent) {
               console.log(`[CALL] Polling detected terminal call status '${call.status}' for call ${reportedId}. Triggering handleRemoteCallEnded.`);
               const reason = call.endReason || (call.status === "REJECTED" ? "declined" : (call.status === "CANCELLED" ? "cancelled" : (call.status === "MISSED" ? "timeout" : "ended")));
@@ -1240,6 +1241,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       console.log(`[CALL_PERF] start_call_api_ms=${Date.now() - clickTime}`);
 
       if (res.ok && data.success && data.call) {
+        console.log(`[CALL_TRACE] callId=${data.call.id} stage=caller_start_confirmed`);
         setActiveCall(data.call);
         callAudioManager.setCallId(data.call.id);
         if (data.livekit) {

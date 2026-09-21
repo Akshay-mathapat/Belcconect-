@@ -264,11 +264,15 @@ public class MainActivity extends BridgeActivity {
 
             if ("view_missed_call".equals(action)) {
                 BelConnectCallPlugin.clearMissedCalls(this, null);
+                BelConnectCallPlugin.dismissCall(this, callId);
+            } else if ("decline".equals(action)) {
+                BelConnectCallPlugin.dismissCall(this, callId);
             }
 
             // Start active microphone foreground service
             // when Accept was pressed.
             if ("accept".equals(action)) {
+                BelConnectCallPlugin.dismissCall(this, callId);
                 if (callId != null && !callId.isEmpty()) {
                     SharedPreferences terminalPrefs = getSharedPreferences("belconnect_call_terminal_prefs", Context.MODE_PRIVATE);
                     terminalPrefs.edit().putString("term_" + callId, "accepted").commit();

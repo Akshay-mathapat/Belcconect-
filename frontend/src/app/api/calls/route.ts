@@ -163,6 +163,7 @@ export async function POST(request: Request) {
     // 7. Create Call Record & Transition to RINGING in Postgres
     const callRecord = await createCallRecord(actualCallerId, receiverId, bookingId);
     const ringingCallRecord = (await updateCallStatus(callRecord.id, "RINGING")) || callRecord;
+    console.log(`[CALL_TRACE] callId=${ringingCallRecord.id} stage=created`);
 
     // 8. Fire-and-forget Socket.IO signaling broadcast (non-blocking)
     sendCallSignal({
@@ -172,6 +173,7 @@ export async function POST(request: Request) {
     }).catch((err) => {
       console.error("[Call API] Ring signal dispatch error:", err);
     });
+    console.log(`[CALL_TRACE] callId=${ringingCallRecord.id} stage=socket_invite_sent targetUserId=${receiverId}`);
 
     callSignaling.emitCallEvent({
       type: "call:ring",
@@ -199,6 +201,7 @@ export async function POST(request: Request) {
       callerName,
       serviceName: booking.service_name || "BelConnect Service"
     }).catch((err: any) => console.error("[Call API] Call Push dispatch error:", err));
+    console.log(`[CALL_TRACE] callId=${ringingCallRecord.id} stage=fcm_sent targetUserId=${receiverId}`);
 
     const callerLiveKit = await generateLiveKitToken(bookingId, actualCallerId).catch((err) => {
       console.error("[Call API] LiveKit token generation error:", err);

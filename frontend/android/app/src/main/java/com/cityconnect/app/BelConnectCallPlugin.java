@@ -180,11 +180,12 @@ public class BelConnectCallPlugin extends Plugin {
         if (context == null) return;
         if (callId != null && callId.equals(currentRingingCallId) && mediaPlayer != null && mediaPlayer.isPlaying()) {
             Log.i(TAG, "Native ringtone already playing for call: " + callId + "; ignoring duplicate start.");
+            Log.i(TAG, "[CALL_TRACE] callId=" + callId + " stage=ringtone_already_playing (ignoring duplicate start)");
             return;
         }
 
         try {
-            stopRingtone();
+            stopRingtone("replacing_for_call_" + callId);
             currentRingingCallId = callId;
 
             int soundResId = context.getResources().getIdentifier("belconnect_incoming_call", "raw", context.getPackageName());
@@ -204,15 +205,27 @@ public class BelConnectCallPlugin extends Plugin {
                 .build();
             mediaPlayer.setAudioAttributes(audioAttributes);
             mediaPlayer.setLooping(true);
+            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    try {
+                        if (currentRingingCallId != null && mp != null) {
+                            mp.start();
+                        }
+                    } catch (Exception ignored) {}
+                }
+            });
             mediaPlayer.prepare();
             mediaPlayer.start();
             Log.i(TAG, "Native ringtone started for call: " + callId);
+            Log.i(TAG, "[CALL_TRACE] callId=" + callId + " stage=ringtone_started");
         } catch (Exception e) {
             Log.w(TAG, "Could not play native media player ringtone: " + e.getMessage());
         }
     }
 
-    public static synchronized void stopRingtone() {
+    public static synchronized void stopRingtone(String reason) {
+        Log.i(TAG, "[RING_STOP] callId=" + currentRingingCallId + " reason=" + reason);
         currentRingingCallId = null;
         try {
             if (mediaPlayer != null) {
@@ -229,8 +242,19 @@ public class BelConnectCallPlugin extends Plugin {
         }
     }
 
+    public static synchronized void stopRingtone() {
+        stopRingtone("unspecified");
+    }
+
     public static void showIncomingCall(Context context, String callId, String callerName, String serviceName, String bookingId) {
         if (callId == null || callId.isEmpty()) return;
+
+        // Step 6: Deduplication check using callId
+        if (callId.equals(currentRingingCallId) && isCallAlreadyPresented(callId)) {
+            Log.i(TAG, "[CALL_TRACE] callId=" + callId + " stage=duplicate_incoming_ignored (already presented and ringing)");
+            return;
+        }
+
         setCallPresented(callId);
         createNotificationChannel(context);
 
@@ -328,6 +352,7 @@ public class BelConnectCallPlugin extends Plugin {
         notificationManager.notify(notificationId, builder.build());
         startRingtone(context, callId);
         Log.i(TAG, "Incoming call notification displayed for call: " + callId);
+        Log.i(TAG, "[CALL_TRACE] callId=" + callId + " stage=native_incoming_shown");
 
         // Cancel any previous watchdog for this call
         Runnable existingWatchdog = incomingWatchdogRunnables.remove(callId);
@@ -349,6 +374,7 @@ public class BelConnectCallPlugin extends Plugin {
                     Log.i(TAG, "[CALL_WATCHDOG] Native 45s watchdog expired for unanswered call: " + callId);
                     terminalOrAcceptedCallIds.add(callId);
                     dismissCall(context, callId);
+                    dismissCall(context, callId, "watchdog_timeout");
                     showMissedCallNotification(context, callId, callerName, serviceName, bookingId);
                     CallActionReceiver.sendCallStatusUpdate(context, callId, "timeout");
                 }
@@ -358,7 +384,7 @@ public class BelConnectCallPlugin extends Plugin {
         incomingWatchdogHandler.postDelayed(timeoutRunnable, 45_000L);
     }
 
-    public static void dismissCall(Context context, String callId) {
+    public static void dismissCall(Context context, String callId, String reason) {
         if (callId != null && !callId.isEmpty()) {
             terminalOrAcceptedCallIds.add(callId);
             Runnable watchdog = incomingWatchdogRunnables.remove(callId);
@@ -373,7 +399,7 @@ public class BelConnectCallPlugin extends Plugin {
             incomingWatchdogRunnables.clear();
         }
 
-        stopRingtone();
+        stopRingtone(reason != null ? reason : "dismiss_call");
         clearCallPresented(callId);
         if (context != null) {
             BelConnectCallService.stopIfMatchingCall(context, callId);
@@ -386,7 +412,11 @@ public class BelConnectCallPlugin extends Plugin {
                 }
             }
         }
-        Log.i(TAG, "[CALL_DISMISS] Dismissed call notification and checked service: " + callId);
+        Log.i(TAG, "[CALL_DISMISS] Dismissed call notification (reason=" + reason + "): " + callId);
+    }
+
+    public static void dismissCall(Context context, String callId) {
+        dismissCall(context, callId, "dismiss_call");
     }
 
     public static synchronized void showMissedCallNotification(Context context, String callId, String callerName, String serviceName, String bookingId) {
