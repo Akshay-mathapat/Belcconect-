@@ -346,7 +346,6 @@ public class BelConnectCallPlugin extends Plugin {
                     return;
                 }
                 if (isCallAlreadyPresented(callId)) {
-                    Log.i(TAG, "Native 45s watchdog expired for unanswered call: " + callId);
                     Log.i(TAG, "[CALL_WATCHDOG] Native 45s watchdog expired for unanswered call: " + callId);
                     terminalOrAcceptedCallIds.add(callId);
                     dismissCall(context, callId);
@@ -365,7 +364,6 @@ public class BelConnectCallPlugin extends Plugin {
             Runnable watchdog = incomingWatchdogRunnables.remove(callId);
             if (watchdog != null) {
                 incomingWatchdogHandler.removeCallbacks(watchdog);
-                Log.i(TAG, "Watchdog timer cancelled for call: " + callId);
                 Log.i(TAG, "[CALL_WATCHDOG] Watchdog timer cancelled for call: " + callId);
             }
         } else {
@@ -388,7 +386,6 @@ public class BelConnectCallPlugin extends Plugin {
                 }
             }
         }
-        Log.i(TAG, "Dismissed call notification and checked service: " + callId);
         Log.i(TAG, "[CALL_DISMISS] Dismissed call notification and checked service: " + callId);
     }
 

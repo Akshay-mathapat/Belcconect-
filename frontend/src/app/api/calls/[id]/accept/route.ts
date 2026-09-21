@@ -43,6 +43,26 @@ export async function POST(
         generateLiveKitToken(call.bookingId, call.receiverId)
       ]);
       const currentLiveKit = authUser.userId === call.callerId ? callerLiveKit : receiverLiveKit;
+
+      // Ensure caller and receiver get signals even on idempotent re-accept
+      Promise.all([
+        sendCallSignal({
+          type: "call:accept",
+          targetUserId: call.callerId,
+          call,
+          livekit: callerLiveKit
+        }),
+        sendCallSignal({
+          type: "call:accept",
+          targetUserId: call.receiverId,
+          call,
+          livekit: receiverLiveKit
+        })
+      ]).catch((err) => {
+        console.error("[Accept API] Idempotent signal relay failed:", err);
+      });
+
+      console.log(`[CALL_ACCEPT] callId=${callId} dbStatus=${call.status} updateResult=accepted`);
       return NextResponse.json({
         success: true,
         call,
@@ -102,6 +122,8 @@ export async function POST(
     });
 
     const currentLiveKit = authUser.userId === updatedCall.callerId ? callerLiveKit : receiverLiveKit;
+
+    console.log(`[CALL_ACCEPT] callId=${callId} dbStatus=${updatedCall.status} updateResult=accepted`);
 
     // Immediate fast return to client (<30ms)
     return NextResponse.json({

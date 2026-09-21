@@ -748,6 +748,7 @@ export default function LiveKitVoiceCall({
   }
 
   console.log(`[CALL_TRACE] Step 8: LiveKitVoiceCall attempting room.connect() (serverUrl=${livekit.serverUrl}, roomName=${livekit.roomName})`);
+  console.log(`[CALL_MEDIA] callId=${call.id} role=${currentUserId === call.callerId ? 'caller' : 'receiver'} room=${livekit.roomName} tokenPresent=${Boolean(livekit.participantToken)} action=joining`);
 
   return (
     <LiveKitRoom

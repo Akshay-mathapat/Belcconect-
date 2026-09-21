@@ -108,14 +108,10 @@ io.on("connection", (socket) => {
     const callId = call.id || data.callId;
     const callerId = call.callerId || (data.endedByRole === "customer" ? userId : null);
     const receiverId = call.receiverId || (data.endedByRole === "provider" ? userId : null);
-    const reason = data.reason || (event === "call:reject" ? "declined" : event === "call:cancel" ? "cancelled" : "ended");
     const isTimeout = event === "call:timeout" || event === "call:missed" || data.reason === "timeout";
     const reason = data.reason || (event === "call:reject" ? "declined" : event === "call:cancel" ? "cancelled" : (isTimeout ? "timeout" : "ended"));
     const status = reason === "declined" ? "REJECTED" : reason === "cancelled" ? "CANCELLED" : (isTimeout ? "MISSED" : "ENDED");
 
-    console.log(`[CALL-END] forwarding callId=${callId} event=${event} from user=${userId}`);
-    if (callerId) console.log(`[CALL-END] target customer room=user:${callerId}`);
-    if (receiverId) console.log(`[CALL-END] target provider room=user:${receiverId}`);
     console.log(`[CALL_TIMEOUT] forwarding callId=${callId} event=${event} reason=${reason} from user=${userId}`);
     if (callerId) console.log(`[CALL_TIMEOUT] target customer room=user:${callerId}`);
     if (receiverId) console.log(`[CALL_TIMEOUT] target provider room=user:${receiverId}`);
@@ -134,7 +130,6 @@ io.on("connection", (socket) => {
 
     const payload = {
       type: "call:ended",
-      call: { ...call, id: callId, status: reason === "declined" ? "REJECTED" : reason === "cancelled" ? "CANCELLED" : "ENDED" },
       call: { ...call, id: callId, status },
       reason,
       endedByUserId: data.endedByUserId || userId,
@@ -147,13 +142,11 @@ io.on("connection", (socket) => {
     if (callerId) {
       io.to(`user:${callerId}`).emit("call:ended", payload);
       io.to(`user:${callerId}`).emit("call:signal", payload);
-      io.to(`user:${callerId}`).emit(event, payload);
       io.to(`user:${callerId}`).emit(isTimeout ? "call:timeout" : event, payload);
     }
     if (receiverId) {
       io.to(`user:${receiverId}`).emit("call:ended", payload);
       io.to(`user:${receiverId}`).emit("call:signal", payload);
-      io.to(`user:${receiverId}`).emit(event, payload);
       io.to(`user:${receiverId}`).emit(isTimeout ? "call:missed" : event, payload);
     }
     if (callId) {
@@ -169,6 +162,28 @@ io.on("connection", (socket) => {
   socket.on("call:cancel", (data) => handleClientCallTermination("call:cancel", data));
   socket.on("call:timeout", (data) => handleClientCallTermination("call:timeout", data));
   socket.on("call:missed", (data) => handleClientCallTermination("call:missed", data));
+
+  socket.on("call:accept", (data) => {
+    if (!data) return;
+    const call = data.call || {};
+    const callId = call.id || data.callId;
+    const callerId = call.callerId;
+    const receiverId = call.receiverId;
+    console.log(`[CALL_ACCEPT] forwarding call:accept callId=${callId} from user=${userId}`);
+    const payload = { type: "call:accept", ...data };
+    if (callerId) {
+      io.to(`user:${callerId}`).emit("call:accept", payload);
+      io.to(`user:${callerId}`).emit("call:signal", payload);
+    }
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit("call:accept", payload);
+      io.to(`user:${receiverId}`).emit("call:signal", payload);
+    }
+    if (callId) {
+      io.to(`call:${callId}`).emit("call:accept", payload);
+      io.to(`call:${callId}`).emit("call:signal", payload);
+    }
+  });
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
   socket.on("booking:subscribe", async (data) => {
@@ -664,6 +679,7 @@ const runStaleCallCleanup = async () => {
     if (res.rows.length > 0) {
       for (const call of res.rows) {
         console.log(`[CALL_TIMEOUT] Server background worker expired stale call: callId=${call.id} callerId=${call.caller_id} receiverId=${call.receiver_id}`);
+        console.log(`[CALL_TIMEOUT] callId=${call.id} dbStatus=MISSED action=expired`);
         const payload = {
           type: "call:ended",
           call: {

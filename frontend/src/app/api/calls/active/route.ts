@@ -27,10 +27,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ activeCall: null, call: null });
     }
 
+    let livekit = null;
+    if ((call.status === "ACCEPTED" || call.status === "CONNECTED") && call.bookingId) {
+      try {
+        livekit = await generateLiveKitToken(call.bookingId, userId);
+      } catch (tokenErr) {
+        console.warn("[active/route] Failed to generate LiveKit token for user:", tokenErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       call,
-      livekit: null
+      livekit
     });
   } catch (error: any) {
     return NextResponse.json({ activeCall: null, call: null });

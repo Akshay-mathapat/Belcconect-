@@ -260,18 +260,22 @@ export async function acceptCall(callId: string): Promise<{ success: boolean; ca
 
   if (res.rows.length > 0) {
     const updated = await getCallById(callId);
+    console.log(`[CALL_ACCEPT] callId=${callId} dbStatus=${updated?.status} updateResult=accepted`);
     return { success: true, call: updated };
   }
 
   const current = await getCallById(callId);
   if (!current) {
+    console.log(`[CALL_ACCEPT] callId=${callId} dbStatus=null updateResult=rejected`);
     return { success: false, call: null, error: "Call not found" };
   }
 
   if (current.status === "ACCEPTED" || current.status === "CONNECTED") {
+    console.log(`[CALL_ACCEPT] callId=${callId} dbStatus=${current.status} updateResult=accepted`);
     return { success: true, call: current };
   }
 
+  console.log(`[CALL_ACCEPT] callId=${callId} dbStatus=${current.status} updateResult=rejected`);
   return {
     success: false,
     call: current,
