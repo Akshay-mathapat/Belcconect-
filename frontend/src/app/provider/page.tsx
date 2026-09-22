@@ -509,11 +509,15 @@ export default function ProviderDashboardPage() {
             <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
               <div className="font-heading text-lg font-extrabold text-blue-600">14</div>
               <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">{t("serviceProvider.profileViews")}</span>
+              <div className="font-heading text-lg font-extrabold text-blue-600">{completedServices}</div>
+              <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">{t("serviceProvider.completedServices") || "Completed Services"}</span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
               <div className="font-heading text-lg font-extrabold text-blue-600">98%</div>
               <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">{t("serviceProvider.responseRate")}</span>
+              <div className="font-heading text-lg font-extrabold text-blue-600">{acceptedJobs}</div>
+              <span className="text-[9px] font-extrabold text-blue-600/80 tracking-wider uppercase">{t("serviceProvider.acceptedJobs") || "Active Jobs"}</span>
             </div>
           </div>
         </div>

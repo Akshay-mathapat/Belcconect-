@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
@@ -70,9 +71,22 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
   }
 }
 
-export default function BookingsManagementPage() {
+const VALID_TABS = ["ACTIVE", "Requested", "Accepted", "Started", "Completed", "Rejected", "ALL"];
+const ACTIVE_JOB_STATUSES: BookingStatus[] = ["Accepted", "OnTheWay", "Started"];
+
+function BookingsManagementContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const { bookings, updateBookingStatus, deleteBooking, fetchProviderBookings } = useProviderStore();
-  const [activeTab, setActiveTab] = useState<string>("ACTIVE");
+  const [activeTab, setActiveTab] = useState<string>(
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "ACTIVE"
+  );
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -129,7 +143,7 @@ export default function BookingsManagementPage() {
   const filteredBookings = bookings.filter((b) => {
     let matchesTab = true;
     if (activeTab === "ACTIVE") {
-      matchesTab = b.status !== "Completed" && b.status !== "ReviewSubmitted" && (b.status as any) !== "Rejected";
+      matchesTab = ACTIVE_JOB_STATUSES.includes(b.status);
     } else if (activeTab === "Completed") {
       matchesTab = b.status === "Completed" || b.status === "ReviewSubmitted";
     } else if (activeTab !== "ALL") {
@@ -192,7 +206,7 @@ export default function BookingsManagementPage() {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {statusFilterTabs.map((tab) => {
           const count = tab.value === "ACTIVE"
-            ? bookings.filter(b => b.status !== "Completed" && b.status !== "ReviewSubmitted" && (b.status as any) !== "Rejected").length
+            ? bookings.filter(b => ACTIVE_JOB_STATUSES.includes(b.status)).length
             : tab.value === "Completed"
             ? bookings.filter(b => b.status === "Completed" || b.status === "ReviewSubmitted").length
             : tab.value === "ALL"
@@ -378,5 +392,13 @@ export default function BookingsManagementPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function BookingsManagementPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground text-sm font-medium">Loading bookings...</div>}>
+      <BookingsManagementContent />
+    </Suspense>
   );
 }

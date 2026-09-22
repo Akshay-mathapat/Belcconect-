@@ -8,7 +8,6 @@ import {
   Clock, 
   MessageSquare, 
   Star, 
-  Wallet, 
   BarChart3, 
   User, 
   Settings, 
@@ -35,7 +34,6 @@ const DASHBOARD_PAGES = [
   { label: "Working Availability", href: "/provider/availability", desc: "Set working hours & available slots", keywords: ["availability", "hours", "shifts", "slots"], icon: Clock },
   { label: "Customer Messages", href: "/provider/messages", desc: "Chat with booking customers", keywords: ["messages", "chat", "inbox", "customers"], icon: MessageSquare },
   { label: "Customer Reviews", href: "/provider/reviews", desc: "Check customer feedback & ratings", keywords: ["reviews", "ratings", "feedback", "stars"], icon: Star },
-  { label: "Payouts & Payments", href: "/provider/payments", desc: "Earnings & payout transactions", keywords: ["payments", "payouts", "earnings", "wallet", "transactions"], icon: Wallet },
   { label: "Profile Account", href: "/provider/profile", desc: "Manage provider account profile", keywords: ["profile", "bio", "account"], icon: User },
 ];
 

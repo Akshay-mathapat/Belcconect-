@@ -418,21 +418,50 @@ function BookingFlow() {
 
           {step === 5 && (
             <>
-              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">{t("booking.paymentMethod")}</h1>
-              <div className="space-y-3 mb-8">
-                <div className="border border-blue-600/30 bg-blue-600/5 dark:border-blue-500/30 dark:bg-blue-950/20 rounded-xl p-4 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="block font-semibold text-foreground mb-1">{t("booking.payAfterService")}</span>
-                      <span className="text-sm text-muted-foreground">{t("booking.payAfterServiceDetails")}</span>
-                    </div>
-                    <div className="w-5 h-5 rounded-full border-2 border-blue-600 flex items-center justify-center shrink-0">
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    </div>
-                  </div>
+              <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground mb-2">Review & Confirm</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-6">Review your booking details before sending request to the service provider.</p>
+
+              {/* Direct Settlement Notice */}
+              <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs sm:text-sm text-foreground space-y-1">
+                  <p className="font-semibold text-amber-900 dark:text-amber-200">
+                    Service charges are decided and settled directly between you and the service provider. BelConnect does not collect service payments.
+                  </p>
                 </div>
               </div>
-              <button onClick={handleConfirm} disabled={isSubmitting} className="w-full flex justify-center py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer">
+
+              {/* Booking Summary Card */}
+              <div className="space-y-3 mb-8 bg-muted/40 rounded-2xl p-4 sm:p-5 border border-border">
+                <div className="flex justify-between items-center text-sm py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-semibold text-foreground capitalize">{service}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">Provider</span>
+                  <span className="font-semibold text-foreground">{getProviderName(proId)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">Schedule</span>
+                  <span className="font-semibold text-foreground">{date} ({time || t("booking.defaultTimeRange")})</span>
+                </div>
+                <div className="flex flex-col text-sm py-1">
+                  <span className="text-muted-foreground mb-1">Service Location</span>
+                  <span className="font-medium text-foreground text-xs leading-relaxed">
+                    {selectedAddressId === "custom_pinned" && newLocationData
+                      ? newLocationData.text
+                      : selectedAddressId === "new"
+                        ? legacyAddressText || t("booking.newAddress")
+                        : savedAddresses.find(a => a.id === selectedAddressId)?.text || t("booking.noAddressProvided")}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleConfirm}
+                disabled={isSubmitting}
+                className="w-full min-h-[44px] flex justify-center items-center py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer disabled:opacity-50"
+              >
                 {isSubmitting ? (
                   <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

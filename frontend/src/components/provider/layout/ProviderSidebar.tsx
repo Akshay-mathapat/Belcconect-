@@ -11,7 +11,6 @@ import {
   Clock, 
   MessageSquare, 
   Star, 
-  Wallet, 
   User, 
   ShieldCheck,
   X,
@@ -35,21 +34,26 @@ interface ProviderSidebarProps {
 interface NavItem {
   key: string;
   href: string;
+  label?: string;
   icon: any;
   badge?: string;
+  tourAttr?: string;
 }
 
-const navItems: NavItem[] = [
-  { key: "dashboard", href: "/provider", icon: LayoutDashboard },
-  { key: "bookings", href: "/provider/bookings", icon: CalendarDays },
-  { key: "addNewService", href: "/provider/services/new", icon: Plus },
-  { key: "myServices", href: "/provider/services", icon: Wrench },
-  { key: "calendar", href: "/provider/calendar", icon: Calendar },
-  { key: "availability", href: "/provider/availability", icon: Clock },
-  { key: "messages", href: "/provider/messages", icon: MessageSquare },
-  { key: "reviews", href: "/provider/reviews", icon: Star },
-  { key: "payments", href: "/provider/payments", icon: Wallet },
-  { key: "profile", href: "/provider/profile", icon: User },
+const primaryNavItems: NavItem[] = [
+  { key: "home", href: "/provider", label: "Home", icon: LayoutDashboard },
+  { key: "requests", href: "/provider/bookings?tab=Requested", label: "Requests", icon: Clock, tourAttr: "provider-bookings" },
+  { key: "myJobs", href: "/provider/bookings?tab=ACTIVE", label: "My Jobs", icon: CalendarDays },
+  { key: "profile", href: "/provider/profile", label: "Profile", icon: User },
+];
+
+const secondaryNavItems: NavItem[] = [
+  { key: "myServices", href: "/provider/services", label: "My Services", icon: Wrench, tourAttr: "provider-services" },
+  { key: "addNewService", href: "/provider/services/new", label: "Add Service", icon: Plus, tourAttr: "add-service" },
+  { key: "calendar", href: "/provider/calendar", label: "Calendar", icon: Calendar, tourAttr: "provider-calendar" },
+  { key: "availability", href: "/provider/availability", label: "Availability", icon: Clock, tourAttr: "provider-availability" },
+  { key: "messages", href: "/provider/messages", label: "Messages", icon: MessageSquare },
+  { key: "reviews", href: "/provider/reviews", label: "Reviews", icon: Star },
 ];
 
 export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
@@ -74,6 +78,72 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
     if (setMobileOpen) setMobileOpen(false);
   };
 
+  const checkIsActive = (itemHref: string) => {
+    if (itemHref === "/provider") {
+      return pathname === "/provider";
+    }
+    if (itemHref.startsWith("/provider/bookings")) {
+      if (pathname !== "/provider/bookings") return false;
+      const query = itemHref.split("?")[1];
+      if (!query) return true;
+      if (typeof window !== "undefined") {
+        const search = window.location.search;
+        if (search) {
+          return search.includes(query);
+        }
+      }
+      return query.includes("Requested");
+    }
+    if (itemHref === "/provider/services") {
+      return (
+        pathname === "/provider/services" ||
+        (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
+      );
+    }
+    return pathname.startsWith(itemHref);
+  };
+
+  const renderNavItem = (item: NavItem, isMobile = false) => {
+    const isActive = checkIsActive(item.href);
+    const Icon = item.icon;
+    const translated = t(`serviceProvider.${item.key}`);
+    const label = translated && !translated.startsWith("serviceProvider.") ? translated : (item.label || item.key);
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        data-tour={item.tourAttr}
+        onClick={isMobile ? handleNavClick : undefined}
+        className={`relative flex items-center gap-3 ${
+          isMobile ? "px-3.5 py-3" : "px-3 py-2.5"
+        } rounded-xl text-xs font-semibold transition-all group ${
+          isActive
+            ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <Icon
+          className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${
+            isActive ? "text-white" : "text-foreground/70"
+          }`}
+        />
+        <span className="truncate flex-1">{label}</span>
+        {item.badge && (
+          <span
+            className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              isActive
+                ? "bg-white/20 text-white"
+                : "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
+            }`}
+          >
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <>
       {/* Desktop Sidebar (visible on lg screens) */}
@@ -86,53 +156,18 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
 
           {/* Navigation Items */}
           <nav className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar">
-            {navItems.map((item) => {
-              const isActive = item.href === "/provider" 
-                ? pathname === "/provider" 
-                : item.href === "/provider/services"
-                  ? pathname === "/provider/services" || (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
-                  : pathname.startsWith(item.href);
-              const Icon = item.icon;
-              const label = t(`serviceProvider.${item.key}`);
+            {/* Primary Navigation */}
+            <div className="space-y-1">
+              {primaryNavItems.map((item) => renderNavItem(item, false))}
+            </div>
 
-              const tourAttr =
-                item.key === "addNewService"
-                  ? "add-service"
-                  : item.key === "myServices"
-                  ? "provider-services"
-                  : item.key === "bookings"
-                  ? "provider-bookings"
-                  : undefined;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  data-tour={tourAttr}
-                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${
-                    isActive ? "text-white" : "text-foreground/70"
-                  }`} />
-
-                  <span className="truncate">{label}</span>
-
-                  {item.badge && (
-                    <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isActive 
-                        ? "bg-white/20 text-white" 
-                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+            {/* Secondary Navigation */}
+            <div className="pt-2 border-t border-border/40 space-y-1">
+              <div className="px-3 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                More
+              </div>
+              {secondaryNavItems.map((item) => renderNavItem(item, false))}
+            </div>
 
             {/* Quick Guide Replay Entry Point */}
             <button
@@ -218,52 +253,18 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
                 <div className="h-2" />
 
                 <nav className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar">
-                  {navItems.map((item) => {
-                    const isActive = item.href === "/provider" 
-                      ? pathname === "/provider" 
-                      : item.href === "/provider/services"
-                        ? pathname === "/provider/services" || (pathname.startsWith("/provider/services/") && !pathname.startsWith("/provider/services/new"))
-                        : pathname.startsWith(item.href);
-                    const Icon = item.icon;
-                    const label = t(`serviceProvider.${item.key}`);
+                  {/* Primary Navigation */}
+                  <div className="space-y-1">
+                    {primaryNavItems.map((item) => renderNavItem(item, true))}
+                  </div>
 
-                    const tourAttr =
-                      item.key === "addNewService"
-                        ? "add-service"
-                        : item.key === "availability"
-                        ? "provider-availability"
-                        : item.key === "calendar"
-                        ? "provider-calendar"
-                        : item.key === "bookings"
-                        ? "provider-bookings"
-                        : item.key === "dashboard"
-                        ? "provider-dashboard"
-                        : undefined;
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        data-tour={tourAttr}
-                        onClick={handleNavClick}
-                        className={`relative flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
-                          isActive
-                            ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-foreground/70"}`} />
-                        <span className="truncate flex-1">{label}</span>
-                        {item.badge && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
-                          }`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
+                  {/* Secondary Navigation */}
+                  <div className="pt-2 border-t border-border/40 space-y-1">
+                    <div className="px-3 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      More
+                    </div>
+                    {secondaryNavItems.map((item) => renderNavItem(item, true))}
+                  </div>
                 </nav>
               </div>
 

@@ -4,7 +4,7 @@ import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { ArrowLeft, Star, Search, User, UserX, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthRequiredDialog } from "@/components/auth/AuthRequiredDialog";
 import { useRouter, useParams } from "next/navigation";
@@ -37,23 +37,24 @@ export default function ServicesCategoryPage() {
     });
   };
 
-  useEffect(() => {
-    const fetchCategoryServices = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/services?category=${encodeURIComponent(categoryId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setDbPros(Array.isArray(data) ? data : []);
-        }
-      } catch (e) {
-        console.error("Failed to load category services:", e);
-      } finally {
-        setIsLoading(false);
+  const fetchCategoryServices = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/services?category=${encodeURIComponent(categoryId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDbPros(Array.isArray(data) ? data : []);
       }
-    };
-    fetchCategoryServices();
+    } catch (e) {
+      console.error("Failed to load category services:", e);
+    } finally {
+      setIsLoading(false);
+    }
   }, [categoryId]);
+
+  useEffect(() => {
+    fetchCategoryServices();
+  }, [fetchCategoryServices]);
 
   const dbFormatted = dbPros.map((srv) => ({
     id: srv.id,
@@ -168,11 +169,33 @@ export default function ServicesCategoryPage() {
                   <p className="text-sm text-muted-foreground font-medium">Fetching verified professionals from database...</p>
                 </div>
               ) : filteredPros.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center gap-3">
+                <div className="rounded-2xl border border-border bg-card p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                     <UserX className="h-7 w-7" />
                   </div>
-                  <h3 className="text-base font-bold text-foreground">No Registered Professionals Found</h3>
+                  <div className="space-y-1 max-w-md mx-auto">
+                    <h3 className="text-base font-bold text-foreground">
+                      No service provider is available in your area right now.
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      We are onboarding local service providers across Belagavi.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => fetchCategoryServices()}
+                      className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer min-h-[44px]"
+                    >
+                      Try Again
+                    </button>
+                    <Link
+                      href="/services"
+                      className="inline-flex items-center justify-center rounded-xl border border-border bg-card hover:bg-muted px-4 py-2 text-xs font-semibold text-foreground transition-all min-h-[44px]"
+                    >
+                      Choose Another Service
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 filteredPros.map((pro, index) => (
