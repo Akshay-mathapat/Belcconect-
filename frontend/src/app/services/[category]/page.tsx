@@ -71,8 +71,17 @@ export default function ServicesCategoryPage() {
     isVerified: srv.verificationStatus === "verified"
   }));
 
+  // Defensive deduplication by providerId + normalized serviceName (Identity Rule)
+  const seenServiceKeys = new Set<string>();
+  const deduplicatedPros = dbFormatted.filter((pro) => {
+    const serviceKey = `${pro.providerId}::${(pro.serviceName || "").trim().toLowerCase()}`;
+    if (seenServiceKeys.has(serviceKey)) return false;
+    seenServiceKeys.add(serviceKey);
+    return true;
+  });
+
   // Apply sorting and filtering strictly on database providers
-  const filteredPros = dbFormatted
+  const filteredPros = deduplicatedPros
     .filter((pro) =>
       pro.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pro.serviceName.toLowerCase().includes(searchQuery.toLowerCase())

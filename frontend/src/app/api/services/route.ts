@@ -9,45 +9,53 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const searchQuery = searchParams.get("query");
 
-    let sql = `
-      SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone,
-             u.is_available as provider_is_available,
-             u.is_verified as provider_is_verified,
-             u.verification_status as provider_verification_status,
-             (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id) as bookings_count,
-             (SELECT ROUND(AVG(b.rating), 1) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL) as avg_rating
-      FROM services s 
-      JOIN service_providers u ON s.provider_id = u.id
-      WHERE s.is_available = TRUE
-    `;
+    let baseWhere = "WHERE s.is_available = TRUE";
     const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (providerId) {
-      sql += ` AND s.provider_id = $${paramIndex++}`;
+      baseWhere += ` AND s.provider_id = $${paramIndex++}`;
       queryParams.push(providerId);
     } else {
       // Marketplace customer discovery: show only services from currently available providers
-      sql += " AND u.is_available = TRUE";
+      baseWhere += " AND u.is_available = TRUE";
     }
 
     if (category) {
-      sql += ` AND LOWER(s.category) = LOWER($${paramIndex++})`;
+      baseWhere += ` AND LOWER(s.category) = LOWER($${paramIndex++})`;
       queryParams.push(category);
     }
 
     if (searchQuery) {
       const formattedSearch = `%${searchQuery}%`;
-      sql += ` AND (LOWER(s.name) LIKE LOWER($${paramIndex}) OR LOWER(u.name) LIKE LOWER($${paramIndex}) OR LOWER(s.description) LIKE LOWER($${paramIndex}))`;
+      baseWhere += ` AND (LOWER(s.name) LIKE LOWER($${paramIndex}) OR LOWER(u.name) LIKE LOWER($${paramIndex}) OR LOWER(s.description) LIKE LOWER($${paramIndex}))`;
       queryParams.push(formattedSearch);
       paramIndex++;
     }
 
-    sql += " ORDER BY s.created_at DESC, s.id DESC";
+    const sql = `
+      WITH ranked_services AS (
+        SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone,
+               u.is_available as provider_is_available,
+               u.is_verified as provider_is_verified,
+               u.verification_status as provider_verification_status,
+               (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id) as bookings_count,
+               (SELECT ROUND(AVG(b.rating), 1) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL) as avg_rating,
+               ROW_NUMBER() OVER (
+                 PARTITION BY s.provider_id, LOWER(s.category), LOWER(TRIM(s.name))
+                 ORDER BY s.created_at DESC, s.id DESC
+               ) as rn
+        FROM services s
+        JOIN service_providers u ON s.provider_id = u.id
+        ${baseWhere}
+      )
+      SELECT * FROM ranked_services
+      WHERE rn = 1
+      ORDER BY created_at DESC, id DESC
+    `;
 
     const res = await query(sql, queryParams);
     
-    // Map DB rows to Frontend ServiceItem type
     // Map DB rows to Frontend ServiceItem type with safe provider trust attributes
     const services = res.rows.map((row: any) => ({
       id: row.id,
@@ -93,20 +101,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service name and category are required" }, { status: 400 });
     }
 
-    const serviceId = `SRV-${Date.now()}`;
-    await query(
-      `INSERT INTO services (id, provider_id, name, category, subcategory, description, is_available) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [serviceId, providerId, name, category, subcategory || null, description || null, true]
+    // Check for existing service with same provider, category, and normalized name
+    const existing = await query(
+      `SELECT id FROM services
+       WHERE provider_id = $1 AND LOWER(category) = LOWER($2) AND LOWER(TRIM(name)) = LOWER(TRIM($3))
+       LIMIT 1`,
+      [providerId, category, name]
     );
 
-    // Fetch the newly created service with joined provider details
+    let targetServiceId = `SRV-${Date.now()}`;
+    if (existing.rows.length > 0) {
+      targetServiceId = existing.rows[0].id;
+      await query(
+        `UPDATE services
+         SET is_available = TRUE,
+             description = COALESCE(NULLIF($1, ''), description),
+             subcategory = COALESCE(NULLIF($2, ''), subcategory)
+         WHERE id = $3`,
+        [description || null, subcategory || null, targetServiceId]
+      );
+    } else {
+      await query(
+        `INSERT INTO services (id, provider_id, name, category, subcategory, description, is_available)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [targetServiceId, providerId, name, category, subcategory || null, description || null, true]
+      );
+    }
+
+    // Fetch the newly created or updated service with joined provider details
     const res = await query(
-      `SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone 
-       FROM services s 
+      `SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone
+       FROM services s
        JOIN service_providers u ON s.provider_id = u.id
        WHERE s.id = $1`,
-      [serviceId]
+      [targetServiceId]
     );
 
     const row = res.rows[0];
