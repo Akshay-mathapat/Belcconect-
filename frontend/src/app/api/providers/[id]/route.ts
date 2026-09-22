@@ -7,9 +7,9 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    // Query real service provider from PostgreSQL
+    // Query real service provider from PostgreSQL with availability and verification
     const providerRes = await query(
-      "SELECT id, name, email, phone, avatar FROM service_providers WHERE id = $1",
+      "SELECT id, name, email, phone, avatar, is_available, is_verified, verification_status FROM service_providers WHERE id = $1",
       [id]
     );
 
@@ -47,6 +47,8 @@ export async function GET(
       ? (reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
       : "0.0";
 
+    const isVerified = provider.verification_status === "verified";
+
     return NextResponse.json({
       provider: {
         id: provider.id,
@@ -56,6 +58,9 @@ export async function GET(
         avatar: provider.avatar || "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=200&q=80",
         experience: 4,
         bio: "Certified service professional registered in Belagavi.",
+        isAvailable: Boolean(provider.is_available),
+        isVerified,
+        verificationStatus: provider.verification_status || "unverified",
         rating: Number(avgRating),
         reviewCount: reviews.length
       },

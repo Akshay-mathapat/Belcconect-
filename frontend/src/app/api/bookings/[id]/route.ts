@@ -36,7 +36,7 @@ function mapRowToBooking(row: any) {
     time: row.time,
     address: row.address || "No address provided",
     status: row.status,
-    providerName: row.provider_name || "Verified Expert",
+    providerName: row.provider_name || "Service Provider",
     uploadedImages: [],
     rating: row.rating,
     reviewComment: row.review_comment || "",
@@ -292,7 +292,7 @@ export async function PATCH(
           const serviceName = previousBooking.service_name || "Service";
           const dateVal = date || previousBooking.date || "scheduled date";
           const timeVal = time || previousBooking.time || "scheduled time";
-          const providerName = previousBooking.provider_name || "Verified Expert";
+          const providerName = previousBooking.provider_name || "Service Provider";
 
           const notificationId = `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
           const notifTitle = "Booking Confirmed";

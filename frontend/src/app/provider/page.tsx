@@ -23,7 +23,9 @@ import {
   Droplets,
   Zap,
   Sparkles,
-  CalendarX
+  CalendarX,
+  ShieldAlert,
+  Loader2
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useProviderStore } from "@/store/useProviderStore";
@@ -82,11 +84,24 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 export default function ProviderDashboardPage() {
   const { currentUser } = useAuthStore();
   const { replayTour } = useOnboardingTour();
-  const { profile, bookings, services, updateBookingStatus, syncWithAuthUser, fetchProviderBookings, fetchProviderServices } = useProviderStore();
+  const {
+    profile,
+    bookings,
+    services,
+    isOnline,
+    setAvailability,
+    fetchProviderAvailability,
+    updateBookingStatus,
+    syncWithAuthUser,
+    fetchProviderBookings,
+    fetchProviderServices
+  } = useProviderStore();
   const { t } = useTranslation();
   const [showAllServices, setShowAllServices] = useState(false);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [togglingAvailability, setTogglingAvailability] = useState(false);
+  const [availabilityMessage, setAvailabilityMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -97,6 +112,7 @@ export default function ProviderDashboardPage() {
         avatar: currentUser.avatar
       });
     }
+    fetchProviderAvailability();
     fetchProviderBookings();
     fetchProviderServices();
 
@@ -120,7 +136,35 @@ export default function ProviderDashboardPage() {
         try { syncChannel.close(); } catch (e) {}
       }
     };
-  }, [currentUser, syncWithAuthUser, fetchProviderBookings, fetchProviderServices]);
+  }, [currentUser, syncWithAuthUser, fetchProviderAvailability, fetchProviderBookings, fetchProviderServices]);
+
+  const handleToggleAvailability = async () => {
+    setTogglingAvailability(true);
+    setAvailabilityMessage(null);
+    const targetState = !isOnline;
+    try {
+      const ok = await setAvailability(targetState);
+      if (ok) {
+        setAvailabilityMessage({
+          text: targetState ? "You are now ONLINE and available for new bookings!" : "You are now OFFLINE. New customers cannot book your services.",
+          isError: false
+        });
+      } else {
+        setAvailabilityMessage({
+          text: "Could not update availability on server. Please check your internet connection.",
+          isError: true
+        });
+      }
+    } catch (err: any) {
+      setAvailabilityMessage({
+        text: err?.message || "Error updating availability",
+        isError: true
+      });
+    } finally {
+      setTogglingAvailability(false);
+      setTimeout(() => setAvailabilityMessage(null), 4500);
+    }
+  };
 
   const handleStatusChange = async (bookingId: string, newStatus: any) => {
     setUpdatingBookingId(bookingId);
@@ -156,9 +200,26 @@ export default function ProviderDashboardPage() {
 
         <div className="relative z-10 space-y-4">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-blue-200 bg-white/10 px-3 py-1 rounded-full border border-white/20">
-              {t("serviceProvider.verifiedExpert")}
-            </span>
+            {profile.verificationStatus === "verified" ? (
+              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-200 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-400/30 flex items-center gap-1.5">
+                <CheckCircle className="w-3 h-3 text-emerald-400" />
+                {t("serviceProvider.verifiedExpert")}
+              </span>
+            ) : profile.verificationStatus === "pending" || profile.kycStatus === "Pending" ? (
+              <span className="text-[11px] font-bold uppercase tracking-widest text-amber-200 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-400/30 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                Verification Pending
+              </span>
+            ) : (
+              <Link
+                href="/provider/profile"
+                className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full border border-white/20 flex items-center gap-1.5 transition-colors"
+                title="Complete KYC profile to get verified"
+              >
+                <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                Unverified
+              </Link>
+            )}
             <span className="text-xs text-blue-100 font-medium">| {t("serviceProvider.belagaviZone")}</span>
           </div>
 
@@ -173,6 +234,22 @@ export default function ProviderDashboardPage() {
 
           {/* Banner Action Buttons Below Text */}
           <div className="flex flex-wrap items-center gap-3 pt-1">
+            {/* Availability Toggle Button */}
+            <button
+              type="button"
+              disabled={togglingAvailability}
+              onClick={handleToggleAvailability}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all cursor-pointer ${
+                isOnline
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600 border border-emerald-400/30"
+                  : "bg-white/20 text-white hover:bg-white/30 border border-white/30 backdrop-blur-sm"
+              }`}
+            >
+              <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? "bg-white animate-pulse" : "bg-zinc-400"}`} />
+              <span>{isOnline ? "🟢 Available for Jobs (ON)" : "⚪ Unavailable (OFF)"}</span>
+              {togglingAvailability && <Loader2 className="h-3.5 w-3.5 animate-spin ml-1" />}
+            </button>
+
             <Link
               href="/provider/services/new"
               className="inline-flex items-center gap-2 bg-white text-blue-900 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all hover:scale-105"
@@ -197,6 +274,19 @@ export default function ProviderDashboardPage() {
               <span>Guide Tour</span>
             </button>
           </div>
+
+          {availabilityMessage && (
+            <div
+              className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                availabilityMessage.isError
+                  ? "bg-red-500/20 text-red-200 border border-red-500/30"
+                  : "bg-emerald-500/20 text-emerald-100 border border-emerald-500/30"
+              }`}
+            >
+              <span>{availabilityMessage.isError ? "⚠️" : "✅"}</span>
+              <span>{availabilityMessage.text}</span>
+            </div>
+          )}
         </div>
       </motion.div>
 

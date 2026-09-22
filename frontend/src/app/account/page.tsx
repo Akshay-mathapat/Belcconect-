@@ -244,7 +244,7 @@ export default function AccountPage() {
       const todayStr = new Date().toISOString().split("T")[0];
       const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "Service");
       const providerId = typeof booking === "object" && booking.providerId ? booking.providerId : "provider-1";
-      const providerName = typeof booking === "object" && booking.providerName ? booking.providerName : "Verified Expert";
+      const providerName = typeof booking === "object" && booking.providerName ? booking.providerName : "Service Provider";
       const category = typeof booking === "object" && booking.category ? booking.category : "General";
 
       const res = await fetch("/api/bookings", {
@@ -554,7 +554,7 @@ export default function AccountPage() {
                                 customerId={activeUser.id}
                                 providerId={booking.providerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
                                 bookingId={booking.id}
-                                peerName={booking.provider || "Verified Expert"}
+                                peerName={booking.provider || "Service Provider"}
                                 serviceName={booking.service}
                                 bookingStatus={booking.status}
                                 title={t("account.chatWithProvider")}

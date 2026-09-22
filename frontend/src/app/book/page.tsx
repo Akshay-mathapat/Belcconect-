@@ -24,6 +24,19 @@ function BookingFlow() {
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [providerUnavailable, setProviderUnavailable] = useState(false);
+
+  useEffect(() => {
+    if (!proId) return;
+    fetch(`/api/providers/${proId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.provider && data.provider.isAvailable === false) {
+          setProviderUnavailable(true);
+        }
+      })
+      .catch(() => {});
+  }, [proId]);
 
   // Auto-redirect to Customer Dashboard (/account) upon booking confirmation
   useEffect(() => {
@@ -253,6 +266,16 @@ function BookingFlow() {
           {step === 1 && (
             <>
               <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground mb-6">{t("booking.serviceDetails")}</h1>
+
+              {providerUnavailable && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-2.5 mb-6">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span>
+                    This service provider is currently offline and unavailable for new bookings. Please select an available provider from the service catalog.
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-4 mb-8">
                 <div className="rounded-xl bg-muted/50 p-4 border border-border">
                   <div className="flex justify-between items-center mb-2">
@@ -266,6 +289,17 @@ function BookingFlow() {
                 </div>
               </div>
               <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all cursor-pointer">{t("booking.continue")}</button>
+              <button
+                disabled={providerUnavailable}
+                onClick={nextStep}
+                className={`w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold transition-all ${
+                  providerUnavailable
+                    ? "bg-muted text-muted-foreground cursor-not-allowed border border-border"
+                    : "text-primary-foreground bg-primary hover:bg-primary/90 cursor-pointer"
+                }`}
+              >
+                {providerUnavailable ? "Provider Unavailable" : t("booking.continue")}
+              </button>
             </>
           )}
 

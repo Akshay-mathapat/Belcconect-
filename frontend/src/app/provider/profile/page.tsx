@@ -134,9 +134,12 @@ export default function ProviderProfilePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.kyc) {
+          const vStatus = data.kyc.verificationStatus || (data.kyc.isVerified ? "verified" : "unverified");
+          const isVerified = vStatus === "verified";
           updateProfile({
-            isVerified: Boolean(data.kyc.isVerified),
-            kycStatus: data.kyc.kycStatus || "Verified",
+            isVerified,
+            kycStatus: data.kyc.kycStatus || (isVerified ? "Verified" : "Unverified"),
+            verificationStatus: vStatus,
             kycDocumentType: data.kyc.kycDocumentType || undefined,
             kycDocumentNumber: data.kyc.kycDocumentNumber || undefined,
             kycDocumentPhoto: data.kyc.kycDocumentPhoto || undefined,
@@ -165,8 +168,9 @@ export default function ProviderProfilePage() {
     const providerId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "");
 
     const updatedKyc = {
-      isVerified: true,
-      kycStatus: "Verified" as const,
+      isVerified: false,
+      kycStatus: "Pending" as const,
+      verificationStatus: "pending",
       kycDocumentType: kycForm.documentType,
       kycDocumentNumber: kycForm.documentNumber,
       kycDocumentPhoto: kycForm.documentPhoto,
@@ -197,9 +201,11 @@ export default function ProviderProfilePage() {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.kyc) {
+          const isVerified = data.kyc.verificationStatus === "verified";
           updateProfile({
-            isVerified: true,
-            kycStatus: "Verified",
+            isVerified,
+            kycStatus: data.kyc.kycStatus || "Pending",
+            verificationStatus: data.kyc.verificationStatus || "pending",
             kycDocumentType: data.kyc.kycDocumentType,
             kycDocumentNumber: data.kyc.kycDocumentNumber,
             kycDocumentPhoto: data.kyc.kycDocumentPhoto,
@@ -280,7 +286,11 @@ export default function ProviderProfilePage() {
           <div className="text-center sm:text-left space-y-1 flex-1">
             <div className="flex items-center justify-center sm:justify-start gap-2">
               <h2 className="font-heading text-xl font-bold text-foreground">{profile.name}</h2>
-              <ShieldCheck className="h-5 w-5 text-blue-600" />
+              {profile.verificationStatus === "verified" && (
+                <span title="Verified Provider">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                </span>
+              )}
             </div>
 
             <p className="text-xs font-bold text-blue-600 dark:text-blue-400">{profile.title}</p>
@@ -443,16 +453,22 @@ export default function ProviderProfilePage() {
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-foreground">{t("serviceProvider.kycIdentityVerification")}</h4>
                     <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                      profile.isVerified 
-                        ? "bg-emerald-500/20 text-emerald-600 border-emerald-500/30" 
-                        : "bg-amber-500/20 text-amber-600 border-amber-500/30"
+                      profile.verificationStatus === "verified"
+                        ? "bg-emerald-500/20 text-emerald-600 border-emerald-500/30"
+                        : profile.verificationStatus === "pending" || profile.kycStatus === "Pending"
+                        ? "bg-amber-500/20 text-amber-600 border-amber-500/30"
+                        : "bg-zinc-500/20 text-zinc-600 border-zinc-500/30"
                     }`}>
-                      {profile.isVerified ? t("serviceProvider.verifiedBadge") : t("serviceProvider.actionRequiredBadge")}
+                      {profile.verificationStatus === "verified"
+                        ? t("serviceProvider.verifiedBadge")
+                        : profile.verificationStatus === "pending" || profile.kycStatus === "Pending"
+                        ? "Pending Verification"
+                        : t("serviceProvider.actionRequiredBadge")}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {profile.kycDocumentType 
-                      ? `${profile.kycDocumentType}: ${profile.kycDocumentNumber}` 
+                    {profile.kycDocumentType
+                      ? `${profile.kycDocumentType}: ${profile.kycDocumentNumber}`
                       : t("serviceProvider.kycDesc")}
                   </p>
                 </div>

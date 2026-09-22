@@ -17,7 +17,7 @@ function mapRowToBooking(row: any) {
     time: row.time,
     address: row.destination_address || row.address || "No address provided",
     status: row.status,
-    providerName: row.provider_name || "Verified Expert",
+    providerName: row.provider_name || "Service Provider",
     providerId: row.provider_id || (process.env.DEMO_MODE === "true" ? "provider-1" : null),
     uploadedImages: [],
     rating: row.rating,
@@ -155,12 +155,18 @@ export async function POST(request: Request) {
 
     let validProviderId = requestedProviderId;
     try {
-      const proCheck = await query("SELECT id FROM service_providers WHERE id = $1 LIMIT 1", [providerId]);
+      const proCheck = await query("SELECT id, is_available FROM service_providers WHERE id = $1 LIMIT 1", [validProviderId]);
       if (proCheck.rows.length === 0) {
         return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
       }
-    } catch (e) {
-      return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
+      if (!proCheck.rows[0].is_available) {
+        return NextResponse.json(
+          { error: "This provider is currently unavailable for new bookings. Please select another service provider." },
+          { status: 409 }
+        );
+      }
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message || "Invalid service provider account" }, { status: 400 });
     }
 
     // Validate destination coordinates strictly if supplied (-90 <= lat <= 90, -180 <= lng <= 180)

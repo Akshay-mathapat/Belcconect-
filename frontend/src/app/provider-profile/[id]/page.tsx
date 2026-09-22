@@ -31,6 +31,9 @@ interface ProviderData {
     avatar: string;
     experience: number;
     bio: string;
+    isAvailable?: boolean;
+    isVerified?: boolean;
+    verificationStatus?: string;
   };
   services: Array<{
     id: string;
@@ -60,6 +63,10 @@ export default function ProviderProfilePage() {
 
   const handleBookService = (srvName: string) => {
     if (!data?.provider?.id) return;
+    if (data.provider.isAvailable === false) {
+      alert("This provider is currently unavailable for new bookings. Please select another available provider or try again later.");
+      return;
+    }
     const bookingPath = `/book?pro=${data.provider.id}&service=${encodeURIComponent(srvName)}&proName=${encodeURIComponent(data.provider.name)}`;
     requireAuth({
       action: () => router.push(bookingPath),
@@ -153,10 +160,20 @@ export default function ProviderProfilePage() {
                 />
 
                 {/* Verification Badge */}
-                <span className="mt-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-teal-600 bg-teal-500/10 border border-teal-500/20">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Verified Expert
-                </span>
+                {provider.verificationStatus === "verified" && (
+                  <span className="mt-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-teal-600 bg-teal-500/10 border border-teal-500/20">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Verified Expert
+                  </span>
+                )}
+
+                {/* Availability Indicator */}
+                <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold">
+                  <span className={`w-2.5 h-2.5 rounded-full ${provider.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
+                  <span className={provider.isAvailable ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>
+                    {provider.isAvailable ? "Available for Bookings" : "Currently Unavailable"}
+                  </span>
+                </div>
 
                 <h1 className="text-xl font-heading font-extrabold text-foreground mt-3">{provider.name}</h1>
                 <p className="text-xs text-muted-foreground mt-1">Belagavi Service Partner</p>
@@ -212,11 +229,16 @@ export default function ProviderProfilePage() {
                         <div className="mt-4 pt-3 border-t border-border/60">
                           <button 
                             type="button"
+                            disabled={provider.isAvailable === false}
                             onClick={() => handleBookService(srv.name)}
                             data-tour="book-service"
-                            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1 cursor-pointer"
+                            className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1 ${
+                              provider.isAvailable === false
+                                ? "bg-muted text-muted-foreground cursor-not-allowed border border-border"
+                                : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                            }`}
                           >
-                            Book Service
+                            {provider.isAvailable === false ? "Currently Unavailable" : "Book Service"}
                           </button>
                         </div>
                       </div>

@@ -11,6 +11,9 @@ export async function GET(request: Request) {
 
     let sql = `
       SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone,
+             u.is_available as provider_is_available,
+             u.is_verified as provider_is_verified,
+             u.verification_status as provider_verification_status,
              (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id) as bookings_count,
              (SELECT ROUND(AVG(b.rating), 1) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL) as avg_rating
       FROM services s 
@@ -23,6 +26,9 @@ export async function GET(request: Request) {
     if (providerId) {
       sql += ` AND s.provider_id = $${paramIndex++}`;
       queryParams.push(providerId);
+    } else {
+      // Marketplace customer discovery: show only services from currently available providers
+      sql += " AND u.is_available = TRUE";
     }
 
     if (category) {
@@ -42,6 +48,7 @@ export async function GET(request: Request) {
     const res = await query(sql, queryParams);
     
     // Map DB rows to Frontend ServiceItem type
+    // Map DB rows to Frontend ServiceItem type with safe provider trust attributes
     const services = res.rows.map((row: any) => ({
       id: row.id,
       name: row.name,
@@ -53,6 +60,9 @@ export async function GET(request: Request) {
       providerName: row.provider_name,
       providerAvatar: row.provider_avatar,
       providerPhone: row.provider_phone,
+      providerIsAvailable: Boolean(row.provider_is_available),
+      isVerified: row.provider_verification_status === "verified",
+      verificationStatus: row.provider_verification_status || "unverified",
       bookingsCount: Number(row.bookings_count || 0),
       rating: row.avg_rating ? Number(row.avg_rating) : 0.0
     }));

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Clock, Calendar, CheckCircle2, ShieldAlert, Zap, Sparkles, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Clock, Calendar, CheckCircle2, ShieldAlert, Zap, Sparkles, ChevronDown, Loader2 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
 
 // Generate 30-minute interval dropdown time options for optimal UX
@@ -37,9 +37,47 @@ function formatTimeLabel(val: string): string {
 }
 
 export default function AvailabilityPage() {
-  const { schedule, updateAvailabilitySchedule } = useProviderStore();
+  const { schedule, updateAvailabilitySchedule, isOnline, setAvailability, fetchProviderAvailability } = useProviderStore();
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState("");
+  const [togglingAvailability, setTogglingAvailability] = useState(false);
+  const [availabilityMessage, setAvailabilityMessage] = useState<{ text: string; isError: boolean } | null>(null);
+
+  useEffect(() => {
+    fetchProviderAvailability().catch((err) => {
+      console.warn("Could not sync provider availability on load:", err);
+    });
+  }, [fetchProviderAvailability]);
+
+  const handleToggleLiveAvailability = async () => {
+    const targetState = !isOnline;
+    setTogglingAvailability(true);
+    setAvailabilityMessage(null);
+    try {
+      const ok = await setAvailability(targetState);
+      if (ok) {
+        setAvailabilityMessage({
+          text: targetState
+            ? "You are now ONLINE and available for new customer bookings in Belagavi."
+            : "You are now OFFLINE. New customers cannot book your services right now.",
+          isError: false
+        });
+      } else {
+        setAvailabilityMessage({
+          text: "Could not update availability on server. Please check your internet connection.",
+          isError: true
+        });
+      }
+    } catch (err: any) {
+      setAvailabilityMessage({
+        text: err?.message || "Error updating availability",
+        isError: true
+      });
+    } finally {
+      setTogglingAvailability(false);
+      setTimeout(() => setAvailabilityMessage(null), 4500);
+    }
+  };
 
   const handleSave = () => {
     setSavedSuccess(true);
@@ -107,6 +145,58 @@ export default function AvailabilityPage() {
           <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 self-start sm:self-auto">
             ✓ Schedule Saved!
           </span>
+        )}
+      </div>
+
+      {/* Live Availability Status Card (Server-backed) */}
+      <div className={`rounded-2xl border p-5 transition-all shadow-sm ${
+        isOnline
+          ? "bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-950/20"
+          : "bg-muted/40 border-border"
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <span className={`w-4 h-4 rounded-full shrink-0 ${
+              isOnline ? "bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20" : "bg-zinc-400"
+            }`} />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground">
+                  Live Service Status: {isOnline ? "🟢 AVAILABLE (Online)" : "⚪ UNAVAILABLE (Offline)"}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isOnline
+                  ? "You are currently visible to customers in Belagavi searching for services. New booking requests can be sent to you."
+                  : "You are currently hidden from search. Existing active bookings and ongoing jobs remain unaffected."}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={togglingAvailability}
+            onClick={handleToggleLiveAvailability}
+            className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all shrink-0 cursor-pointer ${
+              isOnline
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
+          >
+            <span>{isOnline ? "Go Offline (⚪)" : "Go Online (🟢)"}</span>
+            {togglingAvailability && <Loader2 className="h-3.5 w-3.5 animate-spin ml-1" />}
+          </button>
+        </div>
+
+        {availabilityMessage && (
+          <div className={`mt-3 p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+            availabilityMessage.isError
+              ? "bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30"
+              : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+          }`}>
+            <span>{availabilityMessage.isError ? "⚠️" : "✅"}</span>
+            <span>{availabilityMessage.text}</span>
+          </div>
         )}
       </div>
 

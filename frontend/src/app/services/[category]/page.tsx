@@ -66,7 +66,9 @@ export default function ServicesCategoryPage() {
     providerId: srv.providerId,
     serviceId: srv.id,
     serviceName: srv.name,
-    description: srv.description
+    description: srv.description,
+    verificationStatus: srv.verificationStatus,
+    isVerified: srv.verificationStatus === "verified"
   }));
 
   // Apply sorting and filtering strictly on database providers
@@ -221,9 +223,11 @@ export default function ServicesCategoryPage() {
                                 {pro.serviceName}
                               </span>
                             )}
-                            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                              Verified
-                            </span>
+                            {pro.isVerified && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 border border-emerald-500/20">
+                                Verified
+                              </span>
+                            )}
                           </h3>
                           <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1 text-amber-500 font-medium">

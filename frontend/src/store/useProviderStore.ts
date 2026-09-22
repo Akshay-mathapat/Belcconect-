@@ -35,7 +35,9 @@ interface ProviderStoreState {
   schedule: AvailabilitySchedule[];
   
   // Actions
-  toggleOnlineStatus: () => void;
+  toggleOnlineStatus: () => Promise<void> | void;
+  setAvailability: (available: boolean) => Promise<boolean>;
+  fetchProviderAvailability: () => Promise<void>;
   updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   fetchProviderBookings: () => Promise<void>;
@@ -63,18 +65,20 @@ interface ProviderStoreState {
 const initialProfile: ProviderProfile = {
   name: "Service Provider",
   title: "Professional Service Specialist",
-  bio: "Certified service professional in Belagavi. Update your bio and experience details in profile settings.",
+  bio: "Service professional in Belagavi.",
   photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
   rating: 0.0,
   totalReviews: 0,
-  experienceYears: 1,
+  experienceYears: 0,
   languages: ["English", "Kannada"],
   skills: ["General Service"],
   address: "Belagavi, Karnataka",
   city: "Belagavi",
   phone: "+91 98765 43210",
   email: "provider@belconnect.in",
-  isVerified: true,
+  isVerified: false,
+  isAvailable: false,
+  verificationStatus: "unverified",
   bankName: "",
   accountNumber: "",
   ifscCode: "",
@@ -119,7 +123,7 @@ export const useProviderStore = create<ProviderStoreState>()(
   persist(
     (set, get) => ({
       profile: initialProfile,
-      isOnline: true,
+      isOnline: false,
       bookings: [],
       services: [],
       portfolio: [],
@@ -129,7 +133,86 @@ export const useProviderStore = create<ProviderStoreState>()(
       conversations: initialConversations,
       schedule: initialSchedule,
 
-      toggleOnlineStatus: () => set((state) => ({ isOnline: !state.isOnline })),
+      toggleOnlineStatus: async () => {
+        const nextState = !get().isOnline;
+        await get().setAvailability(nextState);
+      },
+
+      setAvailability: async (available: boolean) => {
+        try {
+          const authUser = useAuthStore.getState().currentUser;
+          const token = authUser?.token || getStoredAuthToken();
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (authUser?.id) headers["x-user-id"] = authUser.id;
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
+          const res = await fetch("/api/provider/availability", {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({ isAvailable: available })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              set((state) => {
+                const vStatus = data.verificationStatus || state.profile.verificationStatus || "unverified";
+                return {
+                  isOnline: Boolean(data.isAvailable),
+                  profile: {
+                    ...state.profile,
+                    isAvailable: Boolean(data.isAvailable),
+                    isVerified: vStatus === "verified",
+                    verificationStatus: vStatus
+                  }
+                };
+              });
+              return true;
+            }
+          }
+          console.error("Failed to update availability on server");
+          return false;
+        } catch (e) {
+          console.error("Network error updating availability:", e);
+          return false;
+        }
+      },
+
+      fetchProviderAvailability: async () => {
+        const currentUser = useAuthStore.getState().currentUser;
+        if (!currentUser || currentUser.role !== "provider") return;
+        try {
+          const token = currentUser.token || getStoredAuthToken();
+          const headers: Record<string, string> = {};
+          if (currentUser.id) headers["x-user-id"] = currentUser.id;
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
+          const res = await fetch("/api/provider/availability", {
+            headers,
+            cache: "no-store"
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              set((state) => {
+                const vStatus = data.verificationStatus || state.profile.verificationStatus || "unverified";
+                return {
+                  isOnline: Boolean(data.isAvailable),
+                  profile: {
+                    ...state.profile,
+                    isAvailable: Boolean(data.isAvailable),
+                    isVerified: vStatus === "verified",
+                    verificationStatus: vStatus
+                  }
+                };
+              });
+            }
+          }
+        } catch (e: any) {
+          console.warn("Provider availability fetch retry:", e?.message || e);
+        }
+      },
 
       updateBookingStatus: async (id, status) => {
         try {

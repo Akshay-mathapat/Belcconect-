@@ -163,13 +163,15 @@ export interface ProviderProfile {
   phone: string;
   email: string;
   isVerified: boolean;
+  isAvailable?: boolean;
+  verificationStatus?: "unverified" | "pending" | "verified" | "rejected" | string;
   bankName: string;
   accountNumber: string;
   ifscCode: string;
   upiId: string;
   panNumber: string;
   aadhaarNumber: string;
-  kycStatus?: "Verified" | "Pending" | "Not Submitted";
+  kycStatus?: "Verified" | "Pending" | "Not Submitted" | "Unverified" | "Rejected" | string;
   kycDocumentType?: string;
   kycDocumentNumber?: string;
   kycDocumentPhoto?: string;

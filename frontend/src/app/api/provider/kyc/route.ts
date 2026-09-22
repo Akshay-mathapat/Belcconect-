@@ -28,6 +28,7 @@ export async function GET(request: Request) {
         kyc_document_photo, 
         kyc_status, 
         is_verified, 
+        verification_status,
         pan_number, 
         aadhaar_number
       FROM service_providers 
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
     }
 
     const row = res.rows[0];
+    const isVerified = row.verification_status === "verified";
     return NextResponse.json({
       success: true,
       kyc: {
@@ -51,7 +53,8 @@ export async function GET(request: Request) {
         kycDocumentNumber: row.kyc_document_number || null,
         kycDocumentPhoto: row.kyc_document_photo || null,
         kycStatus: row.kyc_status || "Unverified",
-        isVerified: Boolean(row.is_verified),
+        isVerified,
+        verificationStatus: row.verification_status || "unverified",
         panNumber: row.pan_number || null,
         aadhaarNumber: row.aadhaar_number || null
       }
@@ -104,6 +107,7 @@ export async function POST(request: Request) {
          kyc_document_number = $3,
          kyc_document_photo = COALESCE(NULLIF($4, ''), kyc_document_photo),
          kyc_status = 'Pending',
+         verification_status = 'pending',
          is_verified = FALSE,
          pan_number = COALESCE($5, pan_number),
          aadhaar_number = COALESCE($6, aadhaar_number)
@@ -111,7 +115,7 @@ export async function POST(request: Request) {
        RETURNING 
          id, name, email, phone, 
          kyc_document_type, kyc_document_number, kyc_document_photo, 
-         kyc_status, is_verified, pan_number, aadhaar_number`,
+         kyc_status, verification_status, is_verified, pan_number, aadhaar_number`,
       [
         fullName || null,
         documentType || "Aadhaar Card",
@@ -130,14 +134,14 @@ export async function POST(request: Request) {
       const insertRes = await query(
         `INSERT INTO service_providers (
           id, name, email, phone, kyc_document_type, kyc_document_number, 
-          kyc_document_photo, kyc_status, is_verified, pan_number, aadhaar_number
+          kyc_document_photo, kyc_status, verification_status, is_verified, pan_number, aadhaar_number
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, 'Pending', FALSE, $8, $9
+          $1, $2, $3, $4, $5, $6, $7, 'Pending', 'pending', FALSE, $8, $9
         )
         RETURNING 
           id, name, email, phone, 
           kyc_document_type, kyc_document_number, kyc_document_photo, 
-          kyc_status, is_verified, pan_number, aadhaar_number`,
+          kyc_status, verification_status, is_verified, pan_number, aadhaar_number`,
         [
           providerId,
           fullName || "Service Provider",
@@ -163,7 +167,8 @@ export async function POST(request: Request) {
         kycDocumentNumber: kycRecord.kyc_document_number,
         kycDocumentPhoto: kycRecord.kyc_document_photo,
         kycStatus: kycRecord.kyc_status,
-        isVerified: Boolean(kycRecord.is_verified),
+        isVerified: kycRecord.verification_status === "verified",
+        verificationStatus: kycRecord.verification_status || "pending",
         panNumber: kycRecord.pan_number,
         aadhaarNumber: kycRecord.aadhaar_number
       }

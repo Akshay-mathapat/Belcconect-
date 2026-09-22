@@ -369,7 +369,7 @@ export const useAuthStore = create<AuthState>()(
             const mappedBookings: BookingItem[] = dbBookings.map((b: any) => ({
               id: b.id,
               service: b.serviceName,
-              provider: b.providerName || "Verified Expert",
+              provider: b.providerName || "Service Provider",
               providerId: b.providerId,
               date: `${b.date} at ${b.time}`,
               status: b.status || "Requested",

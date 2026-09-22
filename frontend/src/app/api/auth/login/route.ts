@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       userObj.bookings = (bookRes.rows || []).map((b: any) => ({
         id: b.id,
         service: b.service_name,
-        provider: b.provider_name || "Verified Expert",
+        provider: b.provider_name || "Service Provider",
         providerId: b.provider_id,
         date: `${b.date} at ${b.time}`,
         status: b.status || "Requested",
