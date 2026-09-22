@@ -167,7 +167,7 @@ export default function ProviderDashboardPage() {
               {t("serviceProvider.goodMorning")}, {profile.name.split(" ")[0]} 👋
             </h1>
             <p className="mt-1.5 text-xs sm:text-sm text-blue-100 max-w-xl leading-relaxed">
-              {t("serviceProvider.activeServicesCount").replace("{count}", services.length.toString())} <span className="font-bold text-white underline">{services.length}</span> & {t("serviceProvider.pendingRequestsCount").replace("{count}", pendingRequests.toString())}.
+              {t("serviceProvider.activeServicesCount").replace("{count}", services.length.toString())} {t("serviceProvider.pendingRequestsCount").replace("{count}", pendingRequests.toString())}.
             </p>
           </div>
 
@@ -257,16 +257,16 @@ export default function ProviderDashboardPage() {
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-foreground text-xs group-hover:text-blue-600 transition-colors">{booking.customerName}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${
                         booking.status === "Requested" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
                         booking.status === "Accepted" ? "bg-sky-500/10 text-sky-600 border border-sky-500/20" :
+                        booking.status === "OnTheWay" ? "bg-indigo-500/10 text-indigo-600 border border-indigo-500/20" :
                         booking.status === "Started" ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
                         booking.status === "Completed" || booking.status === "ReviewSubmitted" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
-                        booking.status === "Rejected" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
+                        (booking.status as any) === "Rejected" || (booking.status as any) === "Cancelled" ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
                         "bg-muted text-muted-foreground border border-border"
                       }`}>
                         {t(`account.statuses.${booking.status}`) || booking.status}
-                        {booking.status}
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground">#{booking.id}</span>
                     </div>

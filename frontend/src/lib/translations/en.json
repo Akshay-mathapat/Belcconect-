@@ -188,7 +188,10 @@
     "destinationUnavailable": "Exact service location unavailable",
     "navigationActive": "Navigation active",
     "you": "You",
-    "customerLiveAvailable": "Customer live location available"
+    "customerLiveAvailable": "Customer live location available",
+    "customerDestination": "Customer Destination",
+    "landmark": "Landmark",
+    "instructions": "Instructions"
   },
   "trust": {
     "bookings": "Bookings",
@@ -412,6 +415,9 @@
   "serviceProvider": {
     "portalTitle": "Service Provider Portal",
     "searchPlaceholder": "Search bookings, my services, dashboard pages...",
+    "jobSummary": "Job Summary",
+    "service": "Service",
+    "category": "Category",
     "verifiedExpert": "VERIFIED EXPERT",
     "belagaviZone": "Belagavi Zone",
     "goodMorning": "Good Morning",
@@ -690,6 +696,8 @@
       "Upcoming": "Upcoming",
       "OnTheWay": "On the way",
       "Started": "Started",
+      "OnTheWay": "On The Way",
+      "Started": "In Progress",
       "Completed": "Completed",
       "Cancelled": "Cancelled",
       "Rejected": "Rejected",

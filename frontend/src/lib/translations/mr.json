@@ -422,6 +422,9 @@
   "serviceProvider": {
     "portalTitle": "सेवा प्रदाता पोर्टल",
     "searchPlaceholder": "बुकिंग, सेवा, डॅशबोर्ड शोधा...",
+    "jobSummary": "कामाचा सारांश",
+    "service": "सेवा",
+    "category": "वर्ग",
     "verifiedExpert": "सत्यापित तज्ञ",
     "belagaviZone": "बेळगाव झोन",
     "goodMorning": "शुभ प्रभात",
@@ -699,7 +702,7 @@
       "Accepted": "स्वीकारलेले",
       "Upcoming": "आगामी",
       "OnTheWay": "रस्त्यावर आहे",
-      "Started": "सुरू केलेले",
+      "Started": "प्रगतीपथावर आहे",
       "Completed": "पूर्ण झाले",
       "Cancelled": "रद्द केले",
       "Rejected": "नाकारलेले",

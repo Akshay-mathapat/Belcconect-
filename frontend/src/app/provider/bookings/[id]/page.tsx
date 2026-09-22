@@ -238,7 +238,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground font-bold">Action Needed:</span>
                 <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
-                  {booking.status}
+                  {t(`account.statuses.${booking.status}`) || booking.status}
                 </span>
               </div>
 

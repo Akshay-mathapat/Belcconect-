@@ -422,6 +422,9 @@
   "serviceProvider": {
     "portalTitle": "ಸೇವಾ ಪೂರೈಕೆದಾರ ಪೋರ್ಟಲ್",
     "searchPlaceholder": "ಬುಕಿಂಗ್‌ಗಳು, ಸೇವೆಗಳು, ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಹುಡುಕಿ...",
+    "jobSummary": "ಕೆಲಸದ ಸಾರಾಂಶ",
+    "service": "ಸೇವೆ",
+    "category": "ವರ್ಗ",
     "verifiedExpert": "ಪರಿಶೀಲಿಸಿದ ತಜ್ಞರು",
     "belagaviZone": "ಬೆಳಗಾವಿ ವಲಯ",
     "goodMorning": "ಶುಭೋದಯ",
@@ -699,7 +702,7 @@
       "Accepted": "ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
       "Upcoming": "ಆಗಮಿಸುತ್ತಿರುವ",
       "OnTheWay": "ದಾರಿಯಲ್ಲಿದ್ದಾರೆ",
-      "Started": "ಪ್ರಾರಂಭಿಸಲಾಗಿದೆ",
+      "Started": "ಪ್ರಗತಿಯಲ್ಲಿದೆ",
       "Completed": "ಪೂರ್ಣಗೊಂಡಿದೆ",
       "Cancelled": "ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
       "Rejected": "ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
