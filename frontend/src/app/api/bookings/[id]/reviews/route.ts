@@ -69,19 +69,34 @@ export async function GET(
       [booking.id]
     );
 
+    const formattedReviews = reviewsRes.rows.map((r: any) => ({
+      id: r.id,
+      bookingId: r.booking_id,
+      reviewerId: r.reviewer_id,
+      reviewerRole: r.reviewer_role,
+      revieweeId: r.reviewee_id,
+      revieweeRole: r.reviewee_role,
+      rating: Number(r.rating),
+      comment: r.comment || "",
+      createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString()
+    }));
+
+    const userRole = isCustomer ? "customer" : "provider";
+    const myReview = formattedReviews.find(
+      (r: any) => r.reviewerRole === userRole || (authUser.userId && r.reviewerId === authUser.userId)
+    ) || null;
+    const myReview =
+      formattedReviews.find(
+        (r: any) =>
+          r.reviewerId === authUser.userId &&
+          r.reviewerRole === userRole
+      ) || null;
+
     return NextResponse.json({
       success: true,
-      reviews: reviewsRes.rows.map((r: any) => ({
-        id: r.id,
-        bookingId: r.booking_id,
-        reviewerId: r.reviewer_id,
-        reviewerRole: r.reviewer_role,
-        revieweeId: r.reviewee_id,
-        revieweeRole: r.reviewee_role,
-        rating: Number(r.rating),
-        comment: r.comment || "",
-        createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString()
-      }))
+      reviews: formattedReviews,
+      userReview: myReview,
+      hasReviewed: Boolean(myReview)
     });
   } catch (error: any) {
     console.error(`Error fetching reviews for booking ${cleanId}:`, error);

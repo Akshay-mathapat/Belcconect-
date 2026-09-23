@@ -288,7 +288,6 @@ function BookingFlow() {
                   </div>
                 </div>
               </div>
-              <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all cursor-pointer">{t("booking.continue")}</button>
               <button
                 disabled={providerUnavailable}
                 onClick={nextStep}

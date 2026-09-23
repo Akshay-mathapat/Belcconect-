@@ -52,6 +52,9 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   const [reviewText, setReviewText] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSubmittedSuccess, setReviewSubmittedSuccess] = useState(false);
+  const [customerReview, setCustomerReview] = useState<{ rating: number; comment: string } | null>(null);
+  const [isReviewLoading, setIsReviewLoading] = useState(true);
+  const [reviewFetchError, setReviewFetchError] = useState<string | null>(null);
 
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -60,6 +63,59 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
     return () => unsub();
   }, []);
+
+  const fetchReviewStatus = async (targetBookingId: string) => {
+    setIsReviewLoading(true);
+    setReviewFetchError(null);
+    try {
+      const token = currentUser?.token || getStoredAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(targetBookingId)}/reviews`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.userReview) {
+          setCustomerReview({
+            rating: Number(data.userReview.rating),
+            comment: data.userReview.comment || ""
+          });
+        } else if (Array.isArray(data.reviews)) {
+          const myRev = data.reviews.find(
+            (r: any) => r.reviewerRole === "customer" || (currentUser?.id && r.reviewerId === currentUser.id)
+          );
+          if (myRev) {
+            setCustomerReview({
+              rating: Number(myRev.rating),
+              comment: myRev.comment || ""
+            });
+          } else {
+            setCustomerReview(null);
+          }
+        } else {
+          setCustomerReview(null);
+        }
+      } else if (res.status === 401 || res.status === 403) {
+        setReviewFetchError("Authentication required to view review status.");
+      } else {
+        setReviewFetchError("Unable to verify review status.");
+      }
+    } catch (e: any) {
+      setReviewFetchError("Network error checking review status.");
+    } finally {
+      setIsReviewLoading(false);
+    }
+  };
+
+  // Check review status when completed
+  useEffect(() => {
+    if (!booking) return;
+    if (booking.status === "Completed" || booking.status === "ReviewSubmitted") {
+      fetchReviewStatus(booking.id);
+    } else {
+      setIsReviewLoading(false);
+    }
+  }, [booking?.id, booking?.status]);
 
   // Handlers for Cancellation, Reporting, and Reviews
   const handleCancelBookingSubmit = async (e: React.FormEvent) => {
@@ -149,7 +205,11 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       });
       if (res.ok) {
         setReviewSubmittedSuccess(true);
+        setCustomerReview({ rating: ratingValue, comment: reviewText.trim() });
         setBooking((prev) => prev ? { ...prev, rating: ratingValue, reviewComment: reviewText.trim() } : prev);
+      } else if (res.status === 409) {
+        setReviewSubmittedSuccess(true);
+        await fetchReviewStatus(booking.id);
       } else {
         const err = await res.json();
         alert(err.error || "Failed to submit review");
@@ -570,33 +630,48 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
                 <h3 className="text-sm font-bold text-foreground">
                   Rate Your Experience with {booking.providerName}
                 </h3>
-                {(booking.rating || reviewSubmittedSuccess) && (
+                {(customerReview || reviewSubmittedSuccess) && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                     <CheckCircle2 className="w-3 h-3" /> Review Submitted
                   </span>
                 )}
               </div>
 
-              {booking.rating || reviewSubmittedSuccess ? (
+              {isReviewLoading ? (
+                <div className="py-6 text-center text-xs text-muted-foreground animate-pulse">
+                  Checking review status...
+                </div>
+              ) : reviewFetchError ? (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center justify-between">
+                  <span>{reviewFetchError}</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchReviewStatus(booking.id)}
+                    className="font-bold underline hover:no-underline ml-2 cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (customerReview || reviewSubmittedSuccess) ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
                         className={`w-5 h-5 ${
-                          star <= (booking.rating || ratingValue)
+                          star <= (customerReview?.rating || ratingValue)
                             ? "text-amber-500 fill-amber-500"
                             : "text-muted-foreground/30"
                         }`}
                       />
                     ))}
                     <span className="text-xs font-bold text-foreground ml-2">
-                      {booking.rating || ratingValue} / 5 Stars
+                      {customerReview?.rating || ratingValue} / 5 Stars
                     </span>
                   </div>
-                  {(booking.reviewComment || reviewText) && (
+                  {(customerReview?.comment || reviewText) && (
                     <p className="text-xs text-muted-foreground italic bg-background p-3 rounded-xl border border-border">
-                      &ldquo;{booking.reviewComment || reviewText}&rdquo;
+                      &ldquo;{customerReview?.comment || reviewText}&rdquo;
                     </p>
                   )}
                 </div>

@@ -48,6 +48,52 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
   const [reviewText, setReviewText] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [providerReviewedSuccess, setProviderReviewedSuccess] = useState(false);
+  const [providerReview, setProviderReview] = useState<{ rating: number; comment: string } | null>(null);
+  const [isReviewLoading, setIsReviewLoading] = useState(true);
+  const [reviewFetchError, setReviewFetchError] = useState<string | null>(null);
+
+  const fetchReviewStatus = async (targetBookingId: string) => {
+    setIsReviewLoading(true);
+    setReviewFetchError(null);
+    try {
+      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(targetBookingId)}/reviews`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.userReview) {
+          setProviderReview({
+            rating: Number(data.userReview.rating),
+            comment: data.userReview.comment || ""
+          });
+        } else if (Array.isArray(data.reviews)) {
+          const myRev = data.reviews.find(
+            (r: any) => r.reviewerRole === "provider" || (currentUser?.id && r.reviewerId === currentUser.id)
+          );
+          if (myRev) {
+            setProviderReview({
+              rating: Number(myRev.rating),
+              comment: myRev.comment || ""
+            });
+          } else {
+            setProviderReview(null);
+          }
+        } else {
+          setProviderReview(null);
+        }
+      } else if (res.status === 401 || res.status === 403) {
+        setReviewFetchError("Authentication required to view review status.");
+      } else {
+        setReviewFetchError("Unable to verify review status.");
+      }
+    } catch (e: any) {
+      setReviewFetchError("Network error checking review status.");
+    } finally {
+      setIsReviewLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchProviderBookings();
@@ -137,7 +183,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(`/api/bookings/${booking.id}/reviews`, {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/reviews`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -147,6 +193,10 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
       });
       if (res.ok) {
         setProviderReviewedSuccess(true);
+        setProviderReview({ rating: ratingValue, comment: reviewText.trim() });
+      } else if (res.status === 409) {
+        setProviderReviewedSuccess(true);
+        await fetchReviewStatus(booking.id);
       } else {
         const err = await res.json();
         alert(err.error || "Failed to submit review");
@@ -209,6 +259,15 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const booking = bookings.find((b) => b.id === id) || localBooking;
+
+  useEffect(() => {
+    if (!booking) return;
+    if (booking.status === "Completed") {
+      fetchReviewStatus(booking.id);
+    } else {
+      setIsReviewLoading(false);
+    }
+  }, [booking?.id, booking?.status]);
 
   // Broadcast Provider GPS location
   const {
@@ -470,16 +529,50 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
                 <h3 className="font-heading text-sm font-bold text-foreground">
                   Rate Customer ({booking.customerName})
                 </h3>
-                {providerReviewedSuccess && (
+                {(providerReview || providerReviewedSuccess) && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                    <CheckCircle2 className="w-3 h-3" /> Feedback Saved
+                    <CheckCircle2 className="w-3 h-3" /> Customer Review Submitted
                   </span>
                 )}
               </div>
 
-              {providerReviewedSuccess ? (
-                <div className="p-3 bg-muted/20 rounded-xl text-xs text-muted-foreground">
-                  Thank you! Your feedback on this customer has been recorded privately for the platform.
+              {isReviewLoading ? (
+                <div className="py-4 text-center text-xs text-muted-foreground animate-pulse">
+                  Checking review status...
+                </div>
+              ) : reviewFetchError ? (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center justify-between">
+                  <span>{reviewFetchError}</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchReviewStatus(booking.id)}
+                    className="font-bold underline hover:no-underline ml-2 cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (providerReview || providerReviewedSuccess) ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-5 h-5 ${
+                          star <= (providerReview?.rating || ratingValue)
+                            ? "text-amber-500 fill-amber-500"
+                            : "text-muted-foreground/30"
+                        }`}
+                      />
+                    ))}
+                    <span className="text-xs font-bold text-foreground ml-2">
+                      {providerReview?.rating || ratingValue} / 5 Stars
+                    </span>
+                  </div>
+                  {(providerReview?.comment || reviewText) && (
+                    <p className="text-xs text-muted-foreground italic bg-muted/30 p-3 rounded-xl border border-border">
+                      &ldquo;{providerReview?.comment || reviewText}&rdquo;
+                    </p>
+                  )}
                 </div>
               ) : (
                 <form onSubmit={handleReviewCustomerSubmit} className="space-y-4">
@@ -512,7 +605,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
 
                   <div>
                     <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
-                      Private notes on customer (optional):
+                      Review comment (optional):
                     </label>
                     <textarea
                       value={reviewText}

@@ -363,6 +363,13 @@ export default function AccountPage() {
         setRateBookingId(null);
         setCurrentBookingIdToMarkReviewed(null);
         setReviewText("");
+      } else if (res.status === 409) {
+        alert("You have already submitted a review for this booking.");
+        fetchUserBookings();
+        setShowRateModal(false);
+        setRateBookingId(null);
+        setCurrentBookingIdToMarkReviewed(null);
+        setReviewText("");
       } else {
         const err = await res.json();
         alert(err.error || "Failed to submit review");
@@ -618,10 +625,15 @@ export default function AccountPage() {
                                 </button>
                                 {(booking.status === "Completed" || booking.status === "ReviewSubmitted") && (
                                   (() => {
+                                    // 1. If this specific booking has already been reviewed, show read-only status
                                     // 1. If this specific booking has already been reviewed
                                     const hasReviewed = booking.status === "ReviewSubmitted" || (booking.rating !== undefined && booking.rating !== null && Number(booking.rating) > 0);
                                     if (hasReviewed) {
                                       return (
+                                        <span className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap">
+                                          <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                                          <span>{booking.rating ? `${booking.rating}★ Rated` : "Reviewed"}</span>
+                                        </span>
                                         <button
                                           onClick={() => handleRateService(booking.id, booking.rating || 5, booking.reviewComment || "", booking.id)}
                                           className="flex-1 sm:flex-initial h-11 min-h-[44px] px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
