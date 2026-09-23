@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, Search, Sun, Moon, Monitor, ArrowRight, Globe, User, LogOut, LayoutDashboard, Settings, Video, Calendar } from "lucide-react";
+import { Menu, X, Search, Sun, Moon, Monitor, ArrowRight, Globe, User, LogOut, LayoutDashboard, Settings, Video, Calendar, HelpCircle } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { SITE_NAME, NAV_LINKS, SEARCH_SUGGESTIONS } from "@/constants/site";
 import Link from "next/link";
@@ -479,6 +479,15 @@ export default function Navigation() {
                         </span>
                       </Link>
 
+                      <Link
+                        href="/help"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-foreground hover:bg-muted font-medium transition-colors"
+                      >
+                        <HelpCircle className="h-4 w-4 text-blue-600" />
+                        <span>Help & Support</span>
+                      </Link>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -705,6 +714,15 @@ export default function Navigation() {
                       className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700"
                     >
                       {currentUser.role === "provider" ? t("common.providerDashboard") : currentUser.role === "job_provider" ? t("common.jobProviderWorkspace") : t("common.myAccount")}
+                    </Link>
+
+                    <Link
+                      href="/help"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center gap-2 w-full rounded-xl border border-border bg-card py-3 text-center text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
+                      <HelpCircle className="h-4 w-4 text-blue-600" />
+                      <span>Help & Support</span>
                     </Link>
 
                     <button

@@ -475,6 +475,14 @@ export default function AccountPage() {
                   <HelpCircle className="h-4 w-4 text-primary" />
                   <span>Guide Tour</span>
                 </button>
+
+                <Link
+                  href="/help"
+                  className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer mt-1 min-h-[44px]"
+                >
+                  <HelpCircle className="h-4 w-4 text-blue-600" />
+                  <span>Help & Support</span>
+                </Link>
               </div>
             </div>
 

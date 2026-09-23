@@ -54,6 +54,7 @@ const secondaryNavItems: NavItem[] = [
   { key: "availability", href: "/provider/availability", label: "Availability", icon: Clock, tourAttr: "provider-availability" },
   { key: "messages", href: "/provider/messages", label: "Messages", icon: MessageSquare },
   { key: "reviews", href: "/provider/reviews", label: "Reviews", icon: Star },
+  { key: "help", href: "/help", label: "Help & Support", icon: HelpCircle },
 ];
 
 export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = false, setMobileOpen }: ProviderSidebarProps) {
