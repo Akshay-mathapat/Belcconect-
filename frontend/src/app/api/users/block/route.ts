@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     const blockId = `blk-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    const cleanReason = typeof reason === "string" ? reason.trim().slice(0, 200) : null;
+    const cleanReason = typeof reason === "string" ? reason.trim().slice(0, 100) : null;
 
     await query(
       `INSERT INTO user_blocks (id, blocker_id, blocked_user_id, reason)

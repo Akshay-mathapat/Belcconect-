@@ -13,14 +13,17 @@ import {
   Mail, 
   Award, 
   ArrowLeft, 
-  CheckCircle2, 
-  Briefcase, 
-  Clock, 
-  MapPin, 
-  Loader2, 
-  User, 
-  AlertCircle 
+  CheckCircle2,
+Briefcase,
+Clock,
+MapPin,
+Loader2,
+UserX,
+ShieldAlert,
+X,
+AlertCircle,
 } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface ProviderData {
   provider: {
@@ -60,6 +63,70 @@ export default function ProviderProfilePage() {
   const [data, setData] = useState<ProviderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { currentUser } = useAuthStore();
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
+  const [blockSuccess, setBlockSuccess] = useState(false);
+  const [blockError, setBlockError] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  const isSelf = Boolean(currentUser?.id && data?.provider?.id && currentUser.id === data.provider.id);
+
+  const handleInitiateBlock = () => {
+    if (!data?.provider?.id) return;
+    if (isSelf) return;
+
+    requireAuth({
+      action: () => {
+        setBlockError(null);
+        setBlockSuccess(false);
+        setShowBlockModal(true);
+      },
+      returnTo: `/provider-profile/${id}`,
+      title: "Log In to Block Provider",
+      description: "Sign in with your BelConnect account to manage trust and safety settings."
+    });
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!data?.provider?.id || isSelf) return;
+    setIsSubmittingBlock(true);
+    setBlockError(null);
+
+    try {
+      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/users/block", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          blockedUserId: data.provider.id,
+          reason: "Blocked from provider profile"
+        })
+      });
+
+      const json = await res.json();
+
+      if (res.ok && json.success) {
+        setBlockSuccess(true);
+        setIsBlocked(true);
+      } else if (res.status === 409) {
+        setBlockError("You have already blocked this provider.");
+        setIsBlocked(true);
+      } else if (res.status === 400 && json.error) {
+        setBlockError(json.error);
+      } else {
+        setBlockError(json.error || "Failed to block provider. Please try again.");
+      }
+    } catch (err: any) {
+      setBlockError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsSubmittingBlock(false);
+    }
+  };
 
   const handleBookService = (srvName: string) => {
     if (!data?.provider?.id) return;
@@ -194,6 +261,23 @@ export default function ProviderProfilePage() {
                       <span className="font-bold text-foreground">{provider.experience} Years</span>
                     </div>
                   </div>
+
+                  {/* Safety & Support */}
+                  {!isSelf && (
+                    <div className="pt-4 border-t border-border/80 space-y-2">
+                      <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Safety &amp; Support
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleInitiateBlock}
+                        className="w-full py-2.5 px-3 rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                      >
+                        <UserX className="h-4 w-4" />
+                        <span>{isBlocked ? "Provider Blocked" : "Block Provider"}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -256,6 +340,88 @@ export default function ProviderProfilePage() {
 
         </div>
       </div>
+      {/* Block Provider Confirmation Modal */}
+      {showBlockModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <ShieldAlert className="w-5 h-5" />
+                <h3 className="font-heading text-lg font-bold text-foreground">
+                  Block this provider?
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBlockModal(false)}
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {blockSuccess ? (
+              <div className="p-6 text-center space-y-3">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                <h4 className="text-base font-bold text-foreground">Provider blocked</h4>
+                <p className="text-xs text-muted-foreground">
+                  This provider has been added to your blocked users list.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBlockModal(false)}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-muted text-foreground text-xs font-bold hover:bg-muted/80 transition-colors min-h-[44px] cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Blocking will record this provider in your blocked users list. Existing bookings, calls, chat and location features are not changed by this action yet.
+                </p>
+
+                {blockError && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{blockError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={isSubmittingBlock}
+                    onClick={() => setShowBlockModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-bold transition-all cursor-pointer min-h-[44px]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmittingBlock}
+                    onClick={handleConfirmBlock}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingBlock ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Blocking...</span>
+                      </>
+                    ) : (
+                      <span>Block Provider</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <Footer />
       <AuthRequiredDialog {...authDialogProps} />
     </main>
