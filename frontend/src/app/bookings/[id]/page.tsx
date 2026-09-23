@@ -4,9 +4,10 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore, getStoredAuthToken, getStoredUserId } from "@/store/useAuthStore";
-import { 
-  ArrowLeft, Calendar, Clock, MapPin, Phone, MessageSquare, 
-  CheckCircle2, ShieldCheck, UserCheck, Radio, AlertCircle, ExternalLink, Navigation
+import {
+  ArrowLeft, Calendar, Clock, MapPin, Phone, MessageSquare,
+  CheckCircle2, ShieldCheck, UserCheck, Radio, AlertCircle, ExternalLink, Navigation,
+  Star, ShieldAlert, X
 } from "lucide-react";
 import { Booking, BookingStatus } from "@/types/provider";
 import CustomerTrackingMap from "@/components/location/CustomerTrackingMap";
@@ -33,6 +34,25 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   const [error, setError] = useState<string | null>(null);
   const [shareLiveLocation, setShareLiveLocation] = useState(false);
 
+  // Cancellation Modal State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("Schedule changed");
+  const [cancellationNote, setCancellationNote] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Safety Report Modal State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("Safety concern");
+  const [reportDescription, setReportDescription] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+
+  // Review Form State
+  const [ratingValue, setRatingValue] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSubmittedSuccess, setReviewSubmittedSuccess] = useState(false);
+
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -40,6 +60,106 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
     return () => unsub();
   }, []);
+
+  // Handlers for Cancellation, Reporting, and Reviews
+  const handleCancelBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    setIsCancelling(true);
+    try {
+      const token = currentUser?.token || getStoredAuthToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          status: "Cancelled",
+          cancellationReason,
+          cancellationNote
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBooking(data.booking);
+        setShowCancelModal(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to cancel booking");
+      }
+    } catch (err) {
+      alert("Network error cancelling booking");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    setIsReporting(true);
+    try {
+      const token = currentUser?.token || getStoredAuthToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/report`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          reason: reportReason,
+          description: reportDescription
+        })
+      });
+      if (res.ok) {
+        setReportSuccess(true);
+        setTimeout(() => {
+          setShowReportModal(false);
+          setReportSuccess(false);
+          setReportDescription("");
+        }, 2000);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to submit report");
+      }
+    } catch (err) {
+      alert("Network error submitting report");
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    setIsSubmittingReview(true);
+    try {
+      const token = currentUser?.token || getStoredAuthToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/reviews`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          rating: ratingValue,
+          comment: reviewText.trim()
+        })
+      });
+      if (res.ok) {
+        setReviewSubmittedSuccess(true);
+        setBooking((prev) => prev ? { ...prev, rating: ratingValue, reviewComment: reviewText.trim() } : prev);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to submit review");
+      }
+    } catch (err) {
+      alert("Network error submitting review");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   // Auth Guard
   useEffect(() => {
@@ -156,8 +276,8 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     <div className="min-h-screen bg-background pt-20 pb-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* Header Link */}
-        <div className="flex items-center justify-between">
+        {/* Header Link & Actions */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <Link
             href="/account"
             className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -166,9 +286,31 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
             <span>Back to My Account</span>
           </Link>
 
-          <span className="text-xs font-mono font-bold text-muted-foreground uppercase">
-            Order #{booking.id}
-          </span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-mono font-bold text-muted-foreground uppercase">
+              Order #{booking.id}
+            </span>
+
+            {["Requested", "Accepted"].includes(booking.status) && (
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(true)}
+                className="px-3 py-1 rounded-xl text-xs font-bold text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 border border-border hover:border-rose-500/30 transition-all cursor-pointer"
+              >
+                Cancel Order
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowReportModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all cursor-pointer"
+              title="Report safety concern or problem"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Report</span>
+            </button>
+          </div>
         </div>
 
         {/* Unified Status Stepper (Domino's Style Progress Bar) */}
@@ -370,31 +512,332 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
           </div>
         )}
 
-        {/* ═══════ STATE 3: COMPLETED / REJECTED ═══════ */}
-        {!isActiveTracking && booking.status !== "Requested" && (
-          <div className="rounded-3xl border border-border bg-card p-8 sm:p-12 text-center space-y-6 shadow-xl max-w-xl mx-auto">
+        {/* ═══════ STATE 3A: CANCELLED / REJECTED ═══════ */}
+        {booking.status === "Cancelled" && (
+          <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-8 sm:p-10 text-center space-y-4 max-w-xl mx-auto shadow-md">
+            <div className="w-14 h-14 bg-rose-500/10 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5">
+              <span className="px-3 py-0.5 rounded-full bg-rose-500/10 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                Booking Cancelled
+              </span>
+              <h2 className="text-xl font-heading font-bold text-foreground">
+                This service order was cancelled
+              </h2>
+              {booking.cancellationReason && (
+                <p className="text-xs text-muted-foreground">
+                  Reason: <strong className="text-foreground">{booking.cancellationReason}</strong>
+                </p>
+              )}
+              {booking.cancellationNote && (
+                <p className="text-xs text-muted-foreground italic bg-background/50 p-2.5 rounded-xl border border-border/50 max-w-md mx-auto">
+                  &ldquo;{booking.cancellationNote}&rdquo;
+                </p>
+              )}
+            </div>
+            <Link
+              href="/services"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all cursor-pointer"
+            >
+              <span>Explore Other Services</span>
+            </Link>
+          </div>
+        )}
+
+        {/* ═══════ STATE 3B: COMPLETED / REVIEW SUBMITTED ═══════ */}
+        {!isActiveTracking && (booking.status === "Completed" || booking.status === "ReviewSubmitted") && (
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-10 text-center space-y-6 shadow-xl max-w-xl mx-auto">
             <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-10 h-10" />
             </div>
 
             <div className="space-y-2">
               <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold uppercase tracking-wider">
-                {booking.status}
+                Service Order Completed
               </span>
               <h2 className="text-2xl font-heading font-bold text-foreground">
-                Service Order Completed
+                Work Fulfilled
               </h2>
               <p className="text-xs text-muted-foreground">
-                Thank you for using BelConnect! Your service for <strong>{booking.serviceName}</strong> has been fulfilled by {booking.providerName}.
+                Thank you for using BelConnect! Your service for <strong>{booking.serviceName}</strong> has been completed by {booking.providerName}.
               </p>
+            </div>
+
+            {/* Rate & Review Provider Box */}
+            <div className="p-5 rounded-2xl border border-border bg-muted/20 text-left space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="text-sm font-bold text-foreground">
+                  Rate Your Experience with {booking.providerName}
+                </h3>
+                {(booking.rating || reviewSubmittedSuccess) && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                    <CheckCircle2 className="w-3 h-3" /> Review Submitted
+                  </span>
+                )}
+              </div>
+
+              {booking.rating || reviewSubmittedSuccess ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-5 h-5 ${
+                          star <= (booking.rating || ratingValue)
+                            ? "text-amber-500 fill-amber-500"
+                            : "text-muted-foreground/30"
+                        }`}
+                      />
+                    ))}
+                    <span className="text-xs font-bold text-foreground ml-2">
+                      {booking.rating || ratingValue} / 5 Stars
+                    </span>
+                  </div>
+                  {(booking.reviewComment || reviewText) && (
+                    <p className="text-xs text-muted-foreground italic bg-background p-3 rounded-xl border border-border">
+                      &ldquo;{booking.reviewComment || reviewText}&rdquo;
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={handleReviewSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                      Select Rating:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRatingValue(star)}
+                          className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= ratingValue
+                                ? "text-amber-500 fill-amber-500"
+                                : "text-muted-foreground/30 hover:text-amber-400"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="text-xs font-bold text-foreground ml-2">
+                        {ratingValue} / 5
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                      Share feedback (optional):
+                    </label>
+                    <textarea
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      placeholder="How was the professional quality and service behavior?"
+                      rows={3}
+                      className="w-full p-3 rounded-xl border border-border bg-background text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmittingReview ? "Submitting Review..." : "Submit Review"}
+                  </button>
+                </form>
+              )}
             </div>
 
             <Link
               href="/account"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold text-xs border border-border transition-all"
             >
-              <span>Go to My Account</span>
+              <span>Return to My Account</span>
             </Link>
+          </div>
+        )}
+
+        {/* Structured Cancellation Modal */}
+        {showCancelModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="font-heading text-lg font-bold text-foreground">
+                  Cancel Booking
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(false)}
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCancelBookingSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground block">
+                    Why are you cancelling?
+                  </label>
+                  {[
+                    "Schedule changed",
+                    "Provider unavailable",
+                    "Customer unavailable",
+                    "Booked by mistake",
+                    "Unable to contact",
+                    "Other"
+                  ].map((reason) => (
+                    <label
+                      key={reason}
+                      className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-colors ${
+                        cancellationReason === reason
+                          ? "border-blue-600 bg-blue-500/10 font-bold text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="cancellationReason"
+                        value={reason}
+                        checked={cancellationReason === reason}
+                        onChange={(e) => setCancellationReason(e.target.value)}
+                        className="text-blue-600 focus:ring-blue-600"
+                      />
+                      <span>{reason}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground block">
+                    Tell us more (optional):
+                  </label>
+                  <textarea
+                    value={cancellationNote}
+                    onChange={(e) => setCancellationNote(e.target.value)}
+                    placeholder="Provide additional details..."
+                    rows={2}
+                    className="w-full p-3 rounded-xl border border-border bg-background text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Keep Booking
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCancelling}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Safety & Participant Report Modal */}
+        {showReportModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2 text-rose-600">
+                  <ShieldAlert className="w-5 h-5" />
+                  <h3 className="font-heading text-lg font-bold text-foreground">
+                    Report Safety or Service Issue
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReportModal(false)}
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {reportSuccess ? (
+                <div className="p-6 text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                  <h4 className="text-sm font-bold text-foreground">Report Received</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Thank you for helping keep BelConnect safe. Our trust &amp; safety team will review this interaction.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleReportSubmit} className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Your report is private and helps us maintain safety and service quality across Belagavi.
+                  </p>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-foreground block">
+                      Reason for report:
+                    </label>
+                    <select
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-border bg-background text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    >
+                      {[
+                        "Safety concern",
+                        "Harassment",
+                        "Fraud/scam concern",
+                        "Incorrect service information",
+                        "No-show",
+                        "Inappropriate behavior",
+                        "Other"
+                      ].map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground block">
+                      Description:
+                    </label>
+                    <textarea
+                      value={reportDescription}
+                      onChange={(e) => setReportDescription(e.target.value)}
+                      placeholder="Describe what happened in detail..."
+                      rows={3}
+                      className="w-full p-3 rounded-xl border border-border bg-background text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowReportModal(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isReporting}
+                      className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                    >
+                      {isReporting ? "Submitting..." : "Submit Report"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         )}
 

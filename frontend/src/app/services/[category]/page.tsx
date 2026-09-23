@@ -60,7 +60,7 @@ export default function ServicesCategoryPage() {
     id: srv.id,
     name: srv.providerName || "Professional",
     rating: srv.rating !== undefined ? Number(srv.rating) : 0.0,
-    reviews: srv.bookingsCount || 0,
+    reviews: srv.reviewsCount !== undefined ? Number(srv.reviewsCount) : (Number(srv.rating || 0) > 0 ? 1 : 0),
     jobs: srv.bookingsCount || 0,
     exp: srv.exp ? Number(srv.exp) : 0,
     providerId: srv.providerId,
@@ -96,7 +96,7 @@ export default function ServicesCategoryPage() {
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
       <div className="flex-1 pt-8 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
+
           <div className="mb-6">
             <Link
               href="/services"
@@ -242,6 +242,11 @@ export default function ServicesCategoryPage() {
                             <span className="flex items-center gap-1 text-amber-500 font-medium">
                               <Star className={`h-3.5 w-3.5 text-amber-500 ${pro.rating > 0 ? "fill-amber-500" : ""}`} />
                               {pro.rating > 0 ? pro.rating : "No ratings"} ({pro.reviews})
+                              {pro.rating > 0 && pro.reviews > 0 ? (
+                                <span>{pro.rating.toFixed(1)} ({pro.reviews} {pro.reviews === 1 ? "review" : "reviews"})</span>
+                              ) : (
+                                <span>No reviews</span>
+                              )}
                             </span>
                             <span>•</span>
                             <span>{pro.jobs} jobs done</span>
@@ -278,7 +283,7 @@ export default function ServicesCategoryPage() {
               )}
             </div>
           </div>
-          
+
         </div>
       </div>
 

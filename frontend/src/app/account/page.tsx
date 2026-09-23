@@ -159,6 +159,13 @@ export default function AccountPage() {
   const [reviewText, setReviewText] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // Cancellation Modal State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("Schedule changed");
+  const [cancellationNote, setCancellationNote] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Sync state if currentUser changes
   const activeUser = currentUser || {
     id: "guest",
@@ -188,17 +195,37 @@ export default function AccountPage() {
     setShowAddressModal(false);
   };
 
-  // Handle Cancel Booking
-  const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm("Are you sure you want to cancel this booking?")) return;
+  // Handle Cancel Booking Modal Open
+  const handleCancelBooking = (bookingId: string) => {
+    setCancelBookingId(bookingId);
+    setCancellationReason("Schedule changed");
+    setCancellationNote("");
+    setShowCancelModal(true);
+  };
+
+  // Handle Cancel Booking Submit
+  const handleCancelBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelBookingId) return;
+    setIsCancelling(true);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}`, {
+      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(cancelBookingId)}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Cancelled" })
+        headers,
+        body: JSON.stringify({
+          status: "Cancelled",
+          cancellationReason,
+          cancellationNote
+        })
       });
       if (res.ok) {
         fetchUserBookings();
+        setShowCancelModal(false);
+        setCancelBookingId(null);
       } else {
         const err = await res.json();
         alert(err.error || "Failed to cancel booking");
@@ -206,6 +233,8 @@ export default function AccountPage() {
     } catch (error) {
       console.error("Error cancelling booking:", error);
       alert("Network error. Could not cancel booking.");
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -313,33 +342,22 @@ export default function AccountPage() {
     if (!rateBookingId) return;
     setIsSubmittingReview(true);
     try {
-      // 1. Submit the review to the designated reviewed booking row
-      const res = await fetch(`/api/bookings/${rateBookingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          rating: selectedRating, 
-          reviewComment: reviewText.trim(),
-          status: "ReviewSubmitted" 
+      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      // Submit the review to the authoritative two-sided reviews endpoint
+      const res = await fetch(`/api/bookings/${encodeURIComponent(rateBookingId)}/reviews`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          rating: selectedRating,
+          comment: reviewText.trim()
         })
       });
 
-      // 2. If editing a review from a different source booking (e.g. customer booked the same service again),
-      // also mark the source booking as reviewed so it transitions status!
-      if (currentBookingIdToMarkReviewed && currentBookingIdToMarkReviewed !== rateBookingId) {
-        await fetch(`/api/bookings/${currentBookingIdToMarkReviewed}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            rating: selectedRating, 
-            reviewComment: reviewText.trim(),
-            status: "ReviewSubmitted" 
-          })
-        });
-      }
-
       if (res.ok) {
-        alert(`Thank you! Your review has been saved.`);
+        alert("Thank you! Your review has been saved.");
         fetchUserBookings();
         setShowRateModal(false);
         setRateBookingId(null);
@@ -361,11 +379,11 @@ export default function AccountPage() {
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">
       <div className="flex-1 pt-8 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
+
           <div className="flex flex-col md:flex-row gap-8">
             {/* Sidebar Navigation */}
             <div className="w-full md:w-64 space-y-4 shrink-0">
-              
+
               {/* Reduced Blue Profile Card */}
               <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl flex flex-col items-center text-center gap-3">
                 <div className="relative">
@@ -527,7 +545,7 @@ export default function AccountPage() {
                               <User className="h-3.5 w-3.5 text-blue-600" />
                               {t("account.provider")}: <span className="font-semibold text-foreground mr-1">{booking.provider}</span>
                               {booking.providerId && (
-                                <Link 
+                                <Link
                                   href={`/provider-profile/${booking.providerId}`}
                                   className="text-[10px] text-blue-600 hover:text-blue-700 font-bold hover:underline bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                                 >
@@ -601,7 +619,8 @@ export default function AccountPage() {
                                 {(booking.status === "Completed" || booking.status === "ReviewSubmitted") && (
                                   (() => {
                                     // 1. If this specific booking has already been reviewed
-                                    if (booking.status === "ReviewSubmitted") {
+                                    const hasReviewed = booking.status === "ReviewSubmitted" || (booking.rating !== undefined && booking.rating !== null && Number(booking.rating) > 0);
+                                    if (hasReviewed) {
                                       return (
                                         <button
                                           onClick={() => handleRateService(booking.id, booking.rating || 5, booking.reviewComment || "", booking.id)}
@@ -613,7 +632,7 @@ export default function AccountPage() {
                                     }
                                     // 2. If it is Completed, check if they previously reviewed the same service
                                     const previouslyReviewed = activeUser.bookings?.find(
-                                      (b) => b.service === booking.service && b.status === "ReviewSubmitted"
+                                      (b) => b.service === booking.service && (b.status === "ReviewSubmitted" || (b.rating !== undefined && b.rating !== null && Number(b.rating) > 0))
                                     );
                                     if (previouslyReviewed) {
                                       return (
@@ -1058,6 +1077,107 @@ export default function AccountPage() {
                     className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {isSubmittingReview ? t("account.submitting") : t("account.submitReview")}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Structured Cancellation Modal */}
+        {showCancelModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-card w-full max-w-md rounded-2xl border border-border p-6 shadow-2xl relative overflow-hidden text-xs space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="font-heading text-sm font-bold text-foreground">
+                  Cancel Booking
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setCancelBookingId(null);
+                  }}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCancelBookingSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground block">
+                    Why are you cancelling?
+                  </label>
+                  {[
+                    "Schedule changed",
+                    "Provider unavailable",
+                    "Customer unavailable",
+                    "Booked by mistake",
+                    "Unable to contact",
+                    "Other"
+                  ].map((reason) => (
+                    <label
+                      key={reason}
+                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition-colors ${
+                        cancellationReason === reason
+                          ? "border-blue-600 bg-blue-500/10 font-bold text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="accountCancellationReason"
+                        value={reason}
+                        checked={cancellationReason === reason}
+                        onChange={(e) => setCancellationReason(e.target.value)}
+                        className="text-blue-600 focus:ring-blue-600"
+                      />
+                      <span>{reason}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground block">
+                    Tell us more (optional):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={cancellationNote}
+                    onChange={(e) => setCancellationNote(e.target.value)}
+                    placeholder="Provide additional details..."
+                    className="w-full px-3 py-2 border border-border rounded-xl bg-background text-xs text-foreground focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCancelModal(false);
+                      setCancelBookingId(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer"
+                  >
+                    Keep Booking
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCancelling}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
                   </button>
                 </div>
               </form>

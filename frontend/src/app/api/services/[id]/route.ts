@@ -72,6 +72,7 @@ export async function PATCH(
     const res = await query(
       `SELECT s.*, u.name as provider_name, u.avatar as provider_avatar, u.phone as provider_phone,
               (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id) as bookings_count,
+              (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL AND b.rating > 0) as reviews_count,
               (SELECT ROUND(AVG(b.rating), 1) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL) as avg_rating
        FROM services s 
        JOIN service_providers u ON s.provider_id = u.id
@@ -92,6 +93,7 @@ export async function PATCH(
       providerAvatar: row.provider_avatar,
       providerPhone: row.provider_phone,
       bookingsCount: Number(row.bookings_count || 0),
+      reviewsCount: Number(row.reviews_count || 0),
       rating: row.avg_rating ? Number(row.avg_rating) : 0.0
     };
 

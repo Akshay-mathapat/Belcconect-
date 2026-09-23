@@ -40,6 +40,7 @@ export async function GET(request: Request) {
                u.is_verified as provider_is_verified,
                u.verification_status as provider_verification_status,
                (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id) as bookings_count,
+               (SELECT COUNT(*) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL AND b.rating > 0) as reviews_count,
                (SELECT ROUND(AVG(b.rating), 1) FROM bookings b WHERE b.service_name = s.name AND b.provider_id = s.provider_id AND b.rating IS NOT NULL) as avg_rating,
                ROW_NUMBER() OVER (
                  PARTITION BY s.provider_id, LOWER(s.category), LOWER(TRIM(s.name))
@@ -72,6 +73,7 @@ export async function GET(request: Request) {
       isVerified: row.provider_verification_status === "verified",
       verificationStatus: row.provider_verification_status || "unverified",
       bookingsCount: Number(row.bookings_count || 0),
+      reviewsCount: Number(row.reviews_count || 0),
       rating: row.avg_rating ? Number(row.avg_rating) : 0.0
     }));
 

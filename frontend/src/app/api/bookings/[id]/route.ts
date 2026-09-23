@@ -40,6 +40,10 @@ function mapRowToBooking(row: any) {
     uploadedImages: [],
     rating: row.rating,
     reviewComment: row.review_comment || "",
+    cancellationReason: row.cancellation_reason || null,
+    cancellationNote: row.cancellation_note || null,
+    cancelledBy: row.cancelled_by || null,
+    cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).toISOString() : null,
     destinationLatitude: parseCoord(row.destination_latitude),
     destinationLongitude: parseCoord(row.destination_longitude),
     destinationAddress: row.destination_address || null,
@@ -75,18 +79,22 @@ export async function GET(
     }
 
     const res = await query(
-      `SELECT 
-        b.id, 
-        b.customer_id, 
-        b.provider_id, 
+      `SELECT
+        b.id,
+        b.customer_id,
+        b.provider_id,
         b.provider_name,
-        b.service_name, 
-        b.category, 
-        b.date, 
-        b.time, 
-        b.status, 
+        b.service_name,
+        b.category,
+        b.date,
+        b.time,
+        b.status,
         b.rating,
         b.review_comment,
+        b.cancellation_reason,
+        b.cancellation_note,
+        b.cancelled_by,
+        b.cancelled_at,
         b.destination_latitude,
         b.destination_longitude,
         b.destination_address,
@@ -107,8 +115,8 @@ export async function GET(
       FROM bookings b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text 
-        FROM addresses 
+        SELECT DISTINCT ON (user_id) user_id, text
+        FROM addresses
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
       WHERE (b.id = $1 OR LOWER(b.id) = LOWER($1) OR b.id = $2 OR LOWER(b.id) = LOWER($2))
@@ -165,7 +173,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { status, date, time, rating, reviewComment } = body;
+    const { status, date, time, rating, reviewComment, cancellationReason, cancellationNote } = body;
 
     // Check if booking exists and fetch previous record with flexible ID match
     const checkRes = await query(
@@ -200,10 +208,10 @@ export async function PATCH(
 
     // Role-specific field & status constraints
     if (isCustomer && !isAdmin && !isProvider) {
-      // Customer may only cancel eligible bookings or submit/update ratings and reviews
-      if (status !== undefined && status !== "Cancelled" && status !== "ReviewSubmitted") {
+      // Customer may only cancel eligible bookings via this endpoint (reviews use /api/bookings/[id]/reviews)
+      if (status !== undefined && status !== "Cancelled") {
         return NextResponse.json(
-          { error: "Forbidden: Customers are only permitted to cancel their booking or submit reviews" },
+          { error: "Forbidden: Customers are only permitted to cancel their booking via this route" },
           { status: 403 }
         );
       }
@@ -227,10 +235,10 @@ export async function PATCH(
         Accepted: ["OnTheWay", "Started", "Completed", "Cancelled", "Rejected"],
         OnTheWay: ["Started", "Completed", "Cancelled"],
         Started: ["Completed", "Cancelled"],
-        Completed: ["ReviewSubmitted"],
+        Completed: [],
         Cancelled: [],
         Rejected: [],
-        ReviewSubmitted: ["ReviewSubmitted"]
+        ReviewSubmitted: []
       };
 
       const allowedNext = ALLOWED_TRANSITIONS[previousStatus] ?? [];
@@ -250,6 +258,46 @@ export async function PATCH(
     if (status !== undefined) {
       updateFields.push(`status = $${paramIndex++}`);
       queryParams.push(status);
+
+      if (status === "Cancelled") {
+        if (!isCustomer && !isProvider) {
+          return NextResponse.json(
+            { error: "Forbidden: Only the booking customer or provider may cancel this booking" },
+            { status: 403 }
+          );
+        }
+
+        const ALLOWED_CANCELLATION_REASONS = [
+          "Schedule changed",
+          "Provider unavailable",
+          "Customer unavailable",
+          "Booked by mistake",
+          "Unable to contact",
+          "Other"
+        ];
+
+        const trimmedReason = typeof cancellationReason === "string" ? cancellationReason.trim() : "";
+        if (!trimmedReason || !ALLOWED_CANCELLATION_REASONS.includes(trimmedReason)) {
+          return NextResponse.json(
+            { error: `Invalid cancellation reason. Allowed: ${ALLOWED_CANCELLATION_REASONS.join(", ")}` },
+            { status: 400 }
+          );
+        }
+
+        updateFields.push(`cancellation_reason = $${paramIndex++}`);
+        queryParams.push(trimmedReason);
+
+        if (cancellationNote !== undefined && cancellationNote !== null) {
+          updateFields.push(`cancellation_note = $${paramIndex++}`);
+          queryParams.push(typeof cancellationNote === "string" ? cancellationNote.trim().slice(0, 1000) : null);
+        }
+
+        // Server-derived cancellation actor and timestamp
+        updateFields.push(`cancelled_by = $${paramIndex++}`);
+        queryParams.push(authUser.userId);
+
+        updateFields.push(`cancelled_at = CURRENT_TIMESTAMP`);
+      }
     }
 
     if (date !== undefined) {
@@ -277,9 +325,9 @@ export async function PATCH(
     }
 
     const updateQuery = `
-      UPDATE bookings 
-      SET ${updateFields.join(", ")} 
-      WHERE id = $1 
+      UPDATE bookings
+      SET ${updateFields.join(", ")}
+      WHERE id = $1
       RETURNING *
     `;
 
@@ -332,18 +380,22 @@ export async function PATCH(
     }
 
     const finalRes = await query(
-      `SELECT 
-        b.id, 
-        b.customer_id, 
-        b.provider_id, 
-        b.provider_name, 
-        b.service_name, 
-        b.category, 
-        b.date, 
-        b.time, 
-        b.status, 
+      `SELECT
+        b.id,
+        b.customer_id,
+        b.provider_id,
+        b.provider_name,
+        b.service_name,
+        b.category,
+        b.date,
+        b.time,
+        b.status,
         b.rating,
         b.review_comment,
+        b.cancellation_reason,
+        b.cancellation_note,
+        b.cancelled_by,
+        b.cancelled_at,
         b.destination_latitude,
         b.destination_longitude,
         b.destination_address,
@@ -359,16 +411,16 @@ export async function PATCH(
       FROM bookings b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text 
-        FROM addresses 
+        SELECT DISTINCT ON (user_id) user_id, text
+        FROM addresses
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
       WHERE b.id = $1`,
       [canonicalId]
     );
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       booking: mapRowToBooking(finalRes.rows[0]),
       notification: status === "Accepted" ? { sms: "QUEUED" } : undefined
     });

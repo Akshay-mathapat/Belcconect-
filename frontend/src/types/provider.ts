@@ -4,6 +4,7 @@ export type BookingStatus =
   | "OnTheWay"
   | "Started"
   | "Completed"
+  | "Cancelled"
   | "PaymentReceived"
   | "ReviewSubmitted"
   | "Rejected";
@@ -25,6 +26,10 @@ export interface Booking {
   uploadedImages: string[];
   rating?: number;
   reviewComment?: string;
+  cancellationReason?: string | null;
+  cancellationNote?: string | null;
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
   createdAt?: string;
   serviceAddressId?: string;
   destinationLatitude?: number | null;
