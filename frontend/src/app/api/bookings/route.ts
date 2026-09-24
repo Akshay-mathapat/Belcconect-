@@ -197,6 +197,105 @@ export async function POST(request: Request) {
       validDestLng = nLng;
     }
 
+    let snapServiceAddressId: string | null = null;
+    let snapDestLat: number | null = validDestLat;
+    let snapDestLng: number | null = validDestLng;
+    let snapDestPlaceId: string | null = destinationPlaceId || null;
+    let snapDestAddress: string = destinationAddress || address || "No address provided";
+    let snapDestLandmark: string | null = destinationLandmark || null;
+    let snapDestInstructions: string | null = destinationInstructions || null;
+
+    const cleanServiceAddressId =
+      typeof serviceAddressId === "string"
+        ? serviceAddressId.trim()
+        : "";
+
+    if (cleanServiceAddressId) {
+      const addressResult = await query(
+        `SELECT
+           id,
+           user_id,
+           text,
+           latitude,
+           longitude,
+           place_id,
+           landmark,
+           delivery_instructions
+         FROM addresses
+         WHERE id = $1
+           AND user_id = $2
+         LIMIT 1`,
+        [cleanServiceAddressId, validCustomerId]
+      );
+
+      if (addressResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid service address" },
+          { status: 400 }
+        );
+      }
+
+      const savedAddress = addressResult.rows[0];
+
+      let savedLat: number | null = null;
+      let savedLng: number | null = null;
+
+      if (
+        savedAddress.latitude !== null &&
+        savedAddress.latitude !== undefined &&
+        savedAddress.latitude !== ""
+      ) {
+        const parsedLat = Number(savedAddress.latitude);
+
+        if (
+          !Number.isFinite(parsedLat) ||
+          parsedLat < -90 ||
+          parsedLat > 90
+        ) {
+          return NextResponse.json(
+            { error: "Saved service address has invalid latitude" },
+            { status: 400 }
+          );
+        }
+
+        savedLat = parsedLat;
+      }
+
+      if (
+        savedAddress.longitude !== null &&
+        savedAddress.longitude !== undefined &&
+        savedAddress.longitude !== ""
+      ) {
+        const parsedLng = Number(savedAddress.longitude);
+
+        if (
+          !Number.isFinite(parsedLng) ||
+          parsedLng < -180 ||
+          parsedLng > 180
+        ) {
+          return NextResponse.json(
+            { error: "Saved service address has invalid longitude" },
+            { status: 400 }
+          );
+        }
+
+        savedLng = parsedLng;
+      }
+
+      snapServiceAddressId = cleanServiceAddressId;
+      snapDestLat = savedLat;
+      snapDestLng = savedLng;
+      snapDestPlaceId = savedAddress.place_id || null;
+      snapDestAddress =
+        savedAddress.text ||
+        destinationAddress ||
+        address ||
+        "No address provided";
+      snapDestLandmark = savedAddress.landmark || null;
+      snapDestInstructions =
+        savedAddress.delivery_instructions || null;
+    }
+
     // Check if the requested time slot is already booked for this date & provider
     if (date && time) {
       const existingCheck = await query(
@@ -264,13 +363,13 @@ export async function POST(request: Request) {
         date,
         time || "10:00 AM",
         "Requested",
-        serviceAddressId || null,
-        validDestLat,
-        validDestLng,
-        destinationPlaceId || null,
-        finalDestAddress,
-        destinationLandmark || null,
-        destinationInstructions || null
+        snapServiceAddressId,
+snapDestLat,
+snapDestLng,
+snapDestPlaceId,
+snapDestAddress,
+snapDestLandmark,
+snapDestInstructions
       ]
     );
 
