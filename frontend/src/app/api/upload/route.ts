@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import crypto from "crypto";
+import { put } from "@vercel/blob";
 import { getAuthenticatedUser } from "@/lib/jwt";
-// NOTE FOR STAGING & PRODUCTION: Current file upload uses local disk storage (/public/uploads). 
-// For multi-instance cloud or serverless production deployments, replace with S3 / Cloudinary object storage.
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
@@ -38,27 +36,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File type not supported. Upload image or PDF." }, { status: 400 });
     }
 
+    const userId = authUser?.userId ? authUser.userId.replace(/[^a-zA-Z0-9_-]/g, "_") : "guest";
+    const sanitizeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const randomSuffix = crypto.randomBytes(6).toString("hex");
+    const blobPathname = `chat-attachments/${userId}/${Date.now()}-${randomSuffix}-${sanitizeFilename}`;
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const sanitizeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const uniqueName = `${Date.now()}-${sanitizeFilename}`;
+    const blob = await put(blobPathname, buffer, {
+      access: "private",
+      contentType: file.type
+    });
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, uniqueName);
-    await writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/${uniqueName}`;
+    const applicationUrl = `/api/attachments/${blob.pathname}`;
     return NextResponse.json({
-      url: publicUrl,
+      url: applicationUrl,
       fileName: file.name,
       fileType: file.type,
       size: file.size
     });
-  } catch (error) {
-    console.error("Upload error:", error);
+  } catch (error: any) {
+    console.error("Upload error:", error?.message || "Storage error");
     return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
   }
 }
