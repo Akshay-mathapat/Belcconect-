@@ -82,6 +82,35 @@ io.use((socket, next) => {
 
 const { Pool } = require("pg");
 const pool = new Pool({ connectionString: DATABASE_URL });
+const getAuthorizedCall = async (callId, userId) => {
+  if (!callId || !userId) return null;
+
+  try {
+    const result = await pool.query(
+      `SELECT id, caller_id, receiver_id, booking_id, status
+       FROM calls
+       WHERE id = $1
+       LIMIT 1`,
+      [callId]
+    );
+
+    if (result.rows.length === 0) return null;
+
+    const call = result.rows[0];
+
+    if (call.caller_id !== userId && call.receiver_id !== userId) {
+      return null;
+    }
+
+    return call;
+  } catch (error) {
+    console.error(
+      "[Call Auth] Failed to authorize call participant:",
+      error instanceof Error ? error.message : "database error"
+    );
+    return null;
+  }
+};
 
 io.on("connection", (socket) => {
   const userId = socket.userId;
@@ -92,48 +121,129 @@ io.on("connection", (socket) => {
   console.log(`[SOCKET] authenticated user=${userId}`);
   console.log(`[SOCKET] joined room=${userRoom}`);
 
-  // Allow client to join a specific call session room
-  socket.on("call:join_session", (data) => {
-    if (data && data.callId) {
-      const callRoom = `call:${data.callId}`;
-      socket.join(callRoom);
-      console.log(`[Signaling Server] User ${userId} joined room ${callRoom}`);
+    // Allow only an authenticated call participant to join a call session room
+  socket.on("call:join_session", async (data) => {
+    if (!data || !data.callId) return;
+
+    const authorizedCall = await getAuthorizedCall(data.callId, userId);
+
+    if (!authorizedCall) {
+      console.warn(
+        `[Call Auth] Unauthorized call room join rejected for user=${userId}`
+      );
+      return;
     }
+
+    const callRoom = `call:${authorizedCall.id}`;
+    socket.join(callRoom);
+
+    console.log(
+      `[Signaling Server] Authorized user ${userId} joined room ${callRoom}`
+    );
   });
 
-  // Direct client-to-server call signaling event handlers
-  const handleClientCallTermination = (event, data) => {
+  // Direct client-to-server call signaling event handlers.
+  // Participant authorization and participant identities come from PostgreSQL.
+  const handleClientCallTermination = async (event, data) => {
     if (!data) return;
-    const call = data.call || {};
-    const callId = call.id || data.callId;
-    const callerId = call.callerId || (data.endedByRole === "customer" ? userId : null);
-    const receiverId = call.receiverId || (data.endedByRole === "provider" ? userId : null);
-    const isTimeout = event === "call:timeout" || event === "call:missed" || data.reason === "timeout";
-    const reason = data.reason || (event === "call:reject" ? "declined" : event === "call:cancel" ? "cancelled" : (isTimeout ? "timeout" : "ended"));
-    const status = reason === "declined" ? "REJECTED" : reason === "cancelled" ? "CANCELLED" : (isTimeout ? "MISSED" : "ENDED");
 
-    console.log(`[CALL_TIMEOUT] forwarding callId=${callId} event=${event} reason=${reason} from user=${userId}`);
-    if (callerId) console.log(`[CALL_TIMEOUT] target customer room=user:${callerId}`);
-    if (receiverId) console.log(`[CALL_TIMEOUT] target provider room=user:${receiverId}`);
+    const rawCall = data.call || {};
+    const callId = rawCall.id || data.callId;
 
-    if (isTimeout && callId) {
+    if (!callId) return;
+
+    const authorizedCall = await getAuthorizedCall(callId, userId);
+
+    if (!authorizedCall) {
+      console.warn(
+        `[Call Auth] Unauthorized ${event} rejected for user=${userId}`
+      );
+      return;
+    }
+
+    const callerId = authorizedCall.caller_id;
+    const receiverId = authorizedCall.receiver_id;
+
+    const isTimeout =
+      event === "call:timeout" ||
+      event === "call:missed" ||
+      data.reason === "timeout";
+
+    const reason =
+      data.reason ||
+      (event === "call:reject"
+        ? "declined"
+        : event === "call:cancel"
+          ? "cancelled"
+          : isTimeout
+            ? "timeout"
+            : "ended");
+
+    const status =
+      reason === "declined"
+        ? "REJECTED"
+        : reason === "cancelled"
+          ? "CANCELLED"
+          : isTimeout
+            ? "MISSED"
+            : "ENDED";
+
+    console.log(
+      `[CALL_TIMEOUT] forwarding callId=${callId} event=${event} reason=${reason} from authorized user=${userId}`
+    );
+
+    if (callerId) {
+      console.log(
+        `[CALL_TIMEOUT] target customer room=user:${callerId}`
+      );
+    }
+
+    if (receiverId) {
+      console.log(
+        `[CALL_TIMEOUT] target provider room=user:${receiverId}`
+      );
+    }
+
+    // Only an authorized call participant can trigger this timeout update.
+    if (isTimeout) {
       pool.query(
         `UPDATE calls
          SET status = 'MISSED',
              end_reason = 'timeout',
              ended_at = NOW(),
              duration_seconds = 0
-         WHERE id = $1 AND status IN ('INITIATED', 'RINGING')`,
+         WHERE id = $1
+           AND status IN ('INITIATED', 'RINGING')`,
         [callId]
-      ).catch((err) => console.error("[CALL_TIMEOUT] Database update failed in handleClientCallTermination:", err.message));
+      ).catch((error) =>
+        console.error(
+          "[CALL_TIMEOUT] Database update failed in handleClientCallTermination:",
+          error.message
+        )
+      );
     }
 
     const payload = {
       type: "call:ended",
-      call: { ...call, id: callId, status },
+
+      call: {
+        ...rawCall,
+        id: callId,
+
+        // Never trust caller/receiver identities supplied by the client.
+        callerId,
+        receiverId,
+
+        status
+      },
+
       reason,
-      endedByUserId: data.endedByUserId || userId,
-      endedByRole: data.endedByRole || (userId === callerId ? "customer" : "provider"),
+
+      // The authenticated socket is authoritative.
+      endedByUserId: userId,
+      endedByRole:
+        userId === callerId ? "customer" : "provider",
+
       endedByName: data.endedByName || null,
       endedAt: data.endedAt || new Date().toISOString(),
       timestamp: data.timestamp || Date.now()
@@ -142,47 +252,102 @@ io.on("connection", (socket) => {
     if (callerId) {
       io.to(`user:${callerId}`).emit("call:ended", payload);
       io.to(`user:${callerId}`).emit("call:signal", payload);
-      io.to(`user:${callerId}`).emit(isTimeout ? "call:timeout" : event, payload);
+
+      io.to(`user:${callerId}`).emit(
+        isTimeout ? "call:timeout" : event,
+        payload
+      );
     }
+
     if (receiverId) {
       io.to(`user:${receiverId}`).emit("call:ended", payload);
       io.to(`user:${receiverId}`).emit("call:signal", payload);
-      io.to(`user:${receiverId}`).emit(isTimeout ? "call:missed" : event, payload);
+
+      io.to(`user:${receiverId}`).emit(
+        isTimeout ? "call:missed" : event,
+        payload
+      );
     }
-    if (callId) {
-      io.to(`call:${callId}`).emit("call:ended", payload);
-      io.to(`call:${callId}`).emit("call:signal", payload);
-      io.to(`call:${callId}`).emit(event, payload);
-    }
+
+    io.to(`call:${callId}`).emit("call:ended", payload);
+    io.to(`call:${callId}`).emit("call:signal", payload);
+    io.to(`call:${callId}`).emit(event, payload);
   };
 
-  socket.on("call:ended", (data) => handleClientCallTermination("call:ended", data));
-  socket.on("call:reject", (data) => handleClientCallTermination("call:reject", data));
-  socket.on("call:end", (data) => handleClientCallTermination("call:end", data));
-  socket.on("call:cancel", (data) => handleClientCallTermination("call:cancel", data));
-  socket.on("call:timeout", (data) => handleClientCallTermination("call:timeout", data));
-  socket.on("call:missed", (data) => handleClientCallTermination("call:missed", data));
+  socket.on("call:ended", (data) =>
+    void handleClientCallTermination("call:ended", data)
+  );
 
-  socket.on("call:accept", (data) => {
+  socket.on("call:reject", (data) =>
+    void handleClientCallTermination("call:reject", data)
+  );
+
+  socket.on("call:end", (data) =>
+    void handleClientCallTermination("call:end", data)
+  );
+
+  socket.on("call:cancel", (data) =>
+    void handleClientCallTermination("call:cancel", data)
+  );
+
+  socket.on("call:timeout", (data) =>
+    void handleClientCallTermination("call:timeout", data)
+  );
+
+  socket.on("call:missed", (data) =>
+    void handleClientCallTermination("call:missed", data)
+  );
+
+  socket.on("call:accept", async (data) => {
     if (!data) return;
-    const call = data.call || {};
-    const callId = call.id || data.callId;
-    const callerId = call.callerId;
-    const receiverId = call.receiverId;
-    console.log(`[CALL_ACCEPT] forwarding call:accept callId=${callId} from user=${userId}`);
-    const payload = { type: "call:accept", ...data };
+
+    const rawCall = data.call || {};
+    const callId = rawCall.id || data.callId;
+
+    if (!callId) return;
+
+    const authorizedCall = await getAuthorizedCall(callId, userId);
+
+    if (!authorizedCall) {
+      console.warn(
+        `[Call Auth] Unauthorized call:accept rejected for user=${userId}`
+      );
+      return;
+    }
+
+    // Participant identities are authoritative from PostgreSQL.
+    const callerId = authorizedCall.caller_id;
+    const receiverId = authorizedCall.receiver_id;
+
+    console.log(
+      `[CALL_ACCEPT] forwarding call:accept callId=${callId} from authorized user=${userId}`
+    );
+
+    const payload = {
+      ...data,
+
+      type: "call:accept",
+
+      call: {
+        ...rawCall,
+        id: callId,
+        callerId,
+        receiverId
+      }
+    };
+
     if (callerId) {
       io.to(`user:${callerId}`).emit("call:accept", payload);
       io.to(`user:${callerId}`).emit("call:signal", payload);
     }
+
     if (receiverId) {
       io.to(`user:${receiverId}`).emit("call:accept", payload);
       io.to(`user:${receiverId}`).emit("call:signal", payload);
     }
-    if (callId) {
-      io.to(`call:${callId}`).emit("call:accept", payload);
-      io.to(`call:${callId}`).emit("call:signal", payload);
-    }
+
+    io.to(`call:${callId}`).emit("call:accept", payload);
+    io.to(`call:${callId}`).emit("call:signal", payload);
   });
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
