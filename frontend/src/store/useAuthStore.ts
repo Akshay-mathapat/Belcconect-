@@ -258,10 +258,20 @@ export const useAuthStore = create<AuthState>()(
         };
 
         // Sync profile changes to PostgreSQL
+        const token = current.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
         fetch("/api/auth/sync", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user: updatedUser })
+          headers,
+          body: JSON.stringify({
+            name: name !== undefined ? name : current.name,
+            phone: phone !== undefined ? phone : current.phone,
+            avatar: avatar !== undefined ? avatar : current.avatar
+          })
         }).catch((err) => console.error("Profile sync failed:", err));
 
         set((state) => ({
