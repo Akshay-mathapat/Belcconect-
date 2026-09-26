@@ -318,8 +318,15 @@ export const useAuthStore = create<AuthState>()(
         if (!current) return;
 
         try {
+          const token = current.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+          const headers: Record<string, string> = {};
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+
           const res = await fetch(`/api/addresses/${id}`, {
-            method: "DELETE"
+            method: "DELETE",
+            headers
           });
           if (res.ok) {
             const updatedAddresses = (current.addresses || []).filter((a) => a.id !== id);
