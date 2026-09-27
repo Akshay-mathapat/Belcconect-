@@ -18,6 +18,21 @@ import { useTranslation } from "@/lib/i18n";
 import { getSocket } from "@/lib/socket";
 import { useLiveLocationBroadcast } from "@/hooks/useLiveLocationBroadcast";
 
+function getErrorTitle(error: string | null): string {
+  if (!error) return "Booking Not Found";
+  const lower = error.toLowerCase();
+  if (lower.includes("offline") || lower.includes("network") || lower.includes("failed to fetch")) {
+    return "Connection Unavailable";
+  }
+  if (lower.includes("forbidden") || lower.includes("authorized") || lower.includes("access denied")) {
+    return "Access Denied";
+  }
+  if (lower.includes("not found")) {
+    return "Booking Not Found";
+  }
+  return "Unable to Load Booking";
+}
+
 export default function CustomerTrackingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const cleanBookingId = useMemo(() => {
@@ -262,6 +277,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
         const data = await res.json();
         if (data.booking) {
           setBooking(data.booking);
+          setError(null);
         }
       } catch (err: any) {
         console.error("Error fetching booking tracking detail:", err);
@@ -312,11 +328,13 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   }
 
   if (error || !booking) {
+    const errorTitle = getErrorTitle(error);
+
     return (
       <div className="min-h-screen bg-background pt-24 pb-16 px-4 max-w-xl mx-auto text-center space-y-4">
         <div className="p-6 rounded-3xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 space-y-2">
           <AlertCircle className="w-10 h-10 mx-auto" />
-          <h3 className="text-lg font-bold">Booking Not Found</h3>
+          <h3 className="text-lg font-bold">{errorTitle}</h3>
           <p className="text-xs">{error || "Unable to retrieve tracking data for this booking ID."}</p>
         </div>
         <Link
