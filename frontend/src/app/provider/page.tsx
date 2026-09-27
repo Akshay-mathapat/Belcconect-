@@ -81,6 +81,24 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
   }
 }
 
+function getGreetingKey(date = new Date()): string {
+  const hour = date.getHours();
+
+  if (hour >= 5 && hour < 12) {
+    return "serviceProvider.goodMorning";
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return "serviceProvider.goodAfternoon";
+  }
+
+  if (hour >= 17 && hour < 22) {
+    return "serviceProvider.goodEvening";
+  }
+
+  return "serviceProvider.goodNight";
+}
+
 export default function ProviderDashboardPage() {
   const { currentUser } = useAuthStore();
   const { replayTour } = useOnboardingTour();
@@ -102,6 +120,19 @@ export default function ProviderDashboardPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [togglingAvailability, setTogglingAvailability] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const [greetingKey, setGreetingKey] = useState<string>("serviceProvider.goodMorning");
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      setGreetingKey(getGreetingKey());
+    };
+
+    updateGreeting();
+
+    const interval = window.setInterval(updateGreeting, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -225,7 +256,7 @@ export default function ProviderDashboardPage() {
 
           <div>
             <h1 className="font-heading text-2xl sm:text-4xl font-extrabold tracking-tight">
-              {t("serviceProvider.goodMorning")}, {profile.name.split(" ")[0]} 👋
+              {t(greetingKey)}, {profile.name.split(" ")[0]} 👋
             </h1>
             <p className="mt-1.5 text-xs sm:text-sm text-blue-100 max-w-xl leading-relaxed">
               {t("serviceProvider.activeServicesCount").replace("{count}", services.length.toString())} {t("serviceProvider.pendingRequestsCount").replace("{count}", pendingRequests.toString())}.
