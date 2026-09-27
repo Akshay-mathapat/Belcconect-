@@ -72,21 +72,10 @@ export async function POST(request: Request) {
       );
     }
 
-    let booking: any = bookingRes.rows.length > 0 ? bookingRes.rows[0] : null;
+    const booking = bookingRes.rows.length > 0 ? bookingRes.rows[0] : null;
 
     if (!booking) {
-      if (process.env.DEMO_MODE === "true" && (bookingId === "B-1001" || bookingId.startsWith("B-"))) {
-        const isProvider = authUser.role === "provider";
-        booking = {
-          id: bookingId,
-          customer_id: isProvider ? "customer-1" : authenticatedUserId,
-          provider_id: isProvider ? authenticatedUserId : "provider-1",
-          status: "Accepted",
-          service_name: "Service Booking"
-        };
-      } else {
-        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-      }
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     // 4. Authorization Check: Strict exact match with booking customer or provider ID

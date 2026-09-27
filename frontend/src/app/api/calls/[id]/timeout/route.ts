@@ -26,8 +26,7 @@ export async function POST(
     // Participant verification
     const isParticipant =
       authUser.userId === currentCall.callerId ||
-      authUser.userId === currentCall.receiverId ||
-      (process.env.DEMO_MODE === "true" && (authUser.userId.includes("prov") || authUser.userId.includes("cust")));
+      authUser.userId === currentCall.receiverId;
 
     if (!isParticipant) {
       return NextResponse.json({ error: "Forbidden: You are not a participant in this call" }, { status: 403 });
