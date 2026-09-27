@@ -8,44 +8,32 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const authUser = getAuthenticatedUser(request);
-    if (!authUser) {
+    if (!authUser || !authUser.userId) {
       return NextResponse.json(
         { error: "Unauthorized: Missing or invalid authentication session" },
         { status: 401 }
       );
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { bookingId } = body;
 
-    if (!bookingId) {
+    const cleanBookingId = typeof bookingId === "string" ? bookingId.trim() : "";
+    if (!cleanBookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
     }
 
     // Lookup booking from PostgreSQL database
     const bookingRes = await query(
-      `SELECT id, customer_id, provider_id, status FROM bookings WHERE id = $1`,
-      [bookingId]
-    ).catch((e) => {
-      console.warn("[LiveKit Token API] Database booking lookup error:", e);
-      return { rows: [] };
-    });
+      `SELECT id, customer_id, provider_id, status FROM bookings WHERE id = $1 LIMIT 1`,
+      [cleanBookingId]
+    );
 
-    let booking: any = bookingRes.rows.length > 0 ? bookingRes.rows[0] : null;
-
-    if (!booking) {
-      if (process.env.DEMO_MODE === "true" && (bookingId === "B-1001" || bookingId.startsWith("B-"))) {
-        const isProvider = authUser.role === "provider";
-        booking = {
-          id: bookingId,
-          customer_id: isProvider ? "customer-1" : authUser.userId,
-          provider_id: isProvider ? authUser.userId : "provider-1",
-          status: "Accepted"
-        };
-      } else {
-        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-      }
+    if (bookingRes.rows.length === 0) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
+
+    const booking = bookingRes.rows[0];
 
     // Authorization Check: Must be customer or provider of this booking
     const isCustomer = authUser.userId === booking.customer_id;
@@ -58,7 +46,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await generateLiveKitToken(bookingId, authUser.userId);
+    const session = await generateLiveKitToken(cleanBookingId, authUser.userId);
 
     return NextResponse.json({
       success: true,
@@ -68,6 +56,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("[LiveKit Token API] Error generating token:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate call token" }, { status: 500 });
   }
 }
