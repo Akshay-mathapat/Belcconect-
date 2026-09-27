@@ -107,19 +107,6 @@ export function getAuthenticatedUser(request: Request): SessionPayload | null {
       }
     }
 
-    // 3. Fallback: x-user-id header for unauthenticated / demo sessions (active in development or DEMO_MODE)
-    const xUserId = request.headers.get("x-user-id");
-    if (xUserId && (process.env.NODE_ENV !== "production" || process.env.DEMO_MODE === "true") && xUserId.trim().length > 0) {
-      const trimmedId = xUserId.trim();
-      const isProvider = trimmedId.includes("provider") || trimmedId.includes("prov");
-      return {
-        userId: trimmedId,
-        email: isProvider ? "provider@belconnect.com" : "customer@belconnect.com",
-        role: isProvider ? "provider" : "user",
-        name: isProvider ? "Service Provider" : "Customer"
-      };
-    }
-
     return null;
   } catch (e) {
     return null;
