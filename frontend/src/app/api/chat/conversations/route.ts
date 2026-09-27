@@ -1,34 +1,22 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthenticatedUser, verifyJwtToken } from "@/lib/jwt";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function GET(req: Request) {
   try {
     const authUser = getAuthenticatedUser(req);
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const requestedUserId = searchParams.get("userId");
 
-    let userId = authUser?.userId;
-
-    if (!userId) {
-      const authHeader = req.headers.get("authorization");
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const decoded = verifyJwtToken(authHeader.replace("Bearer ", ""));
-        if (decoded?.userId) userId = decoded.userId;
-      }
-    }
-
-    if (!userId) {
-      if (process.env.DEMO_MODE === "true") {
-        userId = "customer-1";
-      } else {
-        return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
-      }
-    }
-
-    if (requestedUserId && requestedUserId !== userId && process.env.DEMO_MODE !== "true") {
+    if (requestedUserId && requestedUserId !== authUser.userId) {
       return NextResponse.json({ error: "Forbidden: You can only fetch your own conversations" }, { status: 403 });
     }
+
+    const userId = authUser.userId;
 
     const conversationsResult = await query(
       `SELECT c.*, 
@@ -99,62 +87,96 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const authUser = getAuthenticatedUser(req);
-    if (!authUser && process.env.DEMO_MODE !== "true") {
+    if (!authUser || !authUser.userId) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     let { customerId, providerId, bookingId } = body;
 
-    // Auto-resolve participant IDs from booking record if available
-    if (bookingId) {
-      const bRes = await query(`SELECT customer_id, provider_id FROM bookings WHERE id = $1`, [bookingId]);
-      if (bRes.rows.length > 0) {
-        const row = bRes.rows[0];
-        if (!customerId || (process.env.DEMO_MODE !== "true" && customerId === "customer-1")) customerId = row.customer_id;
-        if (!providerId || (process.env.DEMO_MODE !== "true" && providerId === "provider-1")) providerId = row.provider_id;
+    const cleanBookingId = typeof bookingId === "string" ? bookingId.trim() : "";
+
+    // 1. Authoritative resolution for booking-related conversations
+    if (cleanBookingId) {
+      const bRes = await query(
+        `SELECT id, customer_id, provider_id FROM bookings WHERE id = $1 LIMIT 1`,
+        [cleanBookingId]
+      );
+
+      if (bRes.rows.length === 0) {
+        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
       }
-    }
 
-    if (!customerId || !providerId) {
-      return NextResponse.json({ error: "customerId and providerId are required" }, { status: 400 });
-    }
+      const booking = bRes.rows[0];
+      const authoritativeCustomerId = booking.customer_id;
+      const authoritativeProviderId = booking.provider_id;
 
-    if (authUser && authUser.userId !== customerId && authUser.userId !== providerId && process.env.DEMO_MODE !== "true") {
-      return NextResponse.json({ error: "Forbidden: You must be a participant to start this conversation" }, { status: 403 });
-    }
+      // Authoritative participation check
+      if (authUser.userId !== authoritativeCustomerId && authUser.userId !== authoritativeProviderId) {
+        return NextResponse.json(
+          { error: "Forbidden: You are not an authorized participant in this booking" },
+          { status: 403 }
+        );
+      }
 
-    // 1. When a specific bookingId is provided, strictly lookup or create conversation for THIS booking
-    if (bookingId) {
+      customerId = authoritativeCustomerId;
+      providerId = authoritativeProviderId;
+
+      // Check if conversation already exists for this booking
       const existing = await query(
-        `SELECT id FROM conversations WHERE booking_id = $1 LIMIT 1`,
-        [bookingId]
+        `SELECT id, customer_id, provider_id FROM conversations WHERE booking_id = $1 LIMIT 1`,
+        [cleanBookingId]
       );
 
       if (existing.rows.length > 0) {
-        return NextResponse.json({ conversationId: existing.rows[0].id, isNew: false });
+        const conv = existing.rows[0];
+        if (authUser.userId !== conv.customer_id && authUser.userId !== conv.provider_id) {
+          return NextResponse.json(
+            { error: "Forbidden: You are not an authorized participant in this conversation" },
+            { status: 403 }
+          );
+        }
+        return NextResponse.json({ conversationId: conv.id, isNew: false });
       }
 
       // Create a fresh clean conversation dedicated to this booking
-      const newBookingConvId = `conv-${bookingId}`;
+      const newBookingConvId = `conv-${cleanBookingId}`;
       await query(
         `INSERT INTO conversations (id, customer_id, provider_id, booking_id)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (id) DO NOTHING`,
-        [newBookingConvId, customerId, providerId, bookingId]
+        [newBookingConvId, customerId, providerId, cleanBookingId]
       );
 
       return NextResponse.json({ conversationId: newBookingConvId, isNew: true }, { status: 201 });
     }
 
-    // 2. Direct general conversation lookup (non-booking)
+    // 2. Direct general conversation lookup / creation (non-booking)
+    if (!customerId || !providerId) {
+      return NextResponse.json({ error: "customerId and providerId are required" }, { status: 400 });
+    }
+
+    if (authUser.userId !== customerId && authUser.userId !== providerId) {
+      return NextResponse.json(
+        { error: "Forbidden: You must be a participant to start this conversation" },
+        { status: 403 }
+      );
+    }
+
     const existing = await query(
-      `SELECT id FROM conversations WHERE (customer_id = $1 AND provider_id = $2) OR (customer_id = $2 AND provider_id = $1) LIMIT 1`,
+      `SELECT id, customer_id, provider_id FROM conversations WHERE ((customer_id = $1 AND provider_id = $2) OR (customer_id = $2 AND provider_id = $1)) AND booking_id IS NULL LIMIT 1`,
       [customerId, providerId]
     );
 
     if (existing.rows.length > 0) {
-      return NextResponse.json({ conversationId: existing.rows[0].id, isNew: false });
+      const conv = existing.rows[0];
+      if (authUser.userId !== conv.customer_id && authUser.userId !== conv.provider_id) {
+        return NextResponse.json(
+          { error: "Forbidden: You are not an authorized participant in this conversation" },
+          { status: 403 }
+        );
+      }
+      return NextResponse.json({ conversationId: conv.id, isNew: false });
     }
 
     // Create new general conversation
