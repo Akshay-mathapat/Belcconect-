@@ -206,3 +206,128 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const authUser = getAuthenticatedUser(req);
+
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing authentication session" },
+        { status: 401 }
+      );
+    }
+
+    const { id: conversationId } = await params;
+
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: "Missing conversationId" },
+        { status: 400 }
+      );
+    }
+
+    const convRes = await query(
+      "SELECT id, customer_id, provider_id FROM conversations WHERE id = $1 LIMIT 1",
+      [conversationId]
+    );
+
+    if (convRes.rows.length === 0) {
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
+
+    const conv = convRes.rows[0];
+
+    const isParticipant =
+      authUser.userId === conv.customer_id ||
+      authUser.userId === conv.provider_id;
+
+    if (!isParticipant) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: You are not an authorized participant in this conversation"
+        },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json().catch(() => ({}));
+
+    const messageId =
+      typeof body.messageId === "string"
+        ? body.messageId.trim()
+        : "";
+
+    if (!messageId) {
+      return NextResponse.json(
+        { error: "messageId is required" },
+        { status: 400 }
+      );
+    }
+
+    const result = await query(
+      `UPDATE messages
+       SET is_deleted_from_ui = TRUE
+       WHERE id = $1
+         AND sender_id = $2
+         AND conversation_id = $3
+         AND (is_deleted_from_ui IS FALSE OR is_deleted_from_ui IS NULL)
+       RETURNING id`,
+      [messageId, authUser.userId, conversationId]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: "Message not found" },
+        { status: 404 }
+      );
+    }
+
+    // Best-effort realtime notification.
+    // PostgreSQL remains authoritative for deletion.
+    try {
+      const signalingPort = process.env.SIGNALING_PORT || 4001;
+      const internalSecret = process.env.SIGNALING_INTERNAL_SECRET;
+
+      if (internalSecret) {
+        fetch(
+          `http://127.0.0.1:${signalingPort}/api/chat/broadcast`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              secret: internalSecret,
+              conversationId,
+              event: "chat:message_deleted",
+              payload: {
+                messageId,
+                conversationId
+              }
+            })
+          }
+        ).catch(() => {});
+      }
+    } catch {}
+
+    return NextResponse.json(
+      {
+        success: true,
+        messageId
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("DELETE message error:", error);
+
+    return NextResponse.json(
+      { error: "Failed to delete message" },
+      { status: 500 }
+    );
+  }
+}
