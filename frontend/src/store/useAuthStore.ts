@@ -104,41 +104,7 @@ interface AuthState {
   logout: () => void;
 }
 
-const INITIAL_USERS: AuthUser[] = [
-  {
-    id: "customer-1",
-    email: "customer@belconnect.com",
-    name: "Akshay Mathapati",
-    phone: "+91 98765 43210",
-    role: "user",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-    addresses: [
-      { id: "addr-1", type: "Home", text: "123 Main St, Tilakwadi, Belagavi, 590006" },
-      { id: "addr-2", type: "Office", text: "45 Business Park, Camp, Belagavi, 590001" }
-    ],
-    bookings: []
-  },
-  {
-    id: "provider-1",
-    email: "provider@belconnect.com",
-    name: "Rohan Electrician",
-    phone: "+91 91234 56789",
-    role: "provider",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-    addresses: [],
-    bookings: []
-  },
-  {
-    id: "jobprovider-1",
-    email: "jobprovider@belconnect.com",
-    name: "Belagavi Tech Solutions",
-    phone: "+91 98888 77777",
-    role: "job_provider",
-    avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&q=80",
-    addresses: [],
-    bookings: []
-  }
-];
+const INITIAL_USERS: AuthUser[] = [];
 
 export const useAuthStore = create<AuthState>()(
   persist(

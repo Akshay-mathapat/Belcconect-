@@ -105,7 +105,7 @@ export default function AccountPage() {
       return;
     }
     // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
-    if (currentUser.id.startsWith("user-") && currentUser.id !== "customer-1") {
+    if (currentUser.id.startsWith("user-")) {
       logout();
       router.push("/auth?mode=login&returnTo=/account");
       return;
