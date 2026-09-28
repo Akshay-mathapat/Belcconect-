@@ -272,15 +272,28 @@ export default function AccountPage() {
     try {
       const todayStr = new Date().toISOString().split("T")[0];
       const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "Service");
-      const providerId = typeof booking === "object" && booking.providerId ? booking.providerId : "provider-1";
+      const providerId = typeof booking === "object" && booking.providerId ? booking.providerId : "";
       const providerName = typeof booking === "object" && booking.providerName ? booking.providerName : "Service Provider";
       const category = typeof booking === "object" && booking.category ? booking.category : "General";
+      const token = currentUser?.token;
+
+      if (!token) {
+        router.push("/auth?mode=login&returnTo=/account");
+        return;
+      }
+
+      if (!providerId) {
+        router.push(`/book?pro=1&service=${encodeURIComponent(serviceName)}`);
+        return;
+      }
 
       const res = await fetch("/api/bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
-          customerId: activeUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : ""),
           providerId,
           providerName,
           serviceName,
