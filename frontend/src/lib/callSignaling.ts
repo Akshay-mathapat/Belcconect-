@@ -70,14 +70,6 @@ class CallSignalingManager extends EventEmitter {
     this.broadcastToUser(callerId, event);
     this.broadcastToUser(receiverId, event);
 
-    if (process.env.DEMO_MODE === "true") {
-      if (callerId.includes("cust") || callerId === "customer-1") {
-        this.broadcastToUser("customer-1", event);
-      }
-      if (receiverId.includes("prov") || receiverId === "provider-1") {
-        this.broadcastToUser("provider-1", event);
-      }
-    }
   }
 }
 
