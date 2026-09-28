@@ -43,10 +43,6 @@ export const getChatSocket = (userId?: string): Socket => {
         token: token || "",
         userId: userId || ""
       },
-      query: {
-        token: token || "",
-        userId: userId || ""
-      },
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 200,
@@ -58,7 +54,6 @@ export const getChatSocket = (userId?: string): Socket => {
     const token = getAuthToken();
     (chatSocket as any)._activeUserId = userId;
     (chatSocket.auth as any) = { token: token || "", userId };
-    (chatSocket.io.opts as any).query = { token: token || "", userId };
     if (chatSocket.connected) {
       chatSocket.disconnect();
     }
