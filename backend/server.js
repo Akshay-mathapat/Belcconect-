@@ -58,7 +58,6 @@ const io = new Server(server, {
 io.use((socket, next) => {
   const token =
     socket.handshake.auth?.token ||
-    socket.handshake.query?.token ||
     socket.handshake.headers?.authorization?.replace("Bearer ", "");
 
   if (!token) {
