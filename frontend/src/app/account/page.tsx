@@ -598,7 +598,7 @@ export default function AccountPage() {
                               />
                               <ChatButton
                                 customerId={activeUser.id}
-                                providerId={booking.providerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
+                                providerId={booking.providerId || ""}
                                 bookingId={booking.id}
                                 peerName={booking.provider || "Service Provider"}
                                 serviceName={booking.service}
