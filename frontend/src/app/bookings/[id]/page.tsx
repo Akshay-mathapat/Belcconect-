@@ -531,8 +531,8 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
                       className="w-full"
                     />
                     <ChatButton
-                      customerId={booking.customerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "")}
-                      providerId={booking.providerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
+                      customerId={booking.customerId || ""}
+                      providerId={booking.providerId || ""}
                       bookingId={booking.id}
                       peerName={booking.providerName || "Service Expert"}
                       serviceName={booking.serviceName}

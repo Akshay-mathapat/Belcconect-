@@ -425,8 +425,8 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
                   size="md"
                 />
                 <ChatButton
-                  customerId={booking.customerId || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "")}
-                  providerId={currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "")}
+                  customerId={booking.customerId || ""}
+                  providerId={currentUser?.id || ""}
                   bookingId={booking.id}
                   peerName={booking.customerName || "Customer"}
                   serviceName={booking.serviceName}
