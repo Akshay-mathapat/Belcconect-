@@ -18,7 +18,7 @@ function mapRowToBooking(row: any) {
     address: row.destination_address || row.address || "No address provided",
     status: row.status,
     providerName: row.provider_name || "Service Provider",
-    providerId: row.provider_id || (process.env.DEMO_MODE === "true" ? "provider-1" : null),
+    providerId: row.provider_id || null,
     uploadedImages: [],
     rating: row.rating,
     reviewComment: row.review_comment || "",
@@ -43,7 +43,7 @@ function mapRowToBooking(row: any) {
 export async function GET(request: Request) {
   try {
     const authUser = getAuthenticatedUser(request);
-    if (!authUser) {
+    if (!authUser || !authUser.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = authUser.userId;
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     // 1. Authenticate requester exclusively using centralized auth helper
     const authUser = getAuthenticatedUser(request);
 
-    if (!authUser) {
+    if (!authUser || !authUser.userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
     const requesterId = authUser.userId;
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const {
       customerId,
       providerId,
