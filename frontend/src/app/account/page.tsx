@@ -283,7 +283,7 @@ export default function AccountPage() {
       }
 
       if (!providerId) {
-        router.push(`/services?query=${encodeURIComponent(serviceName)}`);
+        router.push(`/services?q=${encodeURIComponent(serviceName)}`);
         return;
       }
 
@@ -313,12 +313,12 @@ export default function AccountPage() {
         alert(`Service "${serviceName}" has been rebooked successfully! It is now sent to the service provider dashboard.`);
         fetchUserBookings();
       } else {
-        router.push(`/services?query=${encodeURIComponent(serviceName)}`);
+        router.push(`/services?q=${encodeURIComponent(serviceName)}`);
       }
     } catch (err) {
       console.error("Error rebooking service:", err);
       const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "");
-      router.push(`/services?query=${encodeURIComponent(serviceName)}`);
+      router.push(`/services?q=${encodeURIComponent(serviceName)}`);
     }
   };
 
