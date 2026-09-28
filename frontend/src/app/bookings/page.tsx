@@ -31,9 +31,8 @@ export default function CustomerBookingsPage() {
     async function fetchBookings() {
       try {
         const authUser = useAuthStore.getState().currentUser;
-        const userId = authUser?.id || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_user_id") || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "customer-1" : "") : "customer-1");
         const token = authUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
-        const headers: Record<string, string> = { "x-user-id": userId };
+        const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
         const res = await fetch("/api/bookings", { headers });
