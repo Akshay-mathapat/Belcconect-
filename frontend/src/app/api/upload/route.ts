@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   // 2. Authentication Check: Reject unauthenticated requests
   const authUser = getAuthenticatedUser(req);
-  if (!authUser && process.env.DEMO_MODE !== "true") {
+  if (!authUser || !authUser.userId) {
     return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
   }
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File type not supported. Upload image or PDF." }, { status: 400 });
     }
 
-    const userId = authUser?.userId ? authUser.userId.replace(/[^a-zA-Z0-9_-]/g, "_") : "guest";
+    const userId = authUser.userId.replace(/[^a-zA-Z0-9_-]/g, "_");
     const sanitizeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const randomSuffix = crypto.randomBytes(6).toString("hex");
     const blobPathname = `chat-attachments/${userId}/${Date.now()}-${randomSuffix}-${sanitizeFilename}`;
