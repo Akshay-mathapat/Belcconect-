@@ -14,7 +14,8 @@
     "browseAllCategories": "Browse All Categories",
     "findPerfectService": "Find the perfect service for your needs",
     "viewAll": "View all",
-    "bookNow": "Book Now"
+    "bookNow": "Book Now",
+    "jobs": "Jobs"
   },
   "hero": {
     "badge": "Trusted by 10,000+ customers in Belagavi",
@@ -697,8 +698,6 @@
       "Requested": "Requested",
       "Accepted": "Accepted",
       "Upcoming": "Upcoming",
-      "OnTheWay": "On the way",
-      "Started": "Started",
       "OnTheWay": "On The Way",
       "Started": "In Progress",
       "Completed": "Completed",

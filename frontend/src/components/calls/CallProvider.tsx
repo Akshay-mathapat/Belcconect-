@@ -1,5 +1,7 @@
 "use client";
 
+import { authFetch, getClientToken, triggerAuthExpired } from "@/lib/authFetch";
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { io, Socket } from "socket.io-client";
@@ -105,13 +107,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
 
-  const getHeaders = useCallback(() => {
+  const getHeaders = useCallback((): Record<string, string> => {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    const token =
-      userTokenRef.current ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token")
-        : null);
+    const token = userTokenRef.current || getClientToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const uid = currentUserIdRef.current;
     if (uid) headers["x-user-id"] = uid;
@@ -519,11 +517,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       socketConnectedRef.current = false;
     }
 
-    const token =
-      userTokenRef.current ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token")
-        : null);
+    const token = userTokenRef.current || getClientToken();
+    if (!token) {
+      console.warn("[SIGNALING] Aborting socket connection: No valid authentication token available.");
+      return Promise.reject(new Error("No valid authentication token"));
+    }
 
     const isDevTunnel = signalingUrl.includes("devtunnels.ms");
     const isHttps = signalingUrl.startsWith("https");
@@ -564,6 +562,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     socket.on("connect_error", (err: Error) => {
       const host = (() => { try { return new URL(signalingUrl || "").host; } catch { return signalingUrl; } })();
+      const msg = (err.message || "").toLowerCase();
+      if (
+        msg.includes("jwt expired") ||
+        msg.includes("token verification failed") ||
+        msg.includes("authentication failed") ||
+        msg.includes("invalid token")
+      ) {
+        console.warn(`[SIGNALING] Socket authentication failed (${err.message}). Halting reconnection.`);
+        socket.disconnect();
+        socketConnectedRef.current = false;
+        try { socket.io.opts.reconnection = false; } catch (e) {}
+        triggerAuthExpired();
+        return;
+      }
       console.warn(`[SIGNALING] Connection notice host=${host}:`, err.message);
     });
 
@@ -1012,7 +1024,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     const syncCallStatus = async () => {
       try {
-        const res = await fetch("/api/calls/active", { headers: getHeaders() });
+        const res = await authFetch("/api/calls/active", { headers: getHeaders() });
         if (!res.ok) return;
         const data = await res.json();
 
@@ -1164,8 +1176,17 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     };
 
+    // Single initial call status check on authenticated mount (PART 8)
     syncCallStatus();
-    const interval = setInterval(syncCallStatus, 2000);
+
+    // Fallback polling ONLY when signaling socket is disconnected, interval >= 60 seconds
+    const fallbackPollInterval = 60000;
+    const interval = setInterval(() => {
+      if (!socketConnectedRef.current && getClientToken()) {
+        syncCallStatus();
+      }
+    }, fallbackPollInterval);
+
     return () => clearInterval(interval);
   }, [currentUserId, getHeaders, fetchMyLiveKitToken, clearOutgoingTimeout, handleRemoteCallEnded]);
 

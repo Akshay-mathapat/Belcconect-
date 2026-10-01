@@ -111,10 +111,8 @@ export default function AccountPage() {
       return;
     }
     fetchUserBookings().catch(() => {});
-
-    const intervalId = setInterval(() => {
-      fetchUserBookings().catch(() => {});
-    }, 5000);
+    // Realtime updates handled via BroadcastChannel syncChannel (5s polling removed)
+    let intervalId: any = null;
 
     let syncChannel: BroadcastChannel | null = null;
     try {

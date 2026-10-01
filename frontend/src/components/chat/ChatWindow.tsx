@@ -308,59 +308,10 @@ export default function ChatWindow({
     socket.emit("chat:typing_stop", { conversationId });
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!messageId || messageId.startsWith("temp-")) return;
-
-    const targetMsg = messages.find((m) => m.id === messageId);
-    if (!targetMsg) return;
-
-    // Optimistic removal
+  const handleDeleteMessage = (messageId: string) => {
+    const socket = getChatSocket(currentUserId);
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
-
-    const restoreMessage = () => {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === messageId)) return prev;
-
-        return [...prev, targetMsg].sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() -
-            new Date(b.createdAt).getTime()
-        );
-      });
-    };
-
-    try {
-      const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("cityconnect_token") ||
-            localStorage.getItem("auth_token")
-          : null;
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json"
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(
-        `/api/chat/conversations/${conversationId}/messages`,
-        {
-          method: "DELETE",
-          headers,
-          body: JSON.stringify({ messageId })
-        }
-      );
-
-      if (!res.ok) {
-        console.error("Failed to delete message on server:", res.status);
-        restoreMessage();
-      }
-    } catch (error) {
-      console.error("Error deleting message:", error);
-      restoreMessage();
-    }
+    socket.emit("chat:delete_message", { messageId, conversationId });
   };
 
   return (
@@ -381,7 +332,7 @@ export default function ChatWindow({
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             </h3>
             <p className="text-[11px] text-muted-foreground truncate">
-              {serviceName ? `${serviceName} â€¢ ${t(`account.statuses.${bookingStatus}`) || bookingStatus || "Accepted"}` : "BelConnect Direct Chat"}
+              {serviceName ? `${serviceName} • ${t(`account.statuses.${bookingStatus}`) || bookingStatus || "Accepted"}` : "BelConnect Direct Chat"}
             </p>
           </div>
         </div>
@@ -464,3 +415,4 @@ export default function ChatWindow({
     </div>
   );
 }
+

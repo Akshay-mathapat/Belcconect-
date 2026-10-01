@@ -187,7 +187,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                 }}
                 onFocus={() => setSearchFocused(true)}
                 className="w-full bg-transparent pl-10 pr-24 py-2.5 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none"
-                placeholder={t("common.searchPlaceholder")}
+                placeholder="Search jobs, candidates, applications..."
                 aria-label="Search"
                 id="jobprovider-navbar-search-input"
               />

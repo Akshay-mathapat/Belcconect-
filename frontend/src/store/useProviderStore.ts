@@ -1,11 +1,14 @@
 "use client";
 
+import { authFetch, getClientToken } from "@/lib/authFetch";
+import { ProviderLocation } from "@/lib/providerLocationPlugin";
+
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useAuthStore, getStoredAuthToken } from "./useAuthStore";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
-const ProviderLocationPlugin = typeof window !== "undefined" ? registerPlugin<any>("ProviderLocation") : null;
+const ProviderLocationPlugin = ProviderLocation;
 import { 
   Booking, 
   BookingStatus, 
@@ -141,14 +144,24 @@ export const useProviderStore = create<ProviderStoreState>()(
       setAvailability: async (available: boolean) => {
         try {
           const authUser = useAuthStore.getState().currentUser;
+          if (!authUser) {
+            console.warn("setAvailability aborted: User is not authenticated.");
+            return false;
+          }
+          if (authUser.role !== "provider" && (authUser as any).role !== "admin") {
+            console.warn("setAvailability aborted: Current user role is not provider:", authUser.role);
+            return false;
+          }
+
           const token = authUser?.token || getStoredAuthToken();
           const headers: Record<string, string> = { "Content-Type": "application/json" };
           if (authUser?.id) headers["x-user-id"] = authUser.id;
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
-          const res = await fetch("/api/provider/availability", {
+          const res = await authFetch("/api/provider/availability", {
             method: "PATCH",
             headers,
+            credentials: "include",
             body: JSON.stringify({ isAvailable: available })
           });
 
@@ -170,7 +183,8 @@ export const useProviderStore = create<ProviderStoreState>()(
               return true;
             }
           }
-          console.error("Failed to update availability on server");
+          const errData = await res.json().catch(() => ({}));
+          console.error("Failed to update availability on server:", res.status, errData?.error || res.statusText);
           return false;
         } catch (e) {
           console.error("Network error updating availability:", e);
@@ -180,15 +194,16 @@ export const useProviderStore = create<ProviderStoreState>()(
 
       fetchProviderAvailability: async () => {
         const currentUser = useAuthStore.getState().currentUser;
-        if (!currentUser || currentUser.role !== "provider") return;
+        if (!currentUser || (currentUser.role !== "provider" && (currentUser as any).role !== "admin")) return;
         try {
           const token = currentUser.token || getStoredAuthToken();
           const headers: Record<string, string> = {};
           if (currentUser.id) headers["x-user-id"] = currentUser.id;
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
-          const res = await fetch("/api/provider/availability", {
+          const res = await authFetch("/api/provider/availability", {
             headers,
+            credentials: "include",
             cache: "no-store"
           });
 
@@ -217,14 +232,19 @@ export const useProviderStore = create<ProviderStoreState>()(
       updateBookingStatus: async (id, status) => {
         try {
           const authUser = useAuthStore.getState().currentUser;
+          if (!authUser) {
+            throw new Error("Unauthorized: Please sign in to update booking status.");
+          }
           const token = authUser?.token || getStoredAuthToken();
+          const cleanId = encodeURIComponent(String(id).trim().replace(/^#+/, ""));
           const headers: Record<string, string> = { "Content-Type": "application/json" };
           if (authUser?.id) headers["x-user-id"] = authUser.id;
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
-          const res = await fetch(`/api/bookings/${id}`, {
+          const res = await authFetch(`/api/bookings/${cleanId}`, {
             method: "PATCH",
             headers,
+            credentials: "include",
             body: JSON.stringify({ status })
           });
           
@@ -251,7 +271,7 @@ export const useProviderStore = create<ProviderStoreState>()(
           const errBody = await res.json().catch(() => ({ error: "Failed to update status on server" }));
           throw new Error(errBody.error || `Server returned ${res.status}`);
         } catch (e: any) {
-          console.error(`Failed to update booking status for ${id}:`, e);
+          console.error(`Failed to update booking status for ${id}:`, e?.message || e);
           throw e;
         }
       },
@@ -264,9 +284,11 @@ export const useProviderStore = create<ProviderStoreState>()(
           if (authUser?.id) headers["x-user-id"] = authUser.id;
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
-          const res = await fetch(`/api/bookings/${id}`, {
+          const cleanId = encodeURIComponent(String(id).trim().replace(/^#+/, ""));
+          const res = await authFetch(`/api/bookings/${cleanId}`, {
             method: "DELETE",
-            headers
+            headers,
+            credentials: "include"
           });
 
           if (!res.ok) {
@@ -303,8 +325,9 @@ export const useProviderStore = create<ProviderStoreState>()(
           const headers: Record<string, string> = { "x-user-id": providerId };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
-          const res = await fetch("/api/bookings", {
+          const res = await authFetch("/api/bookings", {
             headers,
+            credentials: "include",
             cache: "no-store"
           });
           if (res.ok) {

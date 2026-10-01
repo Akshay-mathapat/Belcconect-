@@ -1,5 +1,7 @@
 "use client";
 
+import { getSocket } from "@/lib/socket";
+
 import { useState, useRef, useEffect } from "react";
 import { ProviderSidebar } from "@/components/provider/layout/ProviderSidebar";
 import Link from "next/link";
@@ -74,12 +76,19 @@ export default function ProviderLayout({
     fetchProviderBookings();
     fetchProviderServices();
 
-    // Start interval
-    const interval = setInterval(() => {
-      fetchProviderBookings();
-    }, 10000);
+    // Fallback poll: only if socket disconnected, every 60s
+    const socket = getSocket();
+    let interval: any = null;
+    if (!socket?.connected) {
+      interval = setInterval(() => {
+        if (!getSocket()?.connected) {
+          fetchProviderBookings();
+          fetchProviderServices();
+        }
+      }, 60000);
+    }
 
-    return () => clearInterval(interval);
+    return () => { if (interval) clearInterval(interval); };
   }, [currentUser, fetchProviderBookings, fetchProviderServices]);
 
   // Close search and popovers on click outside or escape key

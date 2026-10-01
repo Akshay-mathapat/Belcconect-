@@ -830,14 +830,29 @@ const runStaleCallCleanup = async () => {
   isStaleCallCleanupRunning = true;
   try {
     const res = await pool.query(
-      `UPDATE calls
+      `WITH stale AS (
+         SELECT id
+         FROM calls
+         WHERE status IN ('INITIATED', 'RINGING')
+           AND created_at <= NOW() - INTERVAL '45 seconds'
+         ORDER BY created_at ASC
+         LIMIT 50
+         FOR UPDATE SKIP LOCKED
+       )
+       UPDATE calls c
        SET status = 'MISSED',
            end_reason = 'timeout',
            ended_at = NOW(),
            duration_seconds = 0
-       WHERE status IN ('INITIATED', 'RINGING')
-         AND created_at <= NOW() - INTERVAL '45 seconds'
-       RETURNING id, caller_id, receiver_id, booking_id, created_at, ended_at`
+       FROM stale
+       WHERE c.id = stale.id
+       RETURNING
+           c.id,
+           c.caller_id,
+           c.receiver_id,
+           c.booking_id,
+           c.created_at,
+           c.ended_at;`
     );
 
     if (res.rows.length > 0) {
@@ -883,7 +898,7 @@ const runStaleCallCleanup = async () => {
   }
 };
 
-setInterval(runStaleCallCleanup, 5000);
+setInterval(runStaleCallCleanup, 15000);
 
 app.get("/health", (req, res) => {
   res.json({ 

@@ -48,21 +48,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2. API Requests & Auth & Signaling & Dynamic Data -> STRICT NETWORK-FIRST (no stale data)
+  // 2. Private APIs, Auth, Bookings, Notifications, Calls, Socket.IO & LiveKit
+  // STRICT BYPASS RULE: Do not call event.respondWith(), do not cache, do not synthesize fallback
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.includes("socket.io") ||
     url.pathname.includes("/auth/") ||
-    url.pathname.includes("/livekit/")
+    url.pathname.includes("/livekit")
   ) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(JSON.stringify({ error: "Offline mode. Network unavailable." }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" }
-        });
-      })
-    );
     return;
   }
 
@@ -115,7 +108,6 @@ self.addEventListener("push", (event) => {
     const notificationData = payload.data || payload || {};
     const type = notificationData.type || payload.type || "general";
 
-    if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled") {
     if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled" || type === "call_ended") {
       const callId = notificationData.callId || payload.callId;
       const callTag = `call_${callId}`;

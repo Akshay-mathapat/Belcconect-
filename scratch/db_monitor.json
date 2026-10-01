@@ -1,0 +1,2204 @@
+{
+  "max_connections_limit": 100,
+  "max_active_observed": 4,
+  "max_total_observed": 51,
+  "samples_count": 244,
+  "history": [
+    {
+      "timestamp": 1790863380.269364,
+      "time_iso": "2026-10-01T14:03:00Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863385.9052336,
+      "time_iso": "2026-10-01T14:03:05Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863391.1168365,
+      "time_iso": "2026-10-01T14:03:11Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863396.2251387,
+      "time_iso": "2026-10-01T14:03:16Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863401.3831778,
+      "time_iso": "2026-10-01T14:03:21Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863406.4950585,
+      "time_iso": "2026-10-01T14:03:26Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863411.678519,
+      "time_iso": "2026-10-01T14:03:31Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863416.9092822,
+      "time_iso": "2026-10-01T14:03:36Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863422.0645397,
+      "time_iso": "2026-10-01T14:03:42Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863427.284123,
+      "time_iso": "2026-10-01T14:03:47Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863432.4943626,
+      "time_iso": "2026-10-01T14:03:52Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863437.7679973,
+      "time_iso": "2026-10-01T14:03:57Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863442.9348948,
+      "time_iso": "2026-10-01T14:04:02Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863448.086483,
+      "time_iso": "2026-10-01T14:04:08Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863453.2015247,
+      "time_iso": "2026-10-01T14:04:13Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863458.3674119,
+      "time_iso": "2026-10-01T14:04:18Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863463.7267573,
+      "time_iso": "2026-10-01T14:04:23Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863468.9521673,
+      "time_iso": "2026-10-01T14:04:28Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863474.0987532,
+      "time_iso": "2026-10-01T14:04:34Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863479.3212805,
+      "time_iso": "2026-10-01T14:04:39Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863484.4360754,
+      "time_iso": "2026-10-01T14:04:44Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863489.6007426,
+      "time_iso": "2026-10-01T14:04:49Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863494.7318604,
+      "time_iso": "2026-10-01T14:04:54Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863500.0055194,
+      "time_iso": "2026-10-01T14:05:00Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863505.3254783,
+      "time_iso": "2026-10-01T14:05:05Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863510.5691102,
+      "time_iso": "2026-10-01T14:05:10Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863515.83456,
+      "time_iso": "2026-10-01T14:05:15Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863521.0176394,
+      "time_iso": "2026-10-01T14:05:21Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863526.171585,
+      "time_iso": "2026-10-01T14:05:26Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863531.3226538,
+      "time_iso": "2026-10-01T14:05:31Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863536.4923706,
+      "time_iso": "2026-10-01T14:05:36Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863541.683183,
+      "time_iso": "2026-10-01T14:05:41Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863546.861018,
+      "time_iso": "2026-10-01T14:05:46Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863552.02782,
+      "time_iso": "2026-10-01T14:05:52Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863557.1311476,
+      "time_iso": "2026-10-01T14:05:57Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863562.389718,
+      "time_iso": "2026-10-01T14:06:02Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863567.5163767,
+      "time_iso": "2026-10-01T14:06:07Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863572.6551712,
+      "time_iso": "2026-10-01T14:06:12Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863577.8529568,
+      "time_iso": "2026-10-01T14:06:17Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863583.0128758,
+      "time_iso": "2026-10-01T14:06:23Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863588.216142,
+      "time_iso": "2026-10-01T14:06:28Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863593.3802037,
+      "time_iso": "2026-10-01T14:06:33Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863598.536515,
+      "time_iso": "2026-10-01T14:06:38Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863603.6974642,
+      "time_iso": "2026-10-01T14:06:43Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863608.8642917,
+      "time_iso": "2026-10-01T14:06:48Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863614.0394704,
+      "time_iso": "2026-10-01T14:06:54Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863619.170196,
+      "time_iso": "2026-10-01T14:06:59Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863624.3223019,
+      "time_iso": "2026-10-01T14:07:04Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863629.4682367,
+      "time_iso": "2026-10-01T14:07:09Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863634.6951776,
+      "time_iso": "2026-10-01T14:07:14Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863639.8560293,
+      "time_iso": "2026-10-01T14:07:19Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863645.457594,
+      "time_iso": "2026-10-01T14:07:25Z",
+      "total_connections": 3,
+      "active_connections": 1,
+      "idle_connections": 2,
+      "idle_in_transaction": 0,
+      "waiting_queries": 2
+    },
+    {
+      "timestamp": 1790863650.6261342,
+      "time_iso": "2026-10-01T14:07:30Z",
+      "total_connections": 5,
+      "active_connections": 1,
+      "idle_connections": 4,
+      "idle_in_transaction": 0,
+      "waiting_queries": 4
+    },
+    {
+      "timestamp": 1790863655.7337036,
+      "time_iso": "2026-10-01T14:07:35Z",
+      "total_connections": 6,
+      "active_connections": 1,
+      "idle_connections": 5,
+      "idle_in_transaction": 0,
+      "waiting_queries": 5
+    },
+    {
+      "timestamp": 1790863660.8627596,
+      "time_iso": "2026-10-01T14:07:40Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863665.9832258,
+      "time_iso": "2026-10-01T14:07:45Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863671.1164274,
+      "time_iso": "2026-10-01T14:07:51Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863676.9036567,
+      "time_iso": "2026-10-01T14:07:56Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863682.035728,
+      "time_iso": "2026-10-01T14:08:02Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863687.1568422,
+      "time_iso": "2026-10-01T14:08:07Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863692.3352158,
+      "time_iso": "2026-10-01T14:08:12Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863697.4478083,
+      "time_iso": "2026-10-01T14:08:17Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863702.5723572,
+      "time_iso": "2026-10-01T14:08:22Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863707.7087758,
+      "time_iso": "2026-10-01T14:08:27Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863712.898888,
+      "time_iso": "2026-10-01T14:08:32Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863718.04907,
+      "time_iso": "2026-10-01T14:08:38Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863723.1549394,
+      "time_iso": "2026-10-01T14:08:43Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863728.3089402,
+      "time_iso": "2026-10-01T14:08:48Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863733.5096638,
+      "time_iso": "2026-10-01T14:08:53Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863738.647545,
+      "time_iso": "2026-10-01T14:08:58Z",
+      "total_connections": 8,
+      "active_connections": 2,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863743.7608633,
+      "time_iso": "2026-10-01T14:09:03Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863748.8784354,
+      "time_iso": "2026-10-01T14:09:08Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863754.042566,
+      "time_iso": "2026-10-01T14:09:14Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863759.1967108,
+      "time_iso": "2026-10-01T14:09:19Z",
+      "total_connections": 5,
+      "active_connections": 1,
+      "idle_connections": 4,
+      "idle_in_transaction": 0,
+      "waiting_queries": 4
+    },
+    {
+      "timestamp": 1790863764.3924596,
+      "time_iso": "2026-10-01T14:09:24Z",
+      "total_connections": 5,
+      "active_connections": 1,
+      "idle_connections": 4,
+      "idle_in_transaction": 0,
+      "waiting_queries": 4
+    },
+    {
+      "timestamp": 1790863769.7272627,
+      "time_iso": "2026-10-01T14:09:29Z",
+      "total_connections": 5,
+      "active_connections": 1,
+      "idle_connections": 4,
+      "idle_in_transaction": 0,
+      "waiting_queries": 4
+    },
+    {
+      "timestamp": 1790863775.0630925,
+      "time_iso": "2026-10-01T14:09:35Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863780.1839333,
+      "time_iso": "2026-10-01T14:09:40Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863785.3831515,
+      "time_iso": "2026-10-01T14:09:45Z",
+      "total_connections": 7,
+      "active_connections": 2,
+      "idle_connections": 5,
+      "idle_in_transaction": 0,
+      "waiting_queries": 5
+    },
+    {
+      "timestamp": 1790863790.5327196,
+      "time_iso": "2026-10-01T14:09:50Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863795.6611404,
+      "time_iso": "2026-10-01T14:09:55Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863800.865959,
+      "time_iso": "2026-10-01T14:10:00Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863805.991864,
+      "time_iso": "2026-10-01T14:10:05Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863811.1059048,
+      "time_iso": "2026-10-01T14:10:11Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863816.2694683,
+      "time_iso": "2026-10-01T14:10:16Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863821.4506538,
+      "time_iso": "2026-10-01T14:10:21Z",
+      "total_connections": 8,
+      "active_connections": 2,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863826.6911125,
+      "time_iso": "2026-10-01T14:10:26Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863831.9316623,
+      "time_iso": "2026-10-01T14:10:31Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863837.0875802,
+      "time_iso": "2026-10-01T14:10:37Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863842.250585,
+      "time_iso": "2026-10-01T14:10:42Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863847.4025898,
+      "time_iso": "2026-10-01T14:10:47Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790863852.5811548,
+      "time_iso": "2026-10-01T14:10:52Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790863857.701579,
+      "time_iso": "2026-10-01T14:10:57Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863862.9220495,
+      "time_iso": "2026-10-01T14:11:02Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863868.0813904,
+      "time_iso": "2026-10-01T14:11:08Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790863873.241094,
+      "time_iso": "2026-10-01T14:11:13Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863878.4041843,
+      "time_iso": "2026-10-01T14:11:18Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863883.5601082,
+      "time_iso": "2026-10-01T14:11:23Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863888.7841084,
+      "time_iso": "2026-10-01T14:11:28Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863893.933975,
+      "time_iso": "2026-10-01T14:11:33Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863899.0868864,
+      "time_iso": "2026-10-01T14:11:39Z",
+      "total_connections": 7,
+      "active_connections": 1,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790863904.39913,
+      "time_iso": "2026-10-01T14:11:44Z",
+      "total_connections": 6,
+      "active_connections": 1,
+      "idle_connections": 5,
+      "idle_in_transaction": 0,
+      "waiting_queries": 5
+    },
+    {
+      "timestamp": 1790863909.6513572,
+      "time_iso": "2026-10-01T14:11:49Z",
+      "total_connections": 6,
+      "active_connections": 2,
+      "idle_connections": 4,
+      "idle_in_transaction": 0,
+      "waiting_queries": 4
+    },
+    {
+      "timestamp": 1790863914.7526634,
+      "time_iso": "2026-10-01T14:11:54Z",
+      "total_connections": 6,
+      "active_connections": 1,
+      "idle_connections": 5,
+      "idle_in_transaction": 0,
+      "waiting_queries": 5
+    },
+    {
+      "timestamp": 1790863920.1099951,
+      "time_iso": "2026-10-01T14:12:00Z",
+      "total_connections": 6,
+      "active_connections": 1,
+      "idle_connections": 5,
+      "idle_in_transaction": 0,
+      "waiting_queries": 5
+    },
+    {
+      "timestamp": 1790863925.268159,
+      "time_iso": "2026-10-01T14:12:05Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863930.4550214,
+      "time_iso": "2026-10-01T14:12:10Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863935.6482456,
+      "time_iso": "2026-10-01T14:12:15Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863940.8177261,
+      "time_iso": "2026-10-01T14:12:20Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863945.944948,
+      "time_iso": "2026-10-01T14:12:25Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863951.1067114,
+      "time_iso": "2026-10-01T14:12:31Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863956.339599,
+      "time_iso": "2026-10-01T14:12:36Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863961.513715,
+      "time_iso": "2026-10-01T14:12:41Z",
+      "total_connections": 9,
+      "active_connections": 2,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790863966.621693,
+      "time_iso": "2026-10-01T14:12:46Z",
+      "total_connections": 11,
+      "active_connections": 2,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790863971.9061205,
+      "time_iso": "2026-10-01T14:12:51Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790863977.044652,
+      "time_iso": "2026-10-01T14:12:57Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790863982.188234,
+      "time_iso": "2026-10-01T14:13:02Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790863987.3936384,
+      "time_iso": "2026-10-01T14:13:07Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790863992.5207846,
+      "time_iso": "2026-10-01T14:13:12Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790863997.6242828,
+      "time_iso": "2026-10-01T14:13:17Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864002.8125257,
+      "time_iso": "2026-10-01T14:13:22Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864007.921262,
+      "time_iso": "2026-10-01T14:13:27Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864013.047067,
+      "time_iso": "2026-10-01T14:13:33Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864018.1743782,
+      "time_iso": "2026-10-01T14:13:38Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864023.2884543,
+      "time_iso": "2026-10-01T14:13:43Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864028.4606721,
+      "time_iso": "2026-10-01T14:13:48Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864033.5725896,
+      "time_iso": "2026-10-01T14:13:53Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864038.7103488,
+      "time_iso": "2026-10-01T14:13:58Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864043.8337743,
+      "time_iso": "2026-10-01T14:14:03Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790864049.1017485,
+      "time_iso": "2026-10-01T14:14:09Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790864054.2433991,
+      "time_iso": "2026-10-01T14:14:14Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790864059.4068944,
+      "time_iso": "2026-10-01T14:14:19Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790864064.539677,
+      "time_iso": "2026-10-01T14:14:24Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790864069.6452444,
+      "time_iso": "2026-10-01T14:14:29Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864074.8048744,
+      "time_iso": "2026-10-01T14:14:34Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864079.9643142,
+      "time_iso": "2026-10-01T14:14:39Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864085.1407294,
+      "time_iso": "2026-10-01T14:14:45Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864090.3360333,
+      "time_iso": "2026-10-01T14:14:50Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864095.4470913,
+      "time_iso": "2026-10-01T14:14:55Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864100.560527,
+      "time_iso": "2026-10-01T14:15:00Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864105.7672458,
+      "time_iso": "2026-10-01T14:15:05Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864110.8986785,
+      "time_iso": "2026-10-01T14:15:10Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864116.1471384,
+      "time_iso": "2026-10-01T14:15:16Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864121.3347297,
+      "time_iso": "2026-10-01T14:15:21Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864126.5216734,
+      "time_iso": "2026-10-01T14:15:26Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864131.8258858,
+      "time_iso": "2026-10-01T14:15:31Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864137.026809,
+      "time_iso": "2026-10-01T14:15:37Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864142.1460152,
+      "time_iso": "2026-10-01T14:15:42Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864147.3142776,
+      "time_iso": "2026-10-01T14:15:47Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864152.5436087,
+      "time_iso": "2026-10-01T14:15:52Z",
+      "total_connections": 9,
+      "active_connections": 2,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864157.650613,
+      "time_iso": "2026-10-01T14:15:57Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864162.8144422,
+      "time_iso": "2026-10-01T14:16:02Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864167.9468374,
+      "time_iso": "2026-10-01T14:16:07Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864173.1323984,
+      "time_iso": "2026-10-01T14:16:13Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864178.2862592,
+      "time_iso": "2026-10-01T14:16:18Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864183.396944,
+      "time_iso": "2026-10-01T14:16:23Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864188.6159987,
+      "time_iso": "2026-10-01T14:16:28Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864193.9194145,
+      "time_iso": "2026-10-01T14:16:33Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864199.2792418,
+      "time_iso": "2026-10-01T14:16:39Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864204.4827316,
+      "time_iso": "2026-10-01T14:16:44Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864209.652847,
+      "time_iso": "2026-10-01T14:16:49Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864214.8556454,
+      "time_iso": "2026-10-01T14:16:54Z",
+      "total_connections": 10,
+      "active_connections": 1,
+      "idle_connections": 9,
+      "idle_in_transaction": 0,
+      "waiting_queries": 9
+    },
+    {
+      "timestamp": 1790864219.9803379,
+      "time_iso": "2026-10-01T14:16:59Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864225.1903534,
+      "time_iso": "2026-10-01T14:17:05Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864230.3300776,
+      "time_iso": "2026-10-01T14:17:10Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864235.5272977,
+      "time_iso": "2026-10-01T14:17:15Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864240.7847116,
+      "time_iso": "2026-10-01T14:17:20Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864246.2948568,
+      "time_iso": "2026-10-01T14:17:26Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864251.5324004,
+      "time_iso": "2026-10-01T14:17:31Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864256.716905,
+      "time_iso": "2026-10-01T14:17:36Z",
+      "total_connections": 8,
+      "active_connections": 2,
+      "idle_connections": 6,
+      "idle_in_transaction": 0,
+      "waiting_queries": 6
+    },
+    {
+      "timestamp": 1790864261.8583727,
+      "time_iso": "2026-10-01T14:17:41Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864267.0683196,
+      "time_iso": "2026-10-01T14:17:47Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864272.2072034,
+      "time_iso": "2026-10-01T14:17:52Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864277.3190901,
+      "time_iso": "2026-10-01T14:17:57Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864282.537841,
+      "time_iso": "2026-10-01T14:18:02Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864287.7685242,
+      "time_iso": "2026-10-01T14:18:07Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864292.9250782,
+      "time_iso": "2026-10-01T14:18:12Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864298.0607781,
+      "time_iso": "2026-10-01T14:18:18Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864303.2546566,
+      "time_iso": "2026-10-01T14:18:23Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864308.458707,
+      "time_iso": "2026-10-01T14:18:28Z",
+      "total_connections": 8,
+      "active_connections": 1,
+      "idle_connections": 7,
+      "idle_in_transaction": 0,
+      "waiting_queries": 7
+    },
+    {
+      "timestamp": 1790864313.6404657,
+      "time_iso": "2026-10-01T14:18:33Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790864318.8198678,
+      "time_iso": "2026-10-01T14:18:38Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864324.0170028,
+      "time_iso": "2026-10-01T14:18:44Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864329.1981294,
+      "time_iso": "2026-10-01T14:18:49Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864334.3370147,
+      "time_iso": "2026-10-01T14:18:54Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864340.9420443,
+      "time_iso": "2026-10-01T14:19:00Z",
+      "total_connections": 44,
+      "active_connections": 4,
+      "idle_connections": 40,
+      "idle_in_transaction": 0,
+      "waiting_queries": 40
+    },
+    {
+      "timestamp": 1790864346.4434211,
+      "time_iso": "2026-10-01T14:19:06Z",
+      "total_connections": 51,
+      "active_connections": 1,
+      "idle_connections": 50,
+      "idle_in_transaction": 0,
+      "waiting_queries": 50
+    },
+    {
+      "timestamp": 1790864351.7613878,
+      "time_iso": "2026-10-01T14:19:11Z",
+      "total_connections": 51,
+      "active_connections": 1,
+      "idle_connections": 50,
+      "idle_in_transaction": 0,
+      "waiting_queries": 50
+    },
+    {
+      "timestamp": 1790864356.9745913,
+      "time_iso": "2026-10-01T14:19:16Z",
+      "total_connections": 51,
+      "active_connections": 1,
+      "idle_connections": 50,
+      "idle_in_transaction": 0,
+      "waiting_queries": 50
+    },
+    {
+      "timestamp": 1790864362.1689973,
+      "time_iso": "2026-10-01T14:19:22Z",
+      "total_connections": 51,
+      "active_connections": 1,
+      "idle_connections": 50,
+      "idle_in_transaction": 0,
+      "waiting_queries": 50
+    },
+    {
+      "timestamp": 1790864367.279637,
+      "time_iso": "2026-10-01T14:19:27Z",
+      "total_connections": 51,
+      "active_connections": 1,
+      "idle_connections": 50,
+      "idle_in_transaction": 0,
+      "waiting_queries": 50
+    },
+    {
+      "timestamp": 1790864372.4326496,
+      "time_iso": "2026-10-01T14:19:32Z",
+      "total_connections": 11,
+      "active_connections": 1,
+      "idle_connections": 10,
+      "idle_in_transaction": 0,
+      "waiting_queries": 10
+    },
+    {
+      "timestamp": 1790864377.5740993,
+      "time_iso": "2026-10-01T14:19:37Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864382.6999154,
+      "time_iso": "2026-10-01T14:19:42Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864387.8589532,
+      "time_iso": "2026-10-01T14:19:47Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864393.0618265,
+      "time_iso": "2026-10-01T14:19:53Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864398.2480545,
+      "time_iso": "2026-10-01T14:19:58Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864403.3766224,
+      "time_iso": "2026-10-01T14:20:03Z",
+      "total_connections": 9,
+      "active_connections": 1,
+      "idle_connections": 8,
+      "idle_in_transaction": 0,
+      "waiting_queries": 8
+    },
+    {
+      "timestamp": 1790864408.5118282,
+      "time_iso": "2026-10-01T14:20:08Z",
+      "total_connections": 4,
+      "active_connections": 1,
+      "idle_connections": 3,
+      "idle_in_transaction": 0,
+      "waiting_queries": 3
+    },
+    {
+      "timestamp": 1790864413.6339004,
+      "time_iso": "2026-10-01T14:20:13Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864418.7794428,
+      "time_iso": "2026-10-01T14:20:18Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864423.920038,
+      "time_iso": "2026-10-01T14:20:23Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864429.0495427,
+      "time_iso": "2026-10-01T14:20:29Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864434.1625075,
+      "time_iso": "2026-10-01T14:20:34Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864439.265665,
+      "time_iso": "2026-10-01T14:20:39Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864444.4106264,
+      "time_iso": "2026-10-01T14:20:44Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864449.55829,
+      "time_iso": "2026-10-01T14:20:49Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864454.7278104,
+      "time_iso": "2026-10-01T14:20:54Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864459.9363668,
+      "time_iso": "2026-10-01T14:20:59Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864465.1040053,
+      "time_iso": "2026-10-01T14:21:05Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864470.250207,
+      "time_iso": "2026-10-01T14:21:10Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864475.3798165,
+      "time_iso": "2026-10-01T14:21:15Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864480.5081174,
+      "time_iso": "2026-10-01T14:21:20Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864485.7101405,
+      "time_iso": "2026-10-01T14:21:25Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864490.9542596,
+      "time_iso": "2026-10-01T14:21:30Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864496.1596482,
+      "time_iso": "2026-10-01T14:21:36Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864501.3063743,
+      "time_iso": "2026-10-01T14:21:41Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864506.538805,
+      "time_iso": "2026-10-01T14:21:46Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864511.6881478,
+      "time_iso": "2026-10-01T14:21:51Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864516.9709826,
+      "time_iso": "2026-10-01T14:21:56Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864522.1955094,
+      "time_iso": "2026-10-01T14:22:02Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864527.3316393,
+      "time_iso": "2026-10-01T14:22:07Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864532.5960448,
+      "time_iso": "2026-10-01T14:22:12Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864537.762096,
+      "time_iso": "2026-10-01T14:22:17Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864542.9650714,
+      "time_iso": "2026-10-01T14:22:22Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864548.1239996,
+      "time_iso": "2026-10-01T14:22:28Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864553.2875626,
+      "time_iso": "2026-10-01T14:22:33Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864558.4620874,
+      "time_iso": "2026-10-01T14:22:38Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864563.635084,
+      "time_iso": "2026-10-01T14:22:43Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864568.754826,
+      "time_iso": "2026-10-01T14:22:48Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864573.9138298,
+      "time_iso": "2026-10-01T14:22:53Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864579.118407,
+      "time_iso": "2026-10-01T14:22:59Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864584.3728065,
+      "time_iso": "2026-10-01T14:23:04Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790864589.5055213,
+      "time_iso": "2026-10-01T14:23:09Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865393.0920372,
+      "time_iso": "2026-10-01T14:36:33Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865398.2028844,
+      "time_iso": "2026-10-01T14:36:38Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865403.3118994,
+      "time_iso": "2026-10-01T14:36:43Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865408.3911316,
+      "time_iso": "2026-10-01T14:36:48Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865413.4855776,
+      "time_iso": "2026-10-01T14:36:53Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865418.5700915,
+      "time_iso": "2026-10-01T14:36:58Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865423.6611316,
+      "time_iso": "2026-10-01T14:37:03Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865428.7421663,
+      "time_iso": "2026-10-01T14:37:08Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865433.831728,
+      "time_iso": "2026-10-01T14:37:13Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    },
+    {
+      "timestamp": 1790865438.9995196,
+      "time_iso": "2026-10-01T14:37:18Z",
+      "total_connections": 1,
+      "active_connections": 1,
+      "idle_connections": 0,
+      "idle_in_transaction": 0,
+      "waiting_queries": 0
+    }
+  ]
+}

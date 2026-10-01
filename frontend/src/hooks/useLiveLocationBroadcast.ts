@@ -1,12 +1,14 @@
 "use client";
 
+import { ProviderLocation } from "@/lib/providerLocationPlugin";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BookingStatus } from "@/types/provider";
 import { getSocket } from "@/lib/socket";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { getStoredAuthToken, getStoredUserId } from "@/store/useAuthStore";
 
-const ProviderLocationPlugin = registerPlugin<any>("ProviderLocation");
+const ProviderLocationPlugin = ProviderLocation;
 
 const ACTIVE_TRACKING_STATUSES: (BookingStatus | string)[] = ["OnTheWay", "Started"];
 
@@ -354,6 +356,11 @@ export function useLiveLocationBroadcast(
       let userMsg = err.message;
       if (err.code === err.PERMISSION_DENIED) {
         userMsg = "Location permission denied. Please allow location access to share your live location.";
+        // Clear watch immediately to stop browser error loop (PART 9)
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
       } else if (err.code === err.POSITION_UNAVAILABLE) {
         userMsg = "Unable to determine your current location. Please check device GPS settings.";
       } else if (err.code === err.TIMEOUT) {

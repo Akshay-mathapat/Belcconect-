@@ -1,5 +1,7 @@
 "use client";
 
+import { authFetch } from "@/lib/authFetch";
+
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nativeCallBridge } from "@/lib/nativeCallBridge";
@@ -344,7 +346,7 @@ export const useAuthStore = create<AuthState>()(
             headers["Authorization"] = `Bearer ${current.token}`;
           }
 
-          const res = await fetch("/api/bookings", { headers });
+          const res = await authFetch("/api/bookings", { headers });
           if (res.ok) {
             const dbBookings = await res.json();
             if (!Array.isArray(dbBookings)) return;
@@ -442,14 +444,23 @@ export const useAuthStore = create<AuthState>()(
 
 export function getStoredAuthToken(): string | null {
   const authUser = useAuthStore.getState().currentUser;
-  if (authUser?.token) return authUser.token;
+  if (authUser?.token && typeof authUser.token === "string" && authUser.token !== "undefined" && authUser.token !== "null" && authUser.token.trim().length > 10) {
+    return authUser.token.trim();
+  }
   if (typeof window !== "undefined") {
-    return (
-      localStorage.getItem("cityconnect_auth_token") ||
-      localStorage.getItem("cityconnect_token") ||
-      localStorage.getItem("auth_token") ||
-      null
-    );
+    const keys = ["cityconnect_auth_token", "cityconnect_token", "auth_token"];
+    for (const key of keys) {
+      const val = localStorage.getItem(key);
+      if (val && typeof val === "string" && val !== "undefined" && val !== "null" && val.trim().length > 10) {
+        return val.trim();
+      }
+    }
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
+      if (match && match[1] && match[1] !== "undefined" && match[1] !== "null" && match[1].trim().length > 10) {
+        return decodeURIComponent(match[1].trim());
+      }
+    } catch (e) {}
   }
   return null;
 }
@@ -467,3 +478,22 @@ export function getStoredUserId(): string | null {
   return null;
 }
 
+
+// Global listener for central auth:expired event (PART 2)
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:expired", () => {
+    try {
+      const store = useAuthStore.getState();
+      if (store.currentUser) {
+        console.warn("[AUTH] Session expired. Clearing authenticated state and redirecting.");
+        store.logout();
+        const path = window.location.pathname;
+        if (!path.startsWith("/login") && !path.startsWith("/auth") && !path.startsWith("/register")) {
+          window.location.href = `/login?expired=1&returnTo=${encodeURIComponent(path)}`;
+        }
+      }
+    } catch (e) {
+      console.error("[AUTH] Error handling auth:expired:", e);
+    }
+  });
+}

@@ -1,0 +1,1 @@
+{"error":"FATAL: DATABASE_URL in production points to a local database host (127.0.0.1). Configure the production cloud PostgreSQL DATABASE_URL."}

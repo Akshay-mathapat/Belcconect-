@@ -1,5 +1,7 @@
 "use client";
 
+import { authFetch, getClientToken, triggerAuthExpired } from "@/lib/authFetch";
+
 /**
  * Converts a base64 string to a Uint8Array required for Web Push applicationServerKey.
  */
@@ -67,8 +69,15 @@ export async function registerAndSubscribeUser(userId: string): Promise<boolean>
 
     if (!subscription) return false;
 
-    // 4. Send subscription to backend API
-    const res = await fetch("/api/push/subscribe", {
+    // 4. Verify authenticated token exists before sending
+    const token = getClientToken();
+    if (!token) {
+      console.warn("[WebPush] No authenticated token available. Skipping push subscription registration.");
+      return false;
+    }
+
+    // Send subscription to backend API using central authFetch
+    const res = await authFetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -81,7 +90,12 @@ export async function registerAndSubscribeUser(userId: string): Promise<boolean>
       console.log("[WebPush] Successfully subscribed user to push notifications:", userId);
       return true;
     } else {
-      console.warn("[WebPush] Failed to store push subscription on server.");
+      if (res && res.status === 401) {
+        console.warn("[WebPush] Push subscription rejected with 401. Halting retries.");
+        triggerAuthExpired();
+      } else {
+        console.warn("[WebPush] Failed to store push subscription on server.");
+      }
       return false;
     }
   } catch (err: any) {

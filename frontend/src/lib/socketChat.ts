@@ -1,5 +1,7 @@
 "use client";
 
+import { getClientToken, triggerAuthExpired } from "@/lib/authFetch";
+
 import { io, Socket } from "socket.io-client";
 import { getAuthToken } from "@/lib/jwt";
 
@@ -32,37 +34,65 @@ export const getSignalingUrl = (): string => {
 };
 
 export const getChatSocket = (userId?: string): Socket => {
+  const token = getClientToken();
+  const serverUrl = getSignalingUrl();
+
   if (!chatSocket) {
-    const token = getAuthToken();
-    const serverUrl = getSignalingUrl();
-    
     chatSocket = io(serverUrl, {
-      autoConnect: true,
+      autoConnect: Boolean(token),
       transports: ["websocket", "polling"],
       auth: {
         token: token || "",
         userId: userId || ""
       },
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 200,
-      reconnectionDelayMax: 1000,
+      reconnection: Boolean(token),
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: 5000
     });
     (chatSocket as any)._activeUserId = userId;
+
+    chatSocket.on("connect_error", (err: any) => {
+      const msg = (err?.message || "").toLowerCase();
+      if (
+        msg.includes("jwt expired") ||
+        msg.includes("token verification failed") ||
+        msg.includes("authentication failed") ||
+        msg.includes("invalid token")
+      ) {
+        console.warn("[ChatSocket] Authentication failed (expired/invalid token). Halting reconnect.");
+        if (chatSocket) {
+          chatSocket.disconnect();
+          try { chatSocket.io.opts.reconnection = false; } catch (e) {}
+        }
+        triggerAuthExpired();
+      }
+    });
   } else if (userId && (chatSocket as any)._activeUserId !== userId) {
-    const token = getAuthToken();
     (chatSocket as any)._activeUserId = userId;
     (chatSocket.auth as any) = { token: token || "", userId };
     if (chatSocket.connected) {
       chatSocket.disconnect();
     }
-    chatSocket.connect();
+    if (token) {
+      try { chatSocket.io.opts.reconnection = true; } catch (e) {}
+      chatSocket.connect();
+    }
   }
 
-  if (!chatSocket.connected) {
+  if (token && !chatSocket.connected) {
+    chatSocket.auth = { token, userId: userId || "" };
     chatSocket.connect();
   }
 
   return chatSocket;
 };
+
+export function disconnectChatSocket() {
+  if (chatSocket) {
+    chatSocket.removeAllListeners();
+    chatSocket.disconnect();
+    chatSocket = null;
+  }
+}

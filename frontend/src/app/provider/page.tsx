@@ -1,5 +1,7 @@
 "use client";
 
+import { getSocket } from "@/lib/socket";
+
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { 
@@ -147,9 +149,14 @@ export default function ProviderDashboardPage() {
     fetchProviderBookings();
     fetchProviderServices();
 
-    const intervalId = setInterval(() => {
-      fetchProviderBookings();
-    }, 4000);
+    // Realtime sync via BroadcastChannel & Socket.IO (aggressive 4s polling removed)
+    let intervalId: any = null;
+    const socket = getSocket();
+    if (!socket?.connected) {
+      intervalId = setInterval(() => {
+        if (!getSocket()?.connected) fetchProviderBookings();
+      }, 60000);
+    }
 
     let syncChannel: BroadcastChannel | null = null;
     try {
@@ -170,6 +177,23 @@ export default function ProviderDashboardPage() {
   }, [currentUser, syncWithAuthUser, fetchProviderAvailability, fetchProviderBookings, fetchProviderServices]);
 
   const handleToggleAvailability = async () => {
+    if (!currentUser) {
+      setAvailabilityMessage({
+        text: "Please sign in as a service provider to update your online availability.",
+        isError: true
+      });
+      setTimeout(() => setAvailabilityMessage(null), 4500);
+      return;
+    }
+    if (currentUser.role !== "provider" && (currentUser as any).role !== "admin") {
+      setAvailabilityMessage({
+        text: "Access restricted: Only service providers can manage availability status.",
+        isError: true
+      });
+      setTimeout(() => setAvailabilityMessage(null), 4500);
+      return;
+    }
+
     setTogglingAvailability(true);
     setAvailabilityMessage(null);
     const targetState = !isOnline;
@@ -182,7 +206,7 @@ export default function ProviderDashboardPage() {
         });
       } else {
         setAvailabilityMessage({
-          text: "Could not update availability on server. Please check your internet connection.",
+          text: "Unable to update availability on server. Please verify your provider account or try logging in again.",
           isError: true
         });
       }

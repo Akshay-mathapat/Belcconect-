@@ -81,7 +81,7 @@ export async function PATCH(request: Request) {
     );
 
     if (updateRes.rows.length === 0) {
-      return NextResponse.json({ error: "Provider account not found" }, { status: 404 });
+      return NextResponse.json({ error: "Provider account not found in database. Please ensure your provider profile is active." }, { status: 404 });
     }
 
     const row = updateRes.rows[0];

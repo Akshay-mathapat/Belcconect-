@@ -60,7 +60,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(`/api/bookings/${encodeURIComponent(targetBookingId)}/reviews`, { headers });
+      const res = await fetch(`/api/bookings/${encodeURIComponent(targetBookingId)}/reviews`, { headers, credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         if (data.userReview) {
@@ -97,11 +97,16 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
 
   useEffect(() => {
     fetchProviderBookings();
-    const intervalId = setInterval(() => {
-      fetchProviderBookings();
-    }, 4000);
-
-    return () => clearInterval(intervalId);
+    // Realtime updates handled by Socket.IO booking:subscribe.
+    // Fallback poll only if socket disconnected
+    let intervalId: any = null;
+    const socket = getSocket();
+    if (!socket?.connected) {
+      intervalId = setInterval(() => {
+        if (!getSocket()?.connected) fetchProviderBookings();
+      }, 60000);
+    }
+    return () => { if (intervalId) clearInterval(intervalId); };
   }, [fetchProviderBookings]);
 
   // Handlers
@@ -114,9 +119,11 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(`/api/bookings/${booking.id}`, {
+      const cleanId = encodeURIComponent(String(booking.id).trim().replace(/^#+/, ""));
+      const res = await fetch(`/api/bookings/${cleanId}`, {
         method: "PATCH",
         headers,
+        credentials: "include",
         body: JSON.stringify({
           status: "Cancelled",
           cancellationReason,
@@ -218,7 +225,8 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
         if (currentUser?.id) headers["x-user-id"] = currentUser.id;
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch(`/api/bookings/${id}`, { headers });
+        const cleanId = encodeURIComponent(String(id).trim().replace(/^#+/, ""));
+        const res = await fetch(`/api/bookings/${cleanId}`, { headers, credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           if (isMounted && data.booking) {
@@ -306,6 +314,10 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
   }
 
   const handleStatusChange = async (newStatus: BookingStatus) => {
+    if (!currentUser) {
+      setStatusError("Your session has expired. Please sign in to update booking status.");
+      return;
+    }
     setLoading(true);
     setStatusError(null);
     try {
@@ -319,8 +331,12 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
         });
       }
     } catch (err: any) {
-      console.error("Error updating status:", err);
-      setStatusError(err.message || "Failed to update status on server.");
+      const msg = err?.message || "";
+      if (msg.includes("Unauthorized") || msg.includes("authentication") || msg.includes("401")) {
+        setStatusError("Your session has expired. Please sign in again to update this booking.");
+      } else {
+        setStatusError(msg || "Failed to update status on server.");
+      }
     } finally {
       setLoading(false);
     }

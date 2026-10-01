@@ -31,6 +31,41 @@ export interface BelConnectQueryResult {
 }
 
 /**
+ * Lightweight pool statistics used only for diagnostics/load testing.
+ */
+export interface BelConnectPoolStats {
+  total: number;
+  idle: number;
+  waiting: number;
+}
+
+/**
+ * Safely read a positive integer environment variable.
+ *
+ * Prevents invalid values such as:
+ *
+ * DB_POOL_MAX=abc
+ *
+ * from becoming NaN inside node-postgres configuration.
+ */
+function readPositiveInt(
+  value: string | undefined,
+  fallback: number
+): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+/**
  * Return the shared PostgreSQL connection pool.
  */
 export function getPool(): Pool {
@@ -52,7 +87,9 @@ export function getPool(): Pool {
     const parsedUrl = new URL(connectionString);
     hostInfo = parsedUrl.hostname || "unknown-host";
   } catch {
-    // Never print DATABASE_URL because it may contain DB credentials.
+    /**
+     * Never print DATABASE_URL because it may contain credentials.
+     */
     throw new Error(
       "FATAL: DATABASE_URL is not a valid PostgreSQL connection URL."
     );
@@ -61,10 +98,11 @@ export function getPool(): Pool {
   const normalizedHost = hostInfo.toLowerCase();
 
   /**
-   * Prevent Vercel/production from accidentally trying to use
-   * the developer machine's PostgreSQL database.
+   * Prevent Vercel/production from accidentally connecting to
+   * the developer machine's local PostgreSQL instance.
    */
   if (
+    process.env.VERCEL &&
     process.env.NODE_ENV === "production" &&
     (
       normalizedHost === "localhost" ||
@@ -74,22 +112,71 @@ export function getPool(): Pool {
   ) {
     throw new Error(
       `FATAL: DATABASE_URL in production points to a local database host (${hostInfo}). ` +
-      "Configure the production cloud PostgreSQL DATABASE_URL."
+        "Configure the production cloud PostgreSQL DATABASE_URL."
     );
   }
 
+  const isLocalHost =
+    normalizedHost === "localhost" ||
+    normalizedHost === "127.0.0.1" ||
+    normalizedHost === "::1";
+
   /**
-   * Render/Neon/Supabase and production PostgreSQL connections
-   * normally require SSL.
+   * Cloud PostgreSQL providers generally require SSL.
+   *
+   * Local development/testing does not.
    */
   const useSsl =
-    process.env.NODE_ENV === "production" ||
-    normalizedHost.includes("render.com") ||
-    normalizedHost.includes("neon.tech") ||
-    normalizedHost.includes("supabase");
+    !isLocalHost &&
+    (
+      process.env.NODE_ENV === "production" ||
+      normalizedHost.includes("render.com") ||
+      normalizedHost.includes("neon.tech") ||
+      normalizedHost.includes("supabase")
+    );
+
+  /**
+   * IMPORTANT:
+   *
+   * Vercel is serverless. Multiple runtime instances may exist
+   * simultaneously and every instance may create its own pool.
+   *
+   * Example:
+   *
+   * 10 Vercel instances × pool max 5 = up to 50 DB connections
+   *
+   * A long-running local/Node server uses one shared process,
+   * so a moderately larger pool is acceptable.
+   */
+  const defaultPoolMax = process.env.VERCEL ? 5 : 20;
+
+  const poolMax = readPositiveInt(
+    process.env.DB_POOL_MAX,
+    defaultPoolMax
+  );
+
+  const idleTimeoutMillis = readPositiveInt(
+    process.env.DB_IDLE_TIMEOUT_MS,
+    60_000
+  );
+
+  const connectionTimeoutMillis = readPositiveInt(
+    process.env.DB_CONNECTION_TIMEOUT_MS,
+    15_000
+  );
+
+  const statementTimeoutMillis = readPositiveInt(
+    process.env.DB_STATEMENT_TIMEOUT_MS,
+    10_000
+  );
+
+  const queryTimeoutMillis = readPositiveInt(
+    process.env.DB_QUERY_TIMEOUT_MS,
+    12_000
+  );
 
   console.log(
-    `[Database] Creating PostgreSQL pool for host: ${hostInfo}`
+    `[Database] Creating PostgreSQL pool host=${hostInfo} max=${poolMax}`
   );
 
   globalThis.postgresPool = new Pool({
@@ -102,36 +189,119 @@ export function getPool(): Pool {
       : false,
 
     /**
-     * Keep this small for Vercel/serverless.
+     * Maximum connections owned by THIS Node process/runtime.
      *
-     * Multiple Vercel instances can exist simultaneously and each
-     * instance can create its own PostgreSQL pool.
+     * Local / long-running server:
+     * default = 20
+     *
+     * Vercel/serverless:
+     * default = 5
      */
-    max: Number(process.env.DB_POOL_MAX || 5),
+    max: poolMax,
 
-    idleTimeoutMillis: Number(
-      process.env.DB_IDLE_TIMEOUT_MS || 10_000
-    ),
+    /**
+     * Keep idle connections alive long enough to absorb traffic bursts
+     * without constantly destroying and recreating PostgreSQL sessions.
+     */
+    idleTimeoutMillis,
 
-    connectionTimeoutMillis: Number(
-      process.env.DB_CONNECTION_TIMEOUT_MS || 10_000
-    ),
+    /**
+     * Maximum time node-postgres may wait while establishing/acquiring
+     * a PostgreSQL connection.
+     */
+    connectionTimeoutMillis,
 
-    allowExitOnIdle: true,
+    /**
+     * PostgreSQL server-side statement timeout.
+     *
+     * Prevents individual SQL statements from occupying a connection
+     * indefinitely.
+     */
+    statement_timeout: statementTimeoutMillis,
+
+    /**
+     * node-postgres application-side query timeout.
+     *
+     * This is intentionally slightly larger than statement_timeout.
+     */
+    query_timeout: queryTimeoutMillis,
+
+    /**
+     * TCP keepalive helps detect broken DB connections and reduces the
+     * chance of stale sockets being reused after network interruptions.
+     */
+    keepAlive: true,
+
+    keepAliveInitialDelayMillis: 10_000,
+
+    /**
+     * Keep the pool alive while the process itself is alive.
+     */
+    allowExitOnIdle: false,
   });
 
   /**
-   * Prevent unexpected idle-client errors from becoming
-   * unhandled process errors.
+   * Handle errors emitted by idle clients.
+   *
+   * Without this listener, an unexpected idle-client error can become
+   * an unhandled process-level error.
    */
   globalThis.postgresPool.on("error", (error) => {
     console.error(
       "[Database] Unexpected idle PostgreSQL client error:",
-      error instanceof Error ? error.message : error
+      error instanceof Error
+        ? error.message
+        : String(error)
     );
   });
 
   return globalThis.postgresPool;
+}
+
+/**
+ * Return current pool statistics.
+ *
+ * Useful during load testing:
+ *
+ * console.log(getPoolStats());
+ *
+ * Do NOT log this on every production request.
+ */
+export function getPoolStats(): BelConnectPoolStats {
+  const pool = getPool();
+
+  return {
+    total: pool.totalCount,
+    idle: pool.idleCount,
+    waiting: pool.waitingCount,
+  };
+}
+
+/**
+ * Detect errors that indicate temporary PostgreSQL/database
+ * unavailability.
+ *
+ * API routes can use this to return HTTP 503 instead of an
+ * unexplained generic 500.
+ */
+export function isDatabaseUnavailableError(
+  error: unknown
+): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes("connection timeout") ||
+    message.includes("connection terminated") ||
+    message.includes("connection refused") ||
+    message.includes("too many clients") ||
+    message.includes("remaining connection slots") ||
+    message.includes("database system is starting up") ||
+    message.includes("database system is shutting down")
+  );
 }
 
 /**
@@ -167,7 +337,10 @@ export async function verifyPassword(
     hash.startsWith("$argon2d$")
   ) {
     try {
-      return await argon2.verify(hash, password);
+      return await argon2.verify(
+        hash,
+        password
+      );
     } catch {
       return false;
     }
@@ -176,7 +349,7 @@ export async function verifyPassword(
   /**
    * Legacy SHA-256 compatibility.
    *
-   * Do not use this method when creating new passwords.
+   * Do not use this method for new passwords.
    */
   const legacyHash = crypto
     .createHash("sha256")
@@ -191,8 +364,7 @@ export async function verifyPassword(
  *
  * Some existing BelConnect files may still import initDB().
  *
- * This function intentionally performs ONLY a lightweight
- * connectivity test.
+ * This intentionally performs ONLY a lightweight connectivity test.
  *
  * DO NOT add:
  *
@@ -205,7 +377,7 @@ export async function verifyPassword(
  * call cleanup
  * migrations
  *
- * to this function.
+ * here.
  */
 export async function initDB(): Promise<void> {
   await getPool().query("SELECT 1");
@@ -214,23 +386,25 @@ export async function initDB(): Promise<void> {
 /**
  * Execute a normal PostgreSQL query.
  *
- * CRITICAL:
+ * IMPORTANT:
  *
- * query() DOES NOT call initDB().
+ * - Does NOT run migrations.
+ * - Does NOT call initDB().
+ * - Does NOT blindly retry failed operations.
  *
- * Previously query() could trigger the full database initializer.
- * On Vercel, several serverless functions can start concurrently.
- * Running DDL/migrations from those functions can produce PostgreSQL
- * lock contention and deadlocks.
+ * Automatic retries are intentionally avoided here because this
+ * function may execute INSERT / UPDATE / DELETE queries.
  *
- * rows is explicitly any[] for compatibility with the current
- * BelConnect API code.
+ * Retrying a write automatically could duplicate an operation.
  */
 export async function query(
   text: string,
   params?: any[]
 ): Promise<BelConnectQueryResult> {
-  const result = await getPool().query(text, params);
+  const result = await getPool().query(
+    text,
+    params
+  );
 
   return {
     rows: result.rows as any[],
@@ -243,11 +417,9 @@ export async function query(
 /**
  * Obtain a dedicated PostgreSQL client.
  *
- * This also DOES NOT call initDB().
+ * The caller MUST always release the client.
  *
- * The caller MUST release the client after use.
- *
- * Example:
+ * Correct pattern:
  *
  * const client = await getClient();
  *

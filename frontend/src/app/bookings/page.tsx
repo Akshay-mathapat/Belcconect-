@@ -1,5 +1,8 @@
 "use client";
 
+import { getSocket } from "@/lib/socket";
+import { authFetch } from "@/lib/authFetch";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
@@ -35,7 +38,7 @@ export default function CustomerBookingsPage() {
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch("/api/bookings", { headers });
+        const res = await authFetch("/api/bookings", { headers });
         if (!res.ok) throw new Error("Failed to fetch bookings");
         const data = await res.json();
         setBookings(Array.isArray(data) ? data : []);
@@ -48,8 +51,17 @@ export default function CustomerBookingsPage() {
     }
 
     fetchBookings();
-    const interval = setInterval(fetchBookings, 4000);
-    return () => clearInterval(interval);
+    // Fallback poll: only if socket disconnected, every 60s
+    let interval: any = null;
+    try {
+      const socket = getSocket();
+      if (!socket?.connected) {
+        interval = setInterval(() => {
+          if (!getSocket()?.connected) fetchBookings();
+        }, 60000);
+      }
+    } catch (e) {}
+    return () => { if (interval) clearInterval(interval); };
   }, []);
 
   const handleDeleteBooking = async (id: string) => {

@@ -1,5 +1,7 @@
 "use client";
 
+import { getSocket } from "@/lib/socket";
+
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -105,9 +107,14 @@ function BookingsManagementContent() {
   useEffect(() => {
     fetchProviderBookings();
 
-    const intervalId = setInterval(() => {
-      fetchProviderBookings();
-    }, 4000);
+    // Realtime sync via BroadcastChannel & Socket.IO
+    let intervalId: any = null;
+    const socket = getSocket();
+    if (!socket?.connected) {
+      intervalId = setInterval(() => {
+        if (!getSocket()?.connected) fetchProviderBookings();
+      }, 60000);
+    }
 
     let syncChannel: BroadcastChannel | null = null;
     try {

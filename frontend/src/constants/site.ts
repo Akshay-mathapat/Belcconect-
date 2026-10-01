@@ -48,6 +48,7 @@ export const BELAGAVI_AREAS = [
 export const NAV_LINKS = [
   { i18nKey: "nav.home", href: "/", label: "Home" },
   { i18nKey: "nav.services", href: "/services", label: "Services" },
+  { i18nKey: "nav.jobs", href: "/jobs", label: "Jobs" },
   { i18nKey: "nav.providers", href: "/register/provider", label: "Join as Provider" },
 ] as const;
 

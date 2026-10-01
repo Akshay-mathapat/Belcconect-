@@ -11,6 +11,8 @@ import {
 import ChatWindow from "@/components/chat/ChatWindow";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
+import { authFetch, getClientToken } from "@/lib/authFetch";
+import { getSocket } from "@/lib/socket";
 
 interface ConversationMeta {
   id: string;
@@ -40,7 +42,8 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch(`/api/chat/conversations?userId=${providerId}`);
+      if (!providerId || !getClientToken()) return;
+      const res = await authFetch(`/api/chat/conversations?userId=${providerId}`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -59,8 +62,14 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 5000);
-    return () => clearInterval(interval);
+    let interval: any = null;
+    const socket = getSocket();
+    if (!socket?.connected) {
+      interval = setInterval(() => {
+        if (!getSocket()?.connected) fetchConversations();
+      }, 60000);
+    }
+    return () => { if (interval) clearInterval(interval); };
   }, [providerId]);
 
   const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];

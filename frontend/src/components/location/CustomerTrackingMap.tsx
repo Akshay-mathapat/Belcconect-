@@ -1,5 +1,7 @@
 "use client";
 
+import { authFetch } from "@/lib/authFetch";
+
 import React, { useEffect, useRef, useState } from "react";
 import { Navigation, Radio, Clock, ShieldCheck, ExternalLink, MapPin, Loader2, AlertCircle } from "lucide-react";
 import { getSocket } from "@/lib/socket";
@@ -273,7 +275,7 @@ export default function CustomerTrackingMap({
         if (token) headers["Authorization"] = `Bearer ${token}`;
         if (userId) headers["x-user-id"] = userId;
 
-        const res = await fetch(`/api/bookings/${bookingId}`, { headers });
+        const res = await authFetch(`/api/bookings/${bookingId}`, { headers });
         if (!res.ok) return;
         const data = await res.json();
         const b = data.booking;
@@ -292,8 +294,15 @@ export default function CustomerTrackingMap({
       }
     };
 
-    const interval = setInterval(pollDbLocation, 10000);
-    return () => clearInterval(interval);
+    // Fallback polling only when socket is disconnected, interval 60s
+    let interval: any = null;
+    const socket = getSocket();
+    if (!socket?.connected) {
+      interval = setInterval(() => {
+        if (!getSocket()?.connected) pollDbLocation();
+      }, 60000);
+    }
+    return () => { if (interval) clearInterval(interval); };
   }, [bookingId]);
 
   // 3. Strict 1-Second Freshness State Timer (Live <= 15s | Updating <= 30s | Unavailable > 30s)

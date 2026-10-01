@@ -1,5 +1,7 @@
 "use client";
 
+import { authFetch } from "@/lib/authFetch";
+
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -265,7 +267,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
         if (userId) headers["x-user-id"] = userId;
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch(`/api/bookings/${encodeURIComponent(targetId)}`, { headers });
+        const res = await authFetch(`/api/bookings/${encodeURIComponent(targetId)}`, { headers });
         if (!res.ok) {
           if (res.status === 401) {
             router.push(`/auth?mode=login&returnTo=/bookings/${encodeURIComponent(targetId)}`);
@@ -289,9 +291,16 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
 
     fetchBookingDetail();
 
-    // Regular fallback polling every 6s
-    const interval = setInterval(fetchBookingDetail, 6000);
-    return () => clearInterval(interval);
+    // Realtime events handled via Socket.IO booking:subscribe.
+    // Fallback poll only if socket disconnected
+    let interval: any = null;
+    const socket = getSocket();
+    if (!socket?.connected) {
+      interval = setInterval(() => {
+        if (!getSocket()?.connected) fetchBookingDetail();
+      }, 60000);
+    }
+    return () => { if (interval) clearInterval(interval); };
   }, [id, cleanBookingId, currentUser, router]);
 
   // 2. Real-Time Socket Listener for Instant Status Updates
