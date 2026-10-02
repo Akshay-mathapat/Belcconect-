@@ -2,7 +2,7 @@ import http from "k6/http";
 import { check } from "k6";
 import { Counter } from "k6/metrics";
 
-const BASE_URL = __ENV.BASE_URL || "http://localhost:3000";
+const BASE_URL = __ENV.BASE_URL || "https://belcconect.vercel.app/";
 const ENDPOINT = __ENV.ENDPOINT || "/api/services";
 
 const ok = new Counter("res_200");
