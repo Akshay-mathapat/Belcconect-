@@ -652,7 +652,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         const autoAccept = urlParams.get("autoAccept") === "true";
         const hasActiveCallParam = urlParams.get("activeCall") === "true";
 
-        if (webCallId && (hasActiveCallParam || autoAccept)) {
+                if (webCallId && (hasActiveCallParam || autoAccept)) {
+          // Wait until login is ready; this function runs again once currentUserId loads
+          if (!currentUserIdRef.current) return;
+
           // Remove query params from address bar without page reload
           const cleanUrl = window.location.pathname;
           window.history.replaceState({}, document.title, cleanUrl);
@@ -681,6 +684,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               }
             } else {
               console.warn("[CALL] Failed to auto-accept call from Web Push:", data.error);
+               acceptInProgressRef.current = false;
               callAudioManager.stopAll();
               setCallState("IDLE");
               setActiveCall(null);
@@ -700,6 +704,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (e) {
+        acceptInProgressRef.current = false;
         console.warn("[CALL] Error parsing URL search params for call:", e);
       }
     }
@@ -1326,7 +1331,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   // ─── acceptCall ───────────────────────────────────────────────────────────
   const acceptCall = useCallback(async () => {
-    if (acceptInProgressRef.current || !activeCallRef.current) return;
+        if (acceptInProgressRef.current || !activeCallRef.current) {
+      console.log(`[CALL_TRACE] acceptCall blocked: inProgress=${acceptInProgressRef.current}, hasCall=${!!activeCallRef.current}`);
+      return;
+    }
 
     const acceptStartTime = Date.now();
     acceptInProgressRef.current = true;
