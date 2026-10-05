@@ -6,7 +6,7 @@ import { parseAndValidate, resetPasswordSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   // 1. Rate Limiting Check (Max 3 attempts per 5 minutes per IP)
-  const rateLimit = checkRateLimit(request, 3, 5 * 60 * 1000);
+  const rateLimit = await checkRateLimit(request, 3, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
@@ -102,11 +102,13 @@ export async function POST(request: Request) {
       success: true,
       message: "Password reset successfully."
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (dbClient) {
       try {
         await dbClient.query("ROLLBACK");
-      } catch (_) {}
+      } catch {
+        // Ignore rollback failure
+      }
     }
     console.error("Error in reset-password API:", error);
     return NextResponse.json(

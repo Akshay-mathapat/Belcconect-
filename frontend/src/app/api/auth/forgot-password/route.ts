@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   console.log("[PASSWORD_RESET] request-received");
 
   // 1. Rate Limiting Check (Max 5 requests per 15 minutes per IP)
-  const rateLimit = checkRateLimit(request, 5, 15 * 60 * 1000);
+  const rateLimit = await checkRateLimit(request, 5, 15 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     }
 
     return genericResponse;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in forgot-password API:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },

@@ -12,7 +12,7 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export async function POST(request: Request) {
   // 1. Rate Limiting Check
-  const rateLimit = checkRateLimit(request, 10, 5 * 60 * 1000);
+  const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
@@ -42,8 +42,8 @@ export async function POST(request: Request) {
         idToken: credential,
         audience: GOOGLE_CLIENT_ID,
       });
-    } catch (err: any) {
-      console.error("[GOOGLE_AUTH_ERROR] Invalid Google ID token:", err?.message || err);
+    } catch (err: unknown) {
+      console.error("[GOOGLE_AUTH_ERROR] Invalid Google ID token:", err instanceof Error ? err.message : String(err));
       return NextResponse.json(
         { error: "Invalid or expired Google credential." },
         { status: 401 }
@@ -88,8 +88,8 @@ export async function POST(request: Request) {
          FROM bookings b WHERE b.customer_id = $1 ORDER BY b.created_at DESC`,
         [userObj.id]
       );
-      userObj.bookings = (bookRes.rows || []).map((b: any) => ({
-        id: b.id,
+      userObj.bookings = (bookRes.rows || []).map((b: Record<string, unknown>) => ({
+        id: String(b.id || ""),
         service: b.service_name,
         provider: b.provider_name || "Service Provider",
         providerId: b.provider_id,
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
         status: b.status || "Requested",
         rating: b.rating,
         reviewComment: b.review_comment,
-        createdAt: b.created_at ? new Date(b.created_at).toISOString() : new Date().toISOString()
+        createdAt: b.created_at ? new Date(String(b.created_at)).toISOString() : new Date().toISOString()
       }));
     } else {
       userObj.addresses = [];
@@ -124,10 +124,10 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in google auth API:", error);
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { consumeMobileHandoff } from "@/lib/googleOAuthTransactions";
 
 export async function POST(request: Request) {
-  const rateLimit = checkRateLimit(request, 10, 5 * 60 * 1000);
+  const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) return rateLimit.response;
 
   try {

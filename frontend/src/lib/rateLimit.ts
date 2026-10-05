@@ -1,98 +1,78 @@
 import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import {
+  InMemoryStore,
+  UpstashRedisStore,
+  PostgresRateLimitStore,
+  setPostgresQueryFn,
+  memoryFallbackStore,
+  resolveStore,
+  getClientIp,
+  checkIpRateLimit,
+  checkEmailRateLimit,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from "./rateLimitCore";
 
-interface RateLimitStore {
-  count: number;
-  resetTime: number;
+// Initialize PostgreSQL store with the DB query runner
+setPostgresQueryFn(query);
+
+export interface RateLimitResult {
+  isAllowed: boolean;
+  remaining: number;
+  retryAfter: number;
+  totalPoints: number;
 }
 
-const ipStore = new Map<string, RateLimitStore>();
-
-// Cleanup expired entries periodically (every 5 minutes)
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [ip, data] of ipStore.entries()) {
-      if (now > data.resetTime) {
-        ipStore.delete(ip);
-      }
-    }
-  }, 5 * 60 * 1000);
+export interface IRateLimitStore {
+  name: string;
+  increment(key: string, windowSeconds: number): Promise<{ points: number; retryAfter: number }>;
+  reset(key: string): Promise<void>;
+  get(key: string): Promise<{ points: number; retryAfter: number }>;
 }
 
-export function resetRateLimit(ip?: string): void {
-  if (ip) {
-    ipStore.delete(ip);
-  } else {
-    ipStore.clear();
-  }
-}
-
-export function getClientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
-  }
-  const cfIp = request.headers.get("cf-connecting-ip");
-  if (cfIp) {
-    return cfIp.trim();
-  }
-  return "127.0.0.1";
-}
+export {
+  InMemoryStore,
+  UpstashRedisStore,
+  PostgresRateLimitStore,
+  memoryFallbackStore,
+  resolveStore,
+  getClientIp,
+  checkIpRateLimit,
+  checkEmailRateLimit,
+  recordLoginFailure,
+  recordLoginSuccess,
+};
 
 /**
- * Enforces rate limiting per IP address.
- * @param request The incoming HTTP request
- * @param limit Maximum allowed attempts (default: 5)
- * @param windowMs Window duration in milliseconds (default: 15 minutes)
+ * Compatibility wrapper for endpoints using checkRateLimit(request, limit, windowMs).
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   request: Request,
-  limit: number = 5,
-  windowMs: number = 5 * 60 * 1000
-): {
+  limit: number = 120,
+  windowMs: number = 60 * 1000
+): Promise<{
   isAllowed: boolean;
   remaining: number;
   limit: number;
   resetTime: number;
   response?: NextResponse;
-} {
-  const ip = getClientIp(request);
-  const now = Date.now();
-  const record = ipStore.get(ip);
+}> {
+  const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+  const result = await checkIpRateLimit(request, limit, windowSeconds);
 
-  if (!record || now > record.resetTime) {
-    ipStore.set(ip, {
-      count: 1,
-      resetTime: now + windowMs,
-    });
-    return {
-      isAllowed: true,
-      remaining: limit - 1,
-      limit,
-      resetTime: now + windowMs,
-    };
-  }
-
-  if (record.count >= limit) {
-    const retryAfterSeconds = Math.ceil((record.resetTime - now) / 1000);
+  if (!result.isAllowed) {
     const response = NextResponse.json(
       {
-        error: `Too many login attempts. Please try again in ${Math.ceil(
-          retryAfterSeconds / 60
-        )} minute(s). (Max ${limit} attempts allowed)`,
-        retryAfterSeconds,
+        error: `Too many requests. Please try again in ${result.retryAfter} second(s).`,
+        retryAfter: result.retryAfter,
       },
       {
         status: 429,
         headers: {
-          "Retry-After": String(retryAfterSeconds),
+          "Retry-After": String(result.retryAfter),
           "X-RateLimit-Limit": String(limit),
           "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": String(Math.ceil(record.resetTime / 1000)),
         },
       }
     );
@@ -101,16 +81,20 @@ export function checkRateLimit(
       isAllowed: false,
       remaining: 0,
       limit,
-      resetTime: record.resetTime,
+      resetTime: Date.now() + result.retryAfter * 1000,
       response,
     };
   }
 
-  record.count += 1;
   return {
     isAllowed: true,
-    remaining: limit - record.count,
+    remaining: result.remaining,
     limit,
-    resetTime: record.resetTime,
+    resetTime: Date.now() + windowSeconds * 1000,
   };
 }
+
+export function resetRateLimit(): void {
+  memoryFallbackStore.clear();
+}
+

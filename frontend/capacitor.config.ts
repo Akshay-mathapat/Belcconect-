@@ -10,6 +10,9 @@ const config: CapacitorConfig = {
     url: serverUrl,
     cleartext: serverUrl.startsWith('http://'),
   },
+  android: {
+    path: '../android',
+  },
 };
 
 export default config;

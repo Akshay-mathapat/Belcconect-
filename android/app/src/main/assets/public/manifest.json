@@ -1,21 +1,32 @@
 {
-  "name": "CityConnect Services Marketplace",
-  "short_name": "CityConnect",
-  "description": "Local On-Demand Services Marketplace & Real-Time Communications",
+  "name": "BelConnect",
+  "short_name": "BelConnect",
+  "description": "A trusted platform for discovering and booking verified local professionals.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "categories": ["business", "utilities", "lifestyle"],
   "icons": [
     {
-      "src": "/BelConnectLogo.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/BelConnectLogo.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

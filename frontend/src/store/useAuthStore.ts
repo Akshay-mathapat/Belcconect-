@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/authFetch";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { nativeCallBridge } from "@/lib/nativeCallBridge";
+import { recreateChatSocket, disconnectChatSocket } from "@/lib/socketChat";
 
 export type UserRole = "user" | "provider" | "job_provider";
 
@@ -70,7 +71,13 @@ interface AuthState {
     email: string;
     password?: string;
     role?: UserRole;
-  }) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
+  }) => Promise<{
+    success: boolean;
+    error?: string;
+    user?: AuthUser;
+    status?: number;
+    retryAfterSeconds?: number;
+  }>;
 
   updateProfile: (data: {
     name?: string;
@@ -99,6 +106,7 @@ interface AuthState {
 
   addBooking: (booking: Omit<BookingItem, "id">) => void;
   fetchUserBookings: () => Promise<void>;
+  fetchUserAddresses: () => Promise<void>;
 
   dismissTour: () => void;
   restartTour: () => void;
@@ -142,7 +150,7 @@ export const useAuthStore = create<AuthState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              password: password || "password123",
+              password,
               name,
               phone,
               role
@@ -150,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user: AuthUser = { bookings: [], isFirstLogin: true, ...data.user, token: data.token };
+            const user: AuthUser = { bookings: [], addresses: [], isFirstLogin: true, ...data.user, token: data.token };
             if (typeof window !== "undefined") {
               if (data.token) {
                 localStorage.setItem("auth_token", data.token);
@@ -166,6 +174,13 @@ export const useAuthStore = create<AuthState>()(
               usersList: [...state.usersList, user],
               currentUser: user
             }));
+
+            // If user has customer role, load saved addresses & bookings in background
+            if (user.role === "user") {
+              get().fetchUserAddresses().catch(() => {});
+              get().fetchUserBookings().catch(() => {});
+            }
+
             return { success: true, user };
           } else {
             return { success: false, error: data.error || "Registration failed" };
@@ -177,18 +192,36 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loginUser: async ({ email, password }) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
         try {
           const res = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              password: password || "password123"
-            })
+              password
+            }),
+            signal: controller.signal
           });
-          const data = await res.json();
+          clearTimeout(timeoutId);
+
+          let data: any = {};
+          try {
+            data = await res.json();
+          } catch {
+            data = {};
+          }
+
           if (res.ok && data.success) {
-            const user = { bookings: [], ...data.user, token: data.token };
+            const user: AuthUser = {
+              bookings: [],
+              addresses: [],
+              ...data.user,
+              token: data.token
+            };
+
             if (typeof window !== "undefined") {
               if (data.token) {
                 localStorage.setItem("auth_token", data.token);
@@ -199,18 +232,80 @@ export const useAuthStore = create<AuthState>()(
                 localStorage.setItem("cityconnect_user_id", user.id);
                 localStorage.setItem("user_id", user.id);
               }
+              // Immediately reconnect chat socket with fresh credentials
+              try {
+                recreateChatSocket(user.id);
+              } catch (e) {}
             }
+
             set((state) => {
-              const list = state.usersList.map((u) => u.id === user.id ? user : u);
+              const list = state.usersList.map((u) => (u.id === user.id ? user : u));
               return { currentUser: user, usersList: list };
             });
-            return { success: true, user };
-          } else {
-            return { success: false, error: data.error || "Login failed" };
+
+            // If user has customer role, load saved addresses & bookings in background
+            if (user.role === "user") {
+              get().fetchUserAddresses().catch(() => {});
+              get().fetchUserBookings().catch(() => {});
+            }
+
+            return { success: true, user, status: 200 };
           }
-        } catch (e) {
+
+          // Handle specific HTTP failure statuses
+          const retryAfterHeader = res.headers.get("Retry-After");
+          const retryAfterSeconds = retryAfterHeader
+            ? parseInt(retryAfterHeader, 10)
+            : data.retryAfterSeconds;
+
+          if (res.status === 401) {
+            return {
+              success: false,
+              status: 401,
+              error: data.error || "Incorrect email or password. Please try again."
+            };
+          }
+
+          if (res.status === 429) {
+            return {
+              success: false,
+              status: 429,
+              retryAfterSeconds,
+              error:
+                data.error ||
+                `Too many login attempts. Please try again in ${retryAfterSeconds || 60} seconds.`
+            };
+          }
+
+          if (res.status === 503) {
+            return {
+              success: false,
+              status: 503,
+              retryAfterSeconds,
+              error: "Database or server connection is busy. Please try again in a few moments."
+            };
+          }
+
+          return {
+            success: false,
+            status: res.status,
+            error: data.error || "Login failed. Please check your credentials."
+          };
+        } catch (e: any) {
+          clearTimeout(timeoutId);
           console.error("Login API error:", e);
-          return { success: false, error: "Network or Server error. Please check database connection." };
+          if (e.name === "AbortError") {
+            return {
+              success: false,
+              status: 408,
+              error: "Login request timed out after 20 seconds. Please check your network connection."
+            };
+          }
+          return {
+            success: false,
+            status: 0,
+            error: "Unable to connect to the server. Please check your network connection."
+          };
         }
       },
 
@@ -377,6 +472,31 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      fetchUserAddresses: async () => {
+        const current = get().currentUser;
+        if (!current) return;
+
+        try {
+          const res = await authFetch("/api/addresses");
+          if (res.ok) {
+            const addresses = await res.json();
+            if (!Array.isArray(addresses)) return;
+
+            set((state) => {
+              const latestCurrent = get().currentUser || current;
+              if (!latestCurrent || latestCurrent.id !== current.id) return state;
+              const updatedUser = { ...latestCurrent, addresses };
+              return {
+                currentUser: updatedUser,
+                usersList: state.usersList.map((u) => u.id === latestCurrent.id ? updatedUser : u)
+              };
+            });
+          }
+        } catch (e) {
+          // Ignore transient network errors
+        }
+      },
+
       dismissTour: () => {
         const current = get().currentUser;
         if (!current) return;
@@ -409,6 +529,9 @@ export const useAuthStore = create<AuthState>()(
             localStorage.removeItem("cityconnect_auth_token");
             localStorage.removeItem("cityconnect_user_id");
             localStorage.removeItem("user_id");
+            try {
+              disconnectChatSocket();
+            } catch (e) {}
           }
         } catch (e) {}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { authFetch } from "@/lib/authFetch";
 import {
   Bell,
   CheckCheck,
@@ -44,28 +45,25 @@ export default function NotificationBell() {
    * There is intentionally NO polling here.
    */
   const fetchNotifications = useCallback(async () => {
-    if (!userId) {
+    if (!currentUser?.id && !userId) {
       setNotifications([]);
       return;
     }
 
+    // Pause network fetch if browser tab is hidden in background
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
     try {
-      const res = await fetch(
-        `/api/notifications?userId=${encodeURIComponent(userId)}`,
-        {
-          headers: {
-            "x-user-id": userId,
-          },
-          cache: "no-store",
-        }
-      );
+      const res = await authFetch("/api/notifications");
+
+      if (res.status === 401) {
+        // Stop on 401 without looping
+        return;
+      }
 
       if (!res.ok) {
-        console.warn(
-          "Failed to fetch notifications:",
-          res.status,
-          res.statusText
-        );
         return;
       }
 
@@ -75,9 +73,9 @@ export default function NotificationBell() {
         setNotifications(data);
       }
     } catch (err) {
-      console.warn("Failed to fetch notifications:", err);
+      // Quiet fail to prevent console storm
     }
-  }, [userId]);
+  }, [currentUser?.id, userId]);
 
   /**
    * Initial notification load.
@@ -173,40 +171,19 @@ export default function NotificationBell() {
         )
       );
 
-      const res = await fetch(
-        `/api/notifications/${notifId}/read`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-id": userId,
-          },
-        }
-      );
+      const res = await authFetch(`/api/notifications/${notifId}/read`, {
+        method: "PATCH"
+      });
 
-      /**
-       * Keep your existing fallback route.
-       */
       if (!res.ok) {
-        const fallbackRes = await fetch(
-          "/api/notifications",
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              "x-user-id": userId,
-            },
-            body: JSON.stringify({
-              id: notifId,
-              userId,
-            }),
-          }
-        );
+        const fallbackRes = await authFetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: notifId })
+        });
 
         if (!fallbackRes.ok) {
-          throw new Error(
-            "Failed to mark notification as read"
-          );
+          throw new Error("Failed to mark notification as read");
         }
       }
 
@@ -216,15 +193,8 @@ export default function NotificationBell() {
         router.push("/account");
       }
     } catch (error) {
-      /**
-       * Roll back optimistic update when server update fails.
-       */
       setNotifications(previousNotifications);
-
-      console.error(
-        "Error marking notification read:",
-        error
-      );
+      console.warn("Error marking notification read:", error);
     }
   };
 
@@ -234,9 +204,6 @@ export default function NotificationBell() {
     const previousNotifications = notifications;
 
     try {
-      /**
-       * Optimistic UI update
-       */
       setNotifications((prev) =>
         prev.map((notification) => ({
           ...notification,
@@ -244,22 +211,14 @@ export default function NotificationBell() {
         }))
       );
 
-      const res = await fetch("/api/notifications", {
+      const res = await authFetch("/api/notifications", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId,
-        },
-        body: JSON.stringify({
-          all: true,
-          userId,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true })
       });
 
       if (!res.ok) {
-        throw new Error(
-          "Failed to mark all notifications as read"
-        );
+        throw new Error("Failed to mark all notifications as read");
       }
     } catch (error) {
       /**

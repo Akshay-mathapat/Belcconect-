@@ -6,7 +6,7 @@ import { parseAndValidate, registerSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
-  const rateLimit = checkRateLimit(request, 5, 5 * 60 * 1000);
+  const rateLimit = await checkRateLimit(request, 5, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
@@ -82,10 +82,10 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in register API:", error);
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

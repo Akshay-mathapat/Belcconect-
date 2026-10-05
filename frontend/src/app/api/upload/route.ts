@@ -6,7 +6,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   // 1. Rate Limiting Check (Max 10 upload attempts per 15 minutes)
-  const rateLimit = checkRateLimit(req, 10, 15 * 60 * 1000);
+  const rateLimit = await checkRateLimit(req, 10, 15 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
@@ -56,8 +56,8 @@ export async function POST(req: Request) {
       fileType: file.type,
       size: file.size
     });
-  } catch (error: any) {
-    console.error("Upload error:", error?.message || "Storage error");
+  } catch (error: unknown) {
+    console.error("Upload error:", error instanceof Error ? error.message : "Storage error");
     return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
   }
 }

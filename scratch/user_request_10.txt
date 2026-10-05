@@ -1,0 +1,46 @@
+<USER_REQUEST>
+You are continuing a production-hardening pass on the BelConnect/CityConnect monorepo (Next.js frontend in /frontend on Vercel; Socket.IO + Express signaling server in /backend/src/server.js on Render at https://belcconect-backend.onrender.com; PostgreSQL).
+
+CONTEXT
+A previous pass already did these correctly. Do NOT redo them: secret normalizer + SHA-256 fingerprint logging (frontend/src/lib/secretNormalizer.ts, backend/src/secretNormalizer.js), the single UNION ALL login query with LOWER(email) indexes (migration 022), the Argon2 concurrency queue and OWASP parameters, backend pool SSL/max/error handler, Socket.IO ping tuning, the /health DB check, and timingSafeEqual on the broadcast endpoints.
+
+The tasks below were NOT done or were done wrong. Verify each in the current code first, then fix it.
+
+RULES
+- Never print, log or commit secret values. Fingerprints only (first 8 hex chars of SHA-256), in server logs only.
+- No hardcoded secret fallbacks. No DDL or migrations from API requests; schema changes go in /migrations as new numbered SQL files.
+- Keep existing API response shapes unless you update every caller.
+- Do not touch /android or the APK files.
+- Make the smallest correct change per task, and tell me what you changed and why.
+
+TASKS
+
+1. Shared rate limiter (frontend/src/lib/rateLimit.ts)
+   - Today it uses only in-memory Map objects. Migration 021 creates a rate_limits table that no code uses. In-memory counters are per Vercel instance, so limits are inconsistent.
+   - Implement a shared store: use Upstash Redis if UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set; otherwise use the rate_limits table (atomic INSERT ... ON CONFLICT DO UPDATE, with expiry handling and a cheap cleanup); otherwise fall back to in-memory with a one-time startup warning.
+   - Keep the policy: per-IP ceiling about 120 requests/min, and per-normalized-email failure limit of 10 failures per 15 minutes, counting only failed attempts and resetting on success.
+   - Never default every 
+<truncated 4367 bytes>
+eLimit module (the pure logic and the store interface), covering: under the limit, over the limit with Retry-After, per-email failures only, reset on success, shared-store failure fails open, and the no-IP fallback key.
+
+10. Verification (required)
+   - Run ESLint on frontend and backend, tsc --noEmit, and all unit tests. Paste the actual output, not a summary.
+   - Seed ~300 users into a STAGING or local database only (tests/load/seed_staging_users.js already exists and must keep its production guard), then run tests/load/concurrency_300_users.js. Paste the real numbers: login p95, error rate, count of "invalid signature" rejections, count of "too many clients" errors.
+   - Pass criteria: login p95 under 2s, error rate under 1%, 0 invalid-signature rejections, 0 DB too-many-clients errors. If a criterion fails, find the cause and fix it, or report it honestly.
+
+FINAL REPORT (required)
+For each task: root cause, files changed, and what you verified. Then list the environment variable NAMES (never values) I must set on Vercel and on Render, including ALLOWED_ORIGIN, ALLOW_VERCEL_PREVIEWS, NEXT_PUBLIC_SIGNALING_URL, UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN if used. End with anything you could not verify. Do not claim a task is done unless you ran the code that proves it.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-03T19:21:07+05:30.
+
+The user's current state is as follows:
+Active Document: c:\belconnect-withoutdocker\CityConnect\docs\ENV_SETUP.md (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- c:\belconnect-withoutdocker\CityConnect\.env (LANGUAGE_UNSPECIFIED)
+- c:\belconnect-withoutdocker\CityConnect\frontend\src\lib\db.ts (LANGUAGE_UNSPECIFIED)
+- c:\belconnect-withoutdocker\CityConnect\loadtest\loadtest.js (LANGUAGE_UNSPECIFIED)
+- c:\belconnect-withoutdocker\CityConnect\tests\load\seed_staging_users.js (LANGUAGE_UNSPECIFIED)
+- c:\belconnect-withoutdocker\CityConnect\tests\load\concurrency_300_users.js (LANGUAGE_UNSPECIFIED)
+</ADDITIONAL_METADATA>

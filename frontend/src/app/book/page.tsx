@@ -214,9 +214,9 @@ function BookingFlow() {
 
       setIsSubmitting(false);
       setStep(6);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Booking submission error:", e);
-      alert(e?.message || t("booking.bookingFailed"));
+      alert((e instanceof Error ? e.message : String(e)) || t("booking.bookingFailed"));
       setIsSubmitting(false);
     }
   };

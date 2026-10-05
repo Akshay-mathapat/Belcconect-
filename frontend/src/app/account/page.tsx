@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, BookingItem } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/common/LanguageSelector";
 import CallButton from "@/components/calls/CallButton";
@@ -57,7 +57,7 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
       return 0;
     }
 
-    let timeStr = booking.time || "12:00 AM";
+    const timeStr = booking.time || "12:00 AM";
     const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
     let hours = 0;
     let minutes = 0;
@@ -84,15 +84,17 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings } = useAuthStore();
+  const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings, fetchUserAddresses } = useAuthStore();
   const { replayTour } = useOnboardingTour();
   const [activeTab, setActiveTab] = useState<"bookings" | "addresses" | "profile">("bookings");
   const { t } = useTranslation();
 
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return useAuthStore.persist.hasHydrated();
+  });
 
   useEffect(() => {
-    setIsHydrated(useAuthStore.persist.hasHydrated());
     const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
     return () => unsub();
   }, []);
@@ -111,9 +113,9 @@ export default function AccountPage() {
       return;
     }
     fetchUserBookings().catch(() => {});
-    // Realtime updates handled via BroadcastChannel syncChannel (5s polling removed)
-    let intervalId: any = null;
+    fetchUserAddresses().catch(() => {});
 
+    // Realtime updates handled via BroadcastChannel syncChannel (5s polling removed)
     let syncChannel: BroadcastChannel | null = null;
     try {
       syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
@@ -125,12 +127,11 @@ export default function AccountPage() {
     } catch (e) {}
 
     return () => {
-      clearInterval(intervalId);
       if (syncChannel) {
         try { syncChannel.close(); } catch (e) {}
       }
     };
-  }, [fetchUserBookings, currentUser, router, logout, isHydrated]);
+  }, [fetchUserBookings, fetchUserAddresses, currentUser, router, logout, isHydrated]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
@@ -266,13 +267,14 @@ export default function AccountPage() {
   };
 
   // Handle Rebook - Creates new booking row in database for Provider Dashboard
-  const handleRebook = async (booking: any) => {
+  const handleRebook = async (booking: BookingItem | Record<string, unknown> | string) => {
     try {
       const todayStr = new Date().toISOString().split("T")[0];
-      const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "Service");
-      const providerId = typeof booking === "object" && booking.providerId ? booking.providerId : "";
-      const providerName = typeof booking === "object" && booking.providerName ? booking.providerName : "Service Provider";
-      const category = typeof booking === "object" && booking.category ? booking.category : "General";
+      const bObj = typeof booking === "object" && booking ? (booking as Record<string, unknown>) : null;
+      const serviceName = typeof booking === "string" ? booking : (bObj ? String(bObj.service || bObj.serviceName || "Service") : "Service");
+      const providerId = bObj && bObj.providerId ? String(bObj.providerId) : "";
+      const providerName = bObj && bObj.providerName ? String(bObj.providerName) : "Service Provider";
+      const category = bObj && bObj.category ? String(bObj.category) : "General";
       const token = currentUser?.token;
 
       if (!token) {
@@ -315,7 +317,8 @@ export default function AccountPage() {
       }
     } catch (err) {
       console.error("Error rebooking service:", err);
-      const serviceName = typeof booking === "string" ? booking : (booking.service || booking.serviceName || "");
+      const bObj = typeof booking === "object" && booking ? (booking as Record<string, unknown>) : null;
+      const serviceName = typeof booking === "string" ? booking : (bObj ? String(bObj.service || bObj.serviceName || "") : "");
       router.push(`/services?q=${encodeURIComponent(serviceName)}`);
     }
   };

@@ -1,49 +1,33 @@
 "use client";
 
 import { getClientToken, triggerAuthExpired } from "@/lib/authFetch";
-
 import { io, Socket } from "socket.io-client";
-import { getAuthToken } from "@/lib/jwt";
+import { getSignalingUrl } from "@/lib/signalingUrl";
+
+export { getSignalingUrl };
 
 let chatSocket: Socket | null = null;
-
-// Use NEXT_PUBLIC_SIGNALING_URL as the single source of truth.
-// Falls back to localhost:4001 ONLY when browser is also on localhost (desktop dev).
-export const getSignalingUrl = (): string => {
-  const envUrl = process.env.NEXT_PUBLIC_SIGNALING_URL?.trim();
-  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
-    return envUrl;
-  }
-  if (typeof window !== "undefined") {
-    const browserHost = window.location.hostname;
-    if (browserHost === "localhost" || browserHost === "127.0.0.1") {
-      return "http://127.0.0.1:4001";
-    }
-    if (
-      browserHost.includes("vercel.app") ||
-      browserHost.includes("belcconect") ||
-      browserHost.includes("cityconnect") ||
-      (!browserHost.endsWith(".local") &&
-        !browserHost.startsWith("192.168.") &&
-        !browserHost.startsWith("10."))
-    ) {
-      return "https://belcconect-backend.onrender.com";
-    }
-  }
-  return "https://belcconect-backend.onrender.com";
-};
+let activeUserId: string | undefined;
 
 export const getChatSocket = (userId?: string): Socket => {
-  const token = getClientToken();
+  if (userId) {
+    activeUserId = userId;
+  }
+
   const serverUrl = getSignalingUrl();
+  const token = getClientToken();
 
   if (!chatSocket) {
     chatSocket = io(serverUrl, {
       autoConnect: Boolean(token),
       transports: ["websocket", "polling"],
-      auth: {
-        token: token || "",
-        userId: userId || ""
+      // Dynamic auth callback: ensures every reconnection uses the CURRENT client token
+      auth: (cb) => {
+        const freshToken = getClientToken();
+        cb({
+          token: freshToken || undefined,
+          userId: activeUserId || undefined
+        });
       },
       reconnection: Boolean(token),
       reconnectionAttempts: 5,
@@ -51,7 +35,8 @@ export const getChatSocket = (userId?: string): Socket => {
       reconnectionDelayMax: 5000,
       timeout: 5000
     });
-    (chatSocket as any)._activeUserId = userId;
+
+    (chatSocket as any)._activeUserId = activeUserId;
 
     chatSocket.on("connect_error", (err: any) => {
       const msg = (err?.message || "").toLowerCase();
@@ -59,40 +44,62 @@ export const getChatSocket = (userId?: string): Socket => {
         msg.includes("jwt expired") ||
         msg.includes("token verification failed") ||
         msg.includes("authentication failed") ||
-        msg.includes("invalid token")
+        msg.includes("invalid token") ||
+        msg.includes("missing authentication")
       ) {
-        console.warn("[ChatSocket] Authentication failed (expired/invalid token). Halting reconnect.");
+        console.warn("[ChatSocket] Authentication failed. Halting reconnect and triggering auth expiry.");
         if (chatSocket) {
+          try {
+            chatSocket.io.opts.reconnection = false;
+          } catch (e) {}
           chatSocket.disconnect();
-          try { chatSocket.io.opts.reconnection = false; } catch (e) {}
         }
         triggerAuthExpired();
       }
     });
   } else if (userId && (chatSocket as any)._activeUserId !== userId) {
     (chatSocket as any)._activeUserId = userId;
-    (chatSocket.auth as any) = { token: token || "", userId };
+    activeUserId = userId;
     if (chatSocket.connected) {
       chatSocket.disconnect();
     }
     if (token) {
-      try { chatSocket.io.opts.reconnection = true; } catch (e) {}
+      try {
+        chatSocket.io.opts.reconnection = true;
+      } catch (e) {}
       chatSocket.connect();
     }
   }
 
   if (token && !chatSocket.connected) {
-    chatSocket.auth = { token, userId: userId || "" };
+    try {
+      chatSocket.io.opts.reconnection = true;
+    } catch (e) {}
     chatSocket.connect();
   }
 
   return chatSocket;
 };
 
-export function disconnectChatSocket() {
+/**
+ * Recreates and reconnects the chat socket with fresh credentials.
+ * Call this immediately upon successful login.
+ */
+export function recreateChatSocket(userId?: string): Socket {
+  disconnectChatSocket();
+  return getChatSocket(userId);
+}
+
+/**
+ * Fully disconnects the chat socket and releases listeners.
+ * Call this on logout or session expiration.
+ */
+export function disconnectChatSocket(): void {
   if (chatSocket) {
     chatSocket.removeAllListeners();
     chatSocket.disconnect();
     chatSocket = null;
+    activeUserId = undefined;
   }
 }
+

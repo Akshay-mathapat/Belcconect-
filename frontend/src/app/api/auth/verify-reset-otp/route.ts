@@ -7,7 +7,7 @@ import { hashOtpWithHmac } from "@/lib/email";
 
 export async function POST(request: Request) {
   // 1. Rate Limiting Check (Max 5 verification attempts per 5 minutes per IP)
-  const rateLimit = checkRateLimit(request, 5, 5 * 60 * 1000);
+  const rateLimit = await checkRateLimit(request, 5, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       success: true,
       resetToken: rawResetToken
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in verify-reset-otp API:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },

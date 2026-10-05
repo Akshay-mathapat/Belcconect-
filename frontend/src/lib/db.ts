@@ -304,21 +304,57 @@ export function isDatabaseUnavailableError(
   );
 }
 
+export const isDatabaseExhaustionError = isDatabaseUnavailableError;
+
 /**
- * Hash new passwords using Argon2id.
+ * Concurrency limiter for Argon2 operations.
+ * Prevents memory exhaustion bursts when 300+ users log in concurrently.
+ */
+class Argon2ConcurrencyLimiter {
+  private active = 0;
+  private queue: Array<() => void> = [];
+
+  constructor(private maxConcurrent: number = 4) {}
+
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.active >= this.maxConcurrent) {
+      await new Promise<void>((resolve) => this.queue.push(resolve));
+    }
+    this.active++;
+    try {
+      return await fn();
+    } finally {
+      this.active--;
+      const next = this.queue.shift();
+      if (next) next();
+    }
+  }
+}
+
+const argon2Limiter = new Argon2ConcurrencyLimiter(4);
+
+/**
+ * Hash new passwords using Argon2id with OWASP recommended minimum parameters:
+ * type: argon2id, memoryCost: 19456 KiB (19 MiB), timeCost: 2, parallelism: 1
  */
 export async function hashPassword(
   password: string
 ): Promise<string> {
-  return argon2.hash(password, {
-    type: argon2.argon2id,
-  });
+  return argon2Limiter.run(() =>
+    argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 19456,
+      timeCost: 2,
+      parallelism: 1,
+    })
+  );
 }
 
 /**
  * Verify an account password.
  *
  * New/current passwords use Argon2.
+ * Parameters are stored inside the hash and respected by argon2.verify.
  *
  * SHA-256 support is retained only for compatibility with
  * old seeded/demo accounts.
@@ -337,10 +373,7 @@ export async function verifyPassword(
     hash.startsWith("$argon2d$")
   ) {
     try {
-      return await argon2.verify(
-        hash,
-        password
-      );
+      return await argon2Limiter.run(() => argon2.verify(hash, password));
     } catch {
       return false;
     }
