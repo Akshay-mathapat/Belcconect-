@@ -343,7 +343,8 @@ export async function POST(request: Request) {
       console.error("Error looking up service category:", e);
     }
 
-    const bookingId = `B-${Math.floor(1000 + Math.random() * 9000)}`;
+    const seqRes = await query("SELECT nextval('booking_number_seq') AS n");
+const bookingId = `B-${seqRes.rows[0].n}`;
 
     const finalDestAddress = destinationAddress || address || "No address provided";
 
@@ -421,6 +422,6 @@ snapDestInstructions
     return NextResponse.json({ success: true, booking: mapRowToBooking(insertedRes.rows[0]) });
   } catch (error: any) {
     console.error("Error creating booking:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Could not create booking" }, { status: 500 });
   }
 }
