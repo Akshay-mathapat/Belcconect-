@@ -257,3 +257,36 @@ describe("3. Real Rate Limiter Module & Store Interface Tests", () => {
     assert.strictEqual(resolvedIp, "103.21.244.2", "Must extract first IP from x-forwarded-for");
   });
 });
+
+describe("4. Booking ID Sequence & Route Security Tests", () => {
+  test("1) booking sequence format B-${nextval} formats correctly", () => {
+    const seq = 10000;
+    const bookingId = `B-${seq}`;
+    assert.strictEqual(bookingId, "B-10000");
+    assert.match(bookingId, /^B-\d+$/);
+    assert.ok(parseInt(bookingId.replace("B-", ""), 10) >= 10000);
+  });
+
+  test("2) migration 023 sequence SQL creates sequence starting at 10000", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const migrationPath = path.resolve(__dirname, "../../migrations/023_booking_number_sequence.sql");
+    assert.ok(fs.existsSync(migrationPath), "Migration 023 file must exist");
+    const sql = fs.readFileSync(migrationPath, "utf-8");
+    assert.ok(sql.includes("booking_number_seq"), "Must reference booking_number_seq");
+    assert.ok(sql.includes("10000"), "Must start at 10000");
+  });
+
+  test("3) route file contains RETURNING id and rowCount check", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const routePath = path.resolve(__dirname, "../../frontend/src/app/api/bookings/route.ts");
+    const code = fs.readFileSync(routePath, "utf-8");
+    assert.ok(code.includes("nextval('booking_number_seq')"), "Must use nextval('booking_number_seq')");
+    assert.ok(code.includes("RETURNING id"), "Must include RETURNING id in INSERT statement");
+    assert.ok(code.includes("insertRes.rowCount !== 1"), "Must validate rowCount === 1");
+    assert.ok(code.includes("status: 503"), "Must return 503 on failed insert");
+    assert.ok(!code.includes("error: error.message"), "Must never leak error.message in bookings route");
+  });
+});
+

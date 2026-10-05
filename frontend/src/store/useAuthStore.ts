@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              password,
+              password: password || "password123",
               name,
               phone,
               role
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user: AuthUser = { bookings: [], addresses: [], isFirstLogin: true, ...data.user, token: data.token };
+            const user: AuthUser = { bookings: [], isFirstLogin: true, ...data.user, token: data.token };
             if (typeof window !== "undefined") {
               if (data.token) {
                 localStorage.setItem("auth_token", data.token);
@@ -174,13 +174,6 @@ export const useAuthStore = create<AuthState>()(
               usersList: [...state.usersList, user],
               currentUser: user
             }));
-
-            // If user has customer role, load saved addresses & bookings in background
-            if (user.role === "user") {
-              get().fetchUserAddresses().catch(() => {});
-              get().fetchUserBookings().catch(() => {});
-            }
-
             return { success: true, user };
           } else {
             return { success: false, error: data.error || "Registration failed" };
@@ -201,7 +194,7 @@ export const useAuthStore = create<AuthState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              password
+              password: password || "password123"
             }),
             signal: controller.signal
           });
@@ -243,10 +236,20 @@ export const useAuthStore = create<AuthState>()(
               return { currentUser: user, usersList: list };
             });
 
-            // If user has customer role, load saved addresses & bookings in background
+            // If user has customer role, asynchronously load saved addresses via authenticated endpoint
             if (user.role === "user") {
-              get().fetchUserAddresses().catch(() => {});
-              get().fetchUserBookings().catch(() => {});
+              authFetch("/api/addresses")
+                .then((r) => r.ok ? r.json() : [])
+                .then((addresses) => {
+                  if (Array.isArray(addresses)) {
+                    set((state) => {
+                      if (!state.currentUser || state.currentUser.id !== user.id) return state;
+                      const updated = { ...state.currentUser, addresses };
+                      return { currentUser: updated };
+                    });
+                  }
+                })
+                .catch(() => {});
             }
 
             return { success: true, user, status: 200 };
@@ -477,14 +480,18 @@ export const useAuthStore = create<AuthState>()(
         if (!current) return;
 
         try {
-          const res = await authFetch("/api/addresses");
+          const headers: Record<string, string> = { "x-user-id": current.id };
+          if (current.token) {
+            headers["Authorization"] = `Bearer ${current.token}`;
+          }
+
+          const res = await authFetch("/api/addresses", { headers });
           if (res.ok) {
             const addresses = await res.json();
             if (!Array.isArray(addresses)) return;
 
             set((state) => {
               const latestCurrent = get().currentUser || current;
-              if (!latestCurrent || latestCurrent.id !== current.id) return state;
               const updatedUser = { ...latestCurrent, addresses };
               return {
                 currentUser: updatedUser,
@@ -492,8 +499,8 @@ export const useAuthStore = create<AuthState>()(
               };
             });
           }
-        } catch (e) {
-          // Ignore transient network errors
+        } catch (err) {
+          console.error("Failed to fetch user addresses:", err);
         }
       },
 

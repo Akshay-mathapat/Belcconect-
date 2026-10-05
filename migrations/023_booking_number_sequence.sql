@@ -1,0 +1,1 @@
+CREATE SEQUENCE IF NOT EXISTS booking_number_seq START 10000;
