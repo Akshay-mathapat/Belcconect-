@@ -99,15 +99,17 @@ export default function AccountPage() {
     return () => unsub();
   }, []);
 
+  const currentUserId = currentUser?.id;
+
   useEffect(() => {
     if (!isHydrated) return;
 
-    if (!currentUser) {
+        if (!currentUserId) {
       router.push("/auth?mode=login&returnTo=/account");
       return;
     }
     // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
-    if (currentUser.id.startsWith("user-")) {
+    if (currentUserId.startsWith("user-")) {
       logout();
       router.push("/auth?mode=login&returnTo=/account");
       return;
@@ -131,7 +133,7 @@ export default function AccountPage() {
         try { syncChannel.close(); } catch (e) {}
       }
     };
-  }, [fetchUserBookings, fetchUserAddresses, currentUser, router, logout, isHydrated]);
+    }, [fetchUserBookings, fetchUserAddresses, currentUserId, router, logout, isHydrated]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
