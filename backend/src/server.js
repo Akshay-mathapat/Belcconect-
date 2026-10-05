@@ -67,6 +67,7 @@ const getCorsOrigin = (origin, callback) => {
     return callback(null, true);
   }
 
+  console.warn("[CORS] Blocked origin: " + cleanOrigin);
   callback(new Error("Not allowed by CORS"));
 };
 
