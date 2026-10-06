@@ -155,3 +155,4 @@ export default function () {
     "4. User bookings fetched (200)": (r) => r.status === 200
   });
 }
+

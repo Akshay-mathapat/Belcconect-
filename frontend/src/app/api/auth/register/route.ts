@@ -5,10 +5,8 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, registerSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  // 1. Rate Limiting Check (Max 5 attempts per 5 minutes, or 100 for verified load tests)
-  const isLoadTest = request.headers.get("x-load-test-key") === "belconnect-loadtest-50";
-  const limit = isLoadTest ? 100 : 5;
-  const rateLimit = await checkRateLimit(request, limit, 5 * 60 * 1000);
+  // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
+  const rateLimit = await checkRateLimit(request, 5, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
