@@ -113,6 +113,7 @@ export default function ProviderMapView({
     if (!socket) return;
 
     const subscribeRoom = () => {
+      socket.emit("booking:subscribe", { bookingId });
     };
 
     subscribeRoom();
@@ -148,6 +149,7 @@ export default function ProviderMapView({
 
     return () => {
       socket.off("connect", subscribeRoom);
+      socket.emit("booking:unsubscribe", { bookingId });
       socket.off("provider:location:update", handleLocationUpdate);
       socket.off("customer:location:update", handleCustomerLocationUpdate);
     };

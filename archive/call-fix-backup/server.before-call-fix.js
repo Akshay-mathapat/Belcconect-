@@ -119,20 +119,12 @@ const getAuthorizedCall = async (callId, userId) => {
 
   try {
     const result = await pool.query(
-  `SELECT
-     c.id,
-     c.caller_id,
-     c.receiver_id,
-     c.booking_id,
-     c.status,
-     b.customer_id,
-     b.provider_id
-   FROM calls c
-   LEFT JOIN bookings b ON b.id = c.booking_id
-   WHERE c.id = $1
-   LIMIT 1`,
-  [callId]
-);
+      `SELECT id, caller_id, receiver_id, booking_id, status
+       FROM calls
+       WHERE id = $1
+       LIMIT 1`,
+      [callId]
+    );
 
     if (result.rows.length === 0) return null;
 
@@ -202,21 +194,7 @@ io.on("connection", (socket) => {
     }
 
     const callerId = authorizedCall.caller_id;
-const receiverId = authorizedCall.receiver_id;
-
-const customerId = authorizedCall.customer_id;
-const providerId = authorizedCall.provider_id;
-
-const endedByRole =
-  userId === customerId
-    ? "customer"
-    : userId === providerId
-      ? "provider"
-      : "unknown";
-
-console.log(
-  `[CALL_ROLE] callId=${callId} userId=${userId} customerId=${customerId} providerId=${providerId} callerId=${callerId} receiverId=${receiverId} endedByRole=${endedByRole}`
-);
+    const receiverId = authorizedCall.receiver_id;
 
     const isTimeout =
       event === "call:timeout" ||
@@ -294,25 +272,23 @@ if (receiverId) {
 
       // The authenticated socket is authoritative.
       endedByUserId: userId,
-endedByRole,
-endedByName: data.endedByName || null,
-endedAt: data.endedAt || new Date().toISOString(),
-timestamp: data.timestamp || Date.now()
+      endedByRole:
+        userId === callerId ? "customer" : "provider",
+
+      endedByName: data.endedByName || null,
+      endedAt: data.endedAt || new Date().toISOString(),
+      timestamp: data.timestamp || Date.now()
     };
 
-    const targetRooms = [];
+    if (callerId) {
+      io.to(`user:${callerId}`).emit("call:ended", payload);
+    }
 
-if (callerId) {
-  targetRooms.push(`user:${callerId}`);
-}
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit("call:ended", payload);
+    }
 
-if (receiverId) {
-  targetRooms.push(`user:${receiverId}`);
-}
-
-if (targetRooms.length > 0) {
-  io.to(targetRooms).emit("call:ended", payload);
-}
+    io.to(`call:${callId}`).emit("call:ended", payload);
   };
 
   socket.on("call:ended", (data) =>
@@ -377,19 +353,18 @@ if (targetRooms.length > 0) {
       }
     };
 
-    const targetRooms = [];
+    if (callerId) {
+      io.to(`user:${callerId}`).emit("call:accept", payload);
+      io.to(`user:${callerId}`).emit("call:signal", payload);
+    }
 
-if (callerId) {
-  targetRooms.push(`user:${callerId}`);
-}
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit("call:accept", payload);
+      io.to(`user:${receiverId}`).emit("call:signal", payload);
+    }
 
-if (receiverId) {
-  targetRooms.push(`user:${receiverId}`);
-}
-
-if (targetRooms.length > 0) {
-  io.to(targetRooms).emit("call:signal", payload);
-}
+    io.to(`call:${callId}`).emit("call:accept", payload);
+    io.to(`call:${callId}`).emit("call:signal", payload);
   });
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
@@ -836,33 +811,31 @@ app.post("/api/signal", (req, res) => {
   const isTerminalSignal = type === "call:ended" || type === "call:reject" || type === "call:end" || type === "call:cancel" || type === "call:missed" || type === "call:busy";
   if (isTerminalSignal) {
     console.log(`[CALL-END] forwarding callId=${call.id} type=${type} reason=${payload.reason}`);
-    if (call.callerId) {
-  console.log(`[CALL-END] target caller room=user:${call.callerId}`);
-}
-
-if (call.receiverId) {
-  console.log(`[CALL-END] target receiver room=user:${call.receiverId}`);
-}
+    if (call.callerId) console.log(`[CALL-END] target caller room=user:${call.callerId}`);
+if (call.receiverId) console.log(`[CALL-END] target receiver room=user:${call.receiverId}`);
   }
 
   if (targetUserIds && Array.isArray(targetUserIds)) {
-  targetUserIds.forEach((uid) => {
-    if (uid) {
-      io.to(`user:${uid}`).emit("call:signal", payload);
+    targetUserIds.forEach((uid) => {
+      if (uid) {
+        io.to(`user:${uid}`).emit("call:signal", payload);
+        io.to(`user:${uid}`).emit(type, payload);
+      }
+    });
+  } else if (targetUserId) {
+    io.to(`user:${targetUserId}`).emit("call:signal", payload);
+    io.to(`user:${targetUserId}`).emit(type, payload);
+  } else {
+    // Fallback: emit to both caller and receiver
+    if (call.callerId) {
+      io.to(`user:${call.callerId}`).emit("call:signal", payload);
+      io.to(`user:${call.callerId}`).emit(type, payload);
     }
-  });
-} else if (targetUserId) {
-  io.to(`user:${targetUserId}`).emit("call:signal", payload);
-} else {
-  // Fallback: emit to both caller and receiver
-  if (call.callerId) {
-    io.to(`user:${call.callerId}`).emit("call:signal", payload);
+    if (call.receiverId) {
+      io.to(`user:${call.receiverId}`).emit("call:signal", payload);
+      io.to(`user:${call.receiverId}`).emit(type, payload);
+    }
   }
-
-  if (call.receiverId) {
-    io.to(`user:${call.receiverId}`).emit("call:signal", payload);
-  }
-}
 
   return res.json({ success: true, delivered: true });
 });
@@ -921,20 +894,13 @@ const runStaleCallCleanup = async () => {
           timestamp: Date.now()
         };
 
-        const targetRooms = [];
-
-if (call.caller_id) {
-  targetRooms.push(`user:${call.caller_id}`);
-}
-
-if (call.receiver_id) {
-  targetRooms.push(`user:${call.receiver_id}`);
-}
-
-if (targetRooms.length > 0) {
-  io.to(targetRooms).emit("call:ended", payload);
-}
-
+        if (call.caller_id) {
+          io.to(`user:${call.caller_id}`).emit("call:ended", payload);
+        }
+        if (call.receiver_id) {
+          io.to(`user:${call.receiver_id}`).emit("call:ended", payload);
+        }
+        io.to(`call:${call.id}`).emit("call:ended", payload);
       }
     }
   } catch (err) {

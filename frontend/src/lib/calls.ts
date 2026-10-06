@@ -27,6 +27,8 @@ export interface CallRecord {
   callerId: string;
   receiverId: string;
   bookingId: string;
+  customerId?: string;
+  providerId?: string;
   status: CallStatus;
   startedAt: string;
   answeredAt?: string | null;
@@ -69,8 +71,10 @@ export async function createCallRecord(
 
 export async function getCallById(callId: string): Promise<CallRecord | null> {
   const res = await query(
-    `SELECT c.*, 
-            b.service_name,
+    `SELECT c.*,
+        b.service_name,
+        b.customer_id,
+        b.provider_id,
             COALESCE(cust.name, sp.name, jp.name, 'User') as caller_name,
             COALESCE(cust.avatar, sp.avatar, jp.avatar) as caller_avatar,
             COALESCE(rcust.name, rsp.name, rjp.name, 'User') as receiver_name,
@@ -338,7 +342,9 @@ function mapRowToCallRecord(row: any): CallRecord {
     callerId: row.caller_id,
     receiverId: row.receiver_id,
     bookingId: row.booking_id,
-    status: row.status as CallStatus,
+customerId: row.customer_id,
+providerId: row.provider_id,
+status: row.status as CallStatus,
     startedAt: row.started_at,
     answeredAt: row.answered_at,
     endedAt: row.ended_at,

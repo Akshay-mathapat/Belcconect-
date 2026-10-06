@@ -59,10 +59,23 @@ export async function POST(
       }
     }
 
-    const endedByRole: CallParticipantRole = authUser.userId === call.callerId ? "customer" : "provider";
-    const endedByName = authUser.userId === call.callerId
-      ? (call.callerName || "Customer")
-      : (call.receiverName || "Service Provider");
+    let endedByRole: CallParticipantRole;
+
+if (authUser.userId === call.customerId) {
+  endedByRole = "customer";
+} else if (authUser.userId === call.providerId) {
+  endedByRole = "provider";
+} else {
+  return NextResponse.json(
+    { error: "Forbidden: User role does not match booking participants" },
+    { status: 403 }
+  );
+}
+
+const endedByName =
+  authUser.userId === call.callerId
+    ? (call.callerName || (endedByRole === "customer" ? "Customer" : "Service Provider"))
+    : (call.receiverName || (endedByRole === "customer" ? "Customer" : "Service Provider"));
 
     const updatedCall = await updateCallStatus(callId, newStatus, {
       endReason: reason,
@@ -76,27 +89,18 @@ export async function POST(
     console.log(`[CALL-END] DB terminal update success callId=${callId} status=${newStatus} reason=${reason}`);
 
     const endedAt = updatedCall.endedAt || new Date().toISOString();
-    const signalType = newStatus === "CANCELLED" ? "call:cancel" : "call:end";
-
-    // 1. Canonical call:ended and legacy signal relays (awaited so Vercel does not terminate early)
-    await Promise.allSettled([
-      sendCallSignal({
-        type: "call:ended",
-        targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
-        call: updatedCall,
-        reason,
-        endedByUserId: authUser.userId,
-        endedByRole,
-        endedByName,
-        endedAt
-      }).catch((err) => console.error("[End API] Canonical signal relay failed:", err)),
-
-      sendCallSignal({
-        type: signalType,
-        targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
-        call: updatedCall
-      }).catch((err) => console.error("[End API] Legacy signal relay failed:", err))
-    ]);
+    await sendCallSignal({
+  type: "call:ended",
+  targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
+  call: updatedCall,
+  reason,
+  endedByUserId: authUser.userId,
+  endedByRole,
+  endedByName,
+  endedAt
+}).catch((err) =>
+  console.error("[End API] Canonical signal relay failed:", err)
+);
 
     callSignaling.emitCallEvent({
       type: "call:ended",

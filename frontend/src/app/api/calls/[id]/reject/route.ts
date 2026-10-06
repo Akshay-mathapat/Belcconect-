@@ -38,10 +38,23 @@ export async function POST(
       });
     }
 
-    const endedByRole: CallParticipantRole = authUser.userId === call.callerId ? "customer" : "provider";
-    const endedByName = authUser.userId === call.callerId
-      ? (call.callerName || "Customer")
-      : (call.receiverName || "Service Provider");
+    let endedByRole: CallParticipantRole;
+
+if (authUser.userId === call.customerId) {
+  endedByRole = "customer";
+} else if (authUser.userId === call.providerId) {
+  endedByRole = "provider";
+} else {
+  return NextResponse.json(
+    { error: "Forbidden: User role does not match booking participants" },
+    { status: 403 }
+  );
+}
+
+const endedByName =
+  authUser.userId === call.callerId
+    ? (call.callerName || (endedByRole === "customer" ? "Customer" : "Service Provider"))
+    : (call.receiverName || (endedByRole === "customer" ? "Customer" : "Service Provider"));
 
     const updatedCall = await updateCallStatus(callId, "REJECTED", {
       endReason: "declined",
@@ -57,24 +70,18 @@ export async function POST(
     const endedAt = updatedCall.endedAt || new Date().toISOString();
 
     // 1. Canonical call:ended and legacy signal relays (awaited so Vercel does not terminate before delivery)
-    await Promise.allSettled([
-      sendCallSignal({
-        type: "call:ended",
-        targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
-        call: updatedCall,
-        reason: "declined",
-        endedByUserId: authUser.userId,
-        endedByRole,
-        endedByName,
-        endedAt
-      }).catch((err) => console.error("[Reject API] Canonical signal relay failed:", err)),
-
-      sendCallSignal({
-        type: "call:reject",
-        targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
-        call: updatedCall
-      }).catch((err) => console.error("[Reject API] Legacy signal relay failed:", err))
-    ]);
+    await sendCallSignal({
+  type: "call:ended",
+  targetUserIds: [updatedCall.callerId, updatedCall.receiverId],
+  call: updatedCall,
+  reason: "declined",
+  endedByUserId: authUser.userId,
+  endedByRole,
+  endedByName,
+  endedAt
+}).catch((err) =>
+  console.error("[Reject API] Canonical signal relay failed:", err)
+);
 
     callSignaling.emitCallEvent({
       type: "call:ended",

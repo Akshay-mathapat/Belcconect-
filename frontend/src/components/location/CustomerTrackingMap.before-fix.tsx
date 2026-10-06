@@ -182,6 +182,7 @@ export default function CustomerTrackingMap({
     if (!socket) return;
 
     const subscribeRoom = () => {
+      socket.emit("booking:subscribe", { bookingId });
     };
 
     subscribeRoom();
@@ -227,6 +228,7 @@ export default function CustomerTrackingMap({
 
     return () => {
       socket.off("connect", subscribeRoom);
+      socket.emit("booking:unsubscribe", { bookingId });
       socket.off("provider:location:update", handleLocationUpdate);
     };
   }, [bookingId]);

@@ -222,6 +222,7 @@ export function useLiveLocationBroadcast(
 
     const socket = getSocket();
     if (socket && socket.connected) {
+      socket.emit("booking:subscribe", { bookingId });
     }
 
     // Broadcast Real Position handler
@@ -405,6 +406,7 @@ export function useLiveLocationBroadcast(
         if (!curSocket.connected) {
           curSocket.connect();
         }
+        curSocket.emit("booking:subscribe", { bookingId });
       }
 
       // 4. Force a single high-accuracy getCurrentPosition to send next REAL reading immediately
