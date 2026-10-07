@@ -8,8 +8,8 @@ export async function POST(request: Request) {
   // 1. Load-test authorization
   // Only bypass rate limiting when:
   // - LOAD_TEST_MODE=true
-  // - LOAD_TEST_SECRET exists in the environment
-  // - request header exactly matches the environment secret
+  // - LOAD_TEST_SECRET exists
+  // - request header exactly matches LOAD_TEST_SECRET
   const loadTestHeader =
     request.headers.get("x-load-test-secret") || "";
 
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     Boolean(loadTestEnvSecret) &&
     loadTestHeader === loadTestEnvSecret;
 
-  // Temporary debug logging.
-  // This does NOT print the actual secret.
+  // Temporary debug logging
+  // Does not print the actual secret
   console.log("[LOAD_TEST_DEBUG]", {
     mode: process.env.LOAD_TEST_MODE,
     envSecretSet: Boolean(loadTestEnvSecret),
@@ -34,7 +34,6 @@ export async function POST(request: Request) {
   });
 
   // 2. Normal registration rate limiting
-  // Load-test requests with the correct secret bypass this limiter.
   if (!isLoadTestRequest) {
     const rateLimit = await checkRateLimit(
       request,
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 3. Strict Zod schema validation
+    // 3. Validate request body
     const validation = await parseAndValidate(
       request,
       registerSchema
@@ -69,27 +68,33 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // 4. Check if email already exists in any account table
-    const custCheck = await query(
-      "SELECT id FROM customers WHERE email = $1",
+    // 4. Check email across all account tables in ONE DB query
+    const existingUser = await query(
+      `
+      SELECT 1
+      FROM (
+        SELECT email
+        FROM customers
+        WHERE email = $1
+
+        UNION ALL
+
+        SELECT email
+        FROM service_providers
+        WHERE email = $1
+
+        UNION ALL
+
+        SELECT email
+        FROM job_providers
+        WHERE email = $1
+      ) AS existing_accounts
+      LIMIT 1
+      `,
       [cleanEmail]
     );
 
-    const provCheck = await query(
-      "SELECT id FROM service_providers WHERE email = $1",
-      [cleanEmail]
-    );
-
-    const empCheck = await query(
-      "SELECT id FROM job_providers WHERE email = $1",
-      [cleanEmail]
-    );
-
-    if (
-      custCheck.rows.length > 0 ||
-      provCheck.rows.length > 0 ||
-      empCheck.rows.length > 0
-    ) {
+    if (existingUser.rows.length > 0) {
       return NextResponse.json(
         {
           error:
@@ -99,7 +104,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Generate role-prefixed user ID
+    // 5. Generate role-prefixed unique user ID
     let prefix = "cust";
 
     if (role === "provider") {
@@ -122,7 +127,7 @@ export async function POST(request: Request) {
         name || cleanEmail
       )}`;
 
-    // 8. Select destination table based on role
+    // 8. Select destination table
     let targetTable = "customers";
 
     if (role === "provider") {
@@ -133,13 +138,19 @@ export async function POST(request: Request) {
       targetTable = "job_providers";
     }
 
-    // 9. Insert new account
-    await query(
+    // 9. Insert account and immediately return created row
+    const userRes = await query(
       `
       INSERT INTO ${targetTable}
         (id, email, name, phone, avatar, password_hash)
       VALUES
         ($1, $2, $3, $4, $5, $6)
+      RETURNING
+        id,
+        email,
+        name,
+        phone,
+        avatar
       `,
       [
         userId,
@@ -151,21 +162,6 @@ export async function POST(request: Request) {
       ]
     );
 
-    // 10. Fetch created user
-    const userRes = await query(
-      `
-      SELECT
-        id,
-        email,
-        name,
-        phone,
-        avatar
-      FROM ${targetTable}
-      WHERE id = $1
-      `,
-      [userId]
-    );
-
     const userObj = {
       ...userRes.rows[0],
       role,
@@ -173,7 +169,7 @@ export async function POST(request: Request) {
       bookings: [],
     };
 
-    // 11. Generate JWT
+    // 10. Generate JWT
     const token = signJwtToken({
       userId: userObj.id,
       email: userObj.email,
@@ -181,7 +177,7 @@ export async function POST(request: Request) {
       name: userObj.name,
     });
 
-    // 12. Return user and auth cookie
+    // 11. Return response
     const response = NextResponse.json({
       success: true,
       user: userObj,
