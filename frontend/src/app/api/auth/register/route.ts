@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { query, hashPassword } from "@/lib/db";
+import {
+  query,
+  hashPassword,
+  getClient,
+  getPoolStats,
+} from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, registerSchema } from "@/lib/validations";
@@ -19,8 +24,8 @@ export async function POST(request: Request) {
     Boolean(loadTestEnvSecret) &&
     loadTestHeader === loadTestEnvSecret;
 
-  // Temporary safe debug logging
-  // Does not print the secret itself
+  // Temporary debug logging
+  // Does not print the actual secret
   console.log("[LOAD_TEST_DEBUG]", {
     mode: process.env.LOAD_TEST_MODE,
     envSecretSet: Boolean(loadTestEnvSecret),
@@ -66,36 +71,57 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // 4. Check email across all account tables
-    const emailCheckStart = performance.now();
+    // 4. Measure PostgreSQL connection acquisition separately
+    const poolBefore = getPoolStats();
 
-    const existingUser = await query(
-      `
-      SELECT 1
-      FROM (
-        SELECT email
-        FROM customers
-        WHERE email = $1
+    const acquireStart = performance.now();
+    const client = await getClient();
+    const acquireMs =
+      performance.now() - acquireStart;
 
-        UNION ALL
+    let existingUser;
+    let sqlMs = 0;
 
-        SELECT email
-        FROM service_providers
-        WHERE email = $1
+    try {
+      const queryStart = performance.now();
 
-        UNION ALL
+      existingUser = await client.query(
+        `
+        SELECT 1
+        FROM (
+          SELECT email
+          FROM customers
+          WHERE email = $1
 
-        SELECT email
-        FROM job_providers
-        WHERE email = $1
-      ) AS existing_accounts
-      LIMIT 1
-      `,
-      [cleanEmail]
-    );
+          UNION ALL
 
-    const emailCheckMs =
-      performance.now() - emailCheckStart;
+          SELECT email
+          FROM service_providers
+          WHERE email = $1
+
+          UNION ALL
+
+          SELECT email
+          FROM job_providers
+          WHERE email = $1
+        ) AS existing_accounts
+        LIMIT 1
+        `,
+        [cleanEmail]
+      );
+
+      sqlMs =
+        performance.now() - queryStart;
+
+      console.log("[DB_POOL_PERF]", {
+        acquireMs: Math.round(acquireMs),
+        sqlMs: Math.round(sqlMs),
+        poolBefore,
+        poolDuring: getPoolStats(),
+      });
+    } finally {
+      client.release();
+    }
 
     if (existingUser.rows.length > 0) {
       return NextResponse.json(
@@ -121,7 +147,7 @@ export async function POST(request: Request) {
     const userId =
       `${prefix}-${crypto.randomUUID()}`;
 
-    // 6. Hash password and measure timing
+    // 6. Hash password
     const hashStart = performance.now();
 
     const hashedPassword =
@@ -184,7 +210,7 @@ export async function POST(request: Request) {
       bookings: [],
     };
 
-    // 10. Generate JWT and measure timing
+    // 10. Generate JWT
     const jwtStart = performance.now();
 
     const token = signJwtToken({
@@ -212,12 +238,13 @@ export async function POST(request: Request) {
       path: "/",
     });
 
-    // 12. Total registration timing
+    // 12. Total timing
     const totalMs =
       performance.now() - totalStart;
 
     console.log("[REGISTER_PERF]", {
-      emailCheckMs: Math.round(emailCheckMs),
+      acquireMs: Math.round(acquireMs),
+      sqlMs: Math.round(sqlMs),
       hashMs: Math.round(hashMs),
       insertMs: Math.round(insertMs),
       jwtMs: Math.round(jwtMs),
