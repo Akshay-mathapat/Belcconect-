@@ -5,11 +5,20 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, registerSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
+  // 1. Rate Limiting Check
+// Load testing is allowed only on Preview when the correct secret is supplied.
+const isLoadTestRequest =
+  process.env.LOAD_TEST_MODE === "true" &&
+  Boolean(process.env.LOAD_TEST_SECRET) &&
+  request.headers.get("x-load-test-secret") === process.env.LOAD_TEST_SECRET;
+
+if (!isLoadTestRequest) {
   const rateLimit = await checkRateLimit(request, 5, 5 * 60 * 1000);
+
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }
+}
 
   try {
     // 2. Strict Zod Schema Validation
