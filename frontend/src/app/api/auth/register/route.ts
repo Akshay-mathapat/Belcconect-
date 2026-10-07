@@ -5,11 +5,9 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, registerSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
+  const totalStart = performance.now();
+
   // 1. Load-test authorization
-  // Only bypass rate limiting when:
-  // - LOAD_TEST_MODE=true
-  // - LOAD_TEST_SECRET exists
-  // - request header exactly matches LOAD_TEST_SECRET
   const loadTestHeader =
     request.headers.get("x-load-test-secret") || "";
 
@@ -21,8 +19,8 @@ export async function POST(request: Request) {
     Boolean(loadTestEnvSecret) &&
     loadTestHeader === loadTestEnvSecret;
 
-  // Temporary debug logging
-  // Does not print the actual secret
+  // Temporary safe debug logging
+  // Does not print the secret itself
   console.log("[LOAD_TEST_DEBUG]", {
     mode: process.env.LOAD_TEST_MODE,
     envSecretSet: Boolean(loadTestEnvSecret),
@@ -68,7 +66,9 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // 4. Check email across all account tables in ONE DB query
+    // 4. Check email across all account tables
+    const emailCheckStart = performance.now();
+
     const existingUser = await query(
       `
       SELECT 1
@@ -94,6 +94,9 @@ export async function POST(request: Request) {
       [cleanEmail]
     );
 
+    const emailCheckMs =
+      performance.now() - emailCheckStart;
+
     if (existingUser.rows.length > 0) {
       return NextResponse.json(
         {
@@ -115,10 +118,17 @@ export async function POST(request: Request) {
       prefix = "emp";
     }
 
-    const userId = `${prefix}-${crypto.randomUUID()}`;
+    const userId =
+      `${prefix}-${crypto.randomUUID()}`;
 
-    // 6. Hash password
-    const hashedPassword = await hashPassword(password);
+    // 6. Hash password and measure timing
+    const hashStart = performance.now();
+
+    const hashedPassword =
+      await hashPassword(password);
+
+    const hashMs =
+      performance.now() - hashStart;
 
     // 7. Generate/default avatar
     const defaultAvatar =
@@ -138,7 +148,9 @@ export async function POST(request: Request) {
       targetTable = "job_providers";
     }
 
-    // 9. Insert account and immediately return created row
+    // 9. Insert account and return created row
+    const insertStart = performance.now();
+
     const userRes = await query(
       `
       INSERT INTO ${targetTable}
@@ -162,6 +174,9 @@ export async function POST(request: Request) {
       ]
     );
 
+    const insertMs =
+      performance.now() - insertStart;
+
     const userObj = {
       ...userRes.rows[0],
       role,
@@ -169,7 +184,9 @@ export async function POST(request: Request) {
       bookings: [],
     };
 
-    // 10. Generate JWT
+    // 10. Generate JWT and measure timing
+    const jwtStart = performance.now();
+
     const token = signJwtToken({
       userId: userObj.id,
       email: userObj.email,
@@ -177,7 +194,10 @@ export async function POST(request: Request) {
       name: userObj.name,
     });
 
-    // 11. Return response
+    const jwtMs =
+      performance.now() - jwtStart;
+
+    // 11. Build response
     const response = NextResponse.json({
       success: true,
       user: userObj,
@@ -192,9 +212,28 @@ export async function POST(request: Request) {
       path: "/",
     });
 
+    // 12. Total registration timing
+    const totalMs =
+      performance.now() - totalStart;
+
+    console.log("[REGISTER_PERF]", {
+      emailCheckMs: Math.round(emailCheckMs),
+      hashMs: Math.round(hashMs),
+      insertMs: Math.round(insertMs),
+      jwtMs: Math.round(jwtMs),
+      totalMs: Math.round(totalMs),
+    });
+
     return response;
   } catch (error: unknown) {
+    const totalMs =
+      performance.now() - totalStart;
+
     console.error("Error in register API:", error);
+
+    console.error("[REGISTER_PERF_ERROR]", {
+      totalMs: Math.round(totalMs),
+    });
 
     return NextResponse.json(
       {
