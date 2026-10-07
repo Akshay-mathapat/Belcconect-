@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       prefix = "emp";
     }
 
-    const userId = `${prefix}-${Date.now()}`;
+    const userId = `${prefix}-${crypto.randomUUID()}`;
 
     // 6. Hash password
     const hashedPassword = await hashPassword(password);
