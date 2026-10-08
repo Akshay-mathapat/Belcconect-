@@ -73,7 +73,10 @@ export function getPool(): Pool {
     return globalThis.postgresPool;
   }
 
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL;
 
   if (!connectionString) {
     throw new Error(
