@@ -1,18 +1,27 @@
 import { NextResponse } from "next/server";
+import { createHash, randomUUID } from "crypto";
+
 import {
   query,
   hashPassword,
   getClient,
   getPoolStats,
 } from "@/lib/db";
+
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { parseAndValidate, registerSchema } from "@/lib/validations";
+import {
+  parseAndValidate,
+  registerSchema,
+} from "@/lib/validations";
 
 export async function POST(request: Request) {
   const totalStart = performance.now();
 
-  // 1. Load-test authorization
+  // =========================================================
+  // 1. LOAD TEST AUTHORIZATION
+  // =========================================================
+
   const loadTestHeader =
     request.headers.get("x-load-test-secret") || "";
 
@@ -24,19 +33,47 @@ export async function POST(request: Request) {
     Boolean(loadTestEnvSecret) &&
     loadTestHeader === loadTestEnvSecret;
 
-  // Temporary debug logging
-  // Does not print the actual secret
-  console.log("[LOAD_TEST_DEBUG]", {
-    mode: process.env.LOAD_TEST_MODE,
-    envSecretSet: Boolean(loadTestEnvSecret),
-    headerSecretSet: Boolean(loadTestHeader),
-    envSecretLength: loadTestEnvSecret.length,
-    headerSecretLength: loadTestHeader.length,
-    secretMatches: loadTestHeader === loadTestEnvSecret,
-    bypassActive: isLoadTestRequest,
-  });
+  // Safe fingerprints.
+  // These DO NOT expose the actual secret.
+  const envSecretFingerprint = loadTestEnvSecret
+    ? createHash("sha256")
+        .update(loadTestEnvSecret)
+        .digest("hex")
+        .slice(0, 12)
+    : "";
 
-  // 2. Normal registration rate limiting
+  const headerSecretFingerprint = loadTestHeader
+    ? createHash("sha256")
+        .update(loadTestHeader)
+        .digest("hex")
+        .slice(0, 12)
+    : "";
+
+  // Temporary load-test debugging
+  if (process.env.LOAD_TEST_MODE === "true") {
+    console.log("[LOAD_TEST_DEBUG]", {
+      mode: process.env.LOAD_TEST_MODE,
+
+      envSecretSet: Boolean(loadTestEnvSecret),
+      headerSecretSet: Boolean(loadTestHeader),
+
+      envSecretLength: loadTestEnvSecret.length,
+      headerSecretLength: loadTestHeader.length,
+
+      envSecretFingerprint,
+      headerSecretFingerprint,
+
+      secretMatches:
+        loadTestHeader === loadTestEnvSecret,
+
+      bypassActive: isLoadTestRequest,
+    });
+  }
+
+  // =========================================================
+  // 2. NORMAL REGISTRATION RATE LIMIT
+  // =========================================================
+
   if (!isLoadTestRequest) {
     const rateLimit = await checkRateLimit(
       request,
@@ -44,13 +81,19 @@ export async function POST(request: Request) {
       5 * 60 * 1000
     );
 
-    if (!rateLimit.isAllowed && rateLimit.response) {
+    if (
+      !rateLimit.isAllowed &&
+      rateLimit.response
+    ) {
       return rateLimit.response;
     }
   }
 
   try {
-    // 3. Validate request body
+    // =========================================================
+    // 3. VALIDATE REQUEST
+    // =========================================================
+
     const validation = await parseAndValidate(
       request,
       registerSchema
@@ -69,13 +112,19 @@ export async function POST(request: Request) {
       avatar,
     } = validation.data;
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail =
+      email.trim().toLowerCase();
 
-    // 4. Measure PostgreSQL connection acquisition separately
+    // =========================================================
+    // 4. CHECK FOR EXISTING USER
+    // =========================================================
+
     const poolBefore = getPoolStats();
 
     const acquireStart = performance.now();
+
     const client = await getClient();
+
     const acquireMs =
       performance.now() - acquireStart;
 
@@ -120,6 +169,8 @@ export async function POST(request: Request) {
         poolDuring: getPoolStats(),
       });
     } finally {
+      // Very important:
+      // Always return connection to pool
       client.release();
     }
 
@@ -129,11 +180,16 @@ export async function POST(request: Request) {
           error:
             "An account with this email address already exists. Please login instead.",
         },
-        { status: 409 }
+        {
+          status: 409,
+        }
       );
     }
 
-    // 5. Generate role-prefixed unique user ID
+    // =========================================================
+    // 5. GENERATE UNIQUE USER ID
+    // =========================================================
+
     let prefix = "cust";
 
     if (role === "provider") {
@@ -145,9 +201,12 @@ export async function POST(request: Request) {
     }
 
     const userId =
-      `${prefix}-${crypto.randomUUID()}`;
+      `${prefix}-${randomUUID()}`;
 
-    // 6. Hash password
+    // =========================================================
+    // 6. HASH PASSWORD
+    // =========================================================
+
     const hashStart = performance.now();
 
     const hashedPassword =
@@ -156,14 +215,20 @@ export async function POST(request: Request) {
     const hashMs =
       performance.now() - hashStart;
 
-    // 7. Generate/default avatar
+    // =========================================================
+    // 7. DEFAULT AVATAR
+    // =========================================================
+
     const defaultAvatar =
       avatar ||
       `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
         name || cleanEmail
       )}`;
 
-    // 8. Select destination table
+    // =========================================================
+    // 8. SELECT ACCOUNT TABLE
+    // =========================================================
+
     let targetTable = "customers";
 
     if (role === "provider") {
@@ -174,15 +239,26 @@ export async function POST(request: Request) {
       targetTable = "job_providers";
     }
 
-    // 9. Insert account and return created row
+    // =========================================================
+    // 9. INSERT USER + RETURN CREATED USER
+    // =========================================================
+
     const insertStart = performance.now();
 
     const userRes = await query(
       `
       INSERT INTO ${targetTable}
-        (id, email, name, phone, avatar, password_hash)
+        (
+          id,
+          email,
+          name,
+          phone,
+          avatar,
+          password_hash
+        )
       VALUES
         ($1, $2, $3, $4, $5, $6)
+
       RETURNING
         id,
         email,
@@ -210,7 +286,10 @@ export async function POST(request: Request) {
       bookings: [],
     };
 
-    // 10. Generate JWT
+    // =========================================================
+    // 10. GENERATE JWT
+    // =========================================================
+
     const jwtStart = performance.now();
 
     const token = signJwtToken({
@@ -223,22 +302,34 @@ export async function POST(request: Request) {
     const jwtMs =
       performance.now() - jwtStart;
 
-    // 11. Build response
+    // =========================================================
+    // 11. RESPONSE
+    // =========================================================
+
     const response = NextResponse.json({
       success: true,
       user: userObj,
       token,
     });
 
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 3600,
-      path: "/",
-    });
+    response.cookies.set(
+      "auth_token",
+      token,
+      {
+        httpOnly: true,
+        secure:
+          process.env.NODE_ENV ===
+          "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 3600,
+        path: "/",
+      }
+    );
 
-    // 12. Total timing
+    // =========================================================
+    // 12. PERFORMANCE LOGGING
+    // =========================================================
+
     const totalMs =
       performance.now() - totalStart;
 
@@ -256,11 +347,17 @@ export async function POST(request: Request) {
     const totalMs =
       performance.now() - totalStart;
 
-    console.error("Error in register API:", error);
+    console.error(
+      "Error in register API:",
+      error
+    );
 
-    console.error("[REGISTER_PERF_ERROR]", {
-      totalMs: Math.round(totalMs),
-    });
+    console.error(
+      "[REGISTER_PERF_ERROR]",
+      {
+        totalMs: Math.round(totalMs),
+      }
+    );
 
     return NextResponse.json(
       {
