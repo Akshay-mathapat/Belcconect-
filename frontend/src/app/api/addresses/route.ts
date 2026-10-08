@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
 
@@ -12,7 +13,9 @@ function mapRowToAddress(row: any) {
     latitude: row.latitude ? parseFloat(row.latitude) : null,
     longitude: row.longitude ? parseFloat(row.longitude) : null,
     placeId: row.place_id || null,
-    locationAccuracy: row.location_accuracy ? parseFloat(row.location_accuracy) : null,
+    locationAccuracy: row.location_accuracy
+      ? parseFloat(row.location_accuracy)
+      : null,
     houseNumber: row.house_number || null,
     buildingName: row.building_name || null,
     floor: row.floor || null,
@@ -22,16 +25,23 @@ function mapRowToAddress(row: any) {
     state: row.state || null,
     pincode: row.pincode || null,
     deliveryInstructions: row.delivery_instructions || null,
-    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
+    createdAt: row.created_at
+      ? new Date(row.created_at).toISOString()
+      : new Date().toISOString(),
   };
 }
 
 export async function GET(request: Request) {
   try {
     const authUser = getAuthenticatedUser(request);
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
+
     const userId = authUser.userId;
 
     const res = await query(
@@ -40,23 +50,32 @@ export async function GET(request: Request) {
     );
 
     const addresses = res.rows.map(mapRowToAddress);
+
     return NextResponse.json(addresses);
   } catch (error: any) {
     console.error("Error retrieving addresses:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   try {
     const authUser = getAuthenticatedUser(request);
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
+
     const {
-      userId: bodyUserId,
       type,
       text,
       latitude,
@@ -71,59 +90,119 @@ export async function POST(request: Request) {
       city,
       state,
       pincode,
-      deliveryInstructions
+      deliveryInstructions,
     } = body;
 
+    // Identity must always come from verified auth
     const userId = authUser.userId;
 
     if (!type) {
-      return NextResponse.json({ error: "Address type is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Address type is required" },
+        { status: 400 }
+      );
     }
 
-    // Validate coordinates range if present
-    if (latitude !== undefined && latitude !== null) {
+    // Validate coordinates
+    let validLatitude: number | null = null;
+    let validLongitude: number | null = null;
+
+    if (
+      latitude !== undefined &&
+      latitude !== null &&
+      latitude !== ""
+    ) {
       const latNum = Number(latitude);
-      if (isNaN(latNum) || latNum < -90 || latNum > 90) {
-        return NextResponse.json({ error: "Invalid latitude value" }, { status: 400 });
+
+      if (
+        !Number.isFinite(latNum) ||
+        latNum < -90 ||
+        latNum > 90
+      ) {
+        return NextResponse.json(
+          { error: "Invalid latitude value" },
+          { status: 400 }
+        );
       }
-    }
-    if (longitude !== undefined && longitude !== null) {
-      const lngNum = Number(longitude);
-      if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
-        return NextResponse.json({ error: "Invalid longitude value" }, { status: 400 });
-      }
+
+      validLatitude = latNum;
     }
 
-    // Construct text representation if text is empty
-    let fullText = text?.trim() || "";
+    if (
+      longitude !== undefined &&
+      longitude !== null &&
+      longitude !== ""
+    ) {
+      const lngNum = Number(longitude);
+
+      if (
+        !Number.isFinite(lngNum) ||
+        lngNum < -180 ||
+        lngNum > 180
+      ) {
+        return NextResponse.json(
+          { error: "Invalid longitude value" },
+          { status: 400 }
+        );
+      }
+
+      validLongitude = lngNum;
+    }
+
+    // Construct readable address text if missing
+    let fullText =
+      typeof text === "string" ? text.trim() : "";
+
     if (!fullText) {
       const parts = [
         houseNumber ? `Flat ${houseNumber}` : null,
-        buildingName,
+        buildingName || null,
         floor ? `Floor ${floor}` : null,
-        locality,
+        locality || null,
         landmark ? `Near ${landmark}` : null,
-        city,
-        state,
-        pincode
+        city || null,
+        state || null,
+        pincode || null,
       ].filter(Boolean);
+
       fullText = parts.join(", ") || "Pinned Location";
     }
 
-    const addrId = `addr-${Date.now()}`;
+    // Concurrency-safe primary key
+    const addrId = `addr-${randomUUID()}`;
 
-    await query(
+    const insertRes = await query(
       `INSERT INTO addresses (
-        id, user_id, type, text, latitude, longitude, place_id, location_accuracy,
-        house_number, building_name, floor, landmark, locality, city, state, pincode, delivery_instructions
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        id,
+        user_id,
+        type,
+        text,
+        latitude,
+        longitude,
+        place_id,
+        location_accuracy,
+        house_number,
+        building_name,
+        floor,
+        landmark,
+        locality,
+        city,
+        state,
+        pincode,
+        delivery_instructions
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, $11, $12, $13, $14, $15, $16, $17
+      )
+      RETURNING *`,
       [
         addrId,
         userId,
         type,
         fullText,
-        latitude ?? null,
-        longitude ?? null,
+        validLatitude,
+        validLongitude,
         placeId || null,
         locationAccuracy ?? null,
         houseNumber || null,
@@ -134,14 +213,20 @@ export async function POST(request: Request) {
         city || null,
         state || null,
         pincode || null,
-        deliveryInstructions || null
+        deliveryInstructions || null,
       ]
     );
 
-    const insertedRes = await query("SELECT * FROM addresses WHERE id = $1", [addrId]);
-    return NextResponse.json({ success: true, address: mapRowToAddress(insertedRes.rows[0]) });
+    return NextResponse.json({
+      success: true,
+      address: mapRowToAddress(insertRes.rows[0]),
+    });
   } catch (error: any) {
     console.error("Error creating address:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
