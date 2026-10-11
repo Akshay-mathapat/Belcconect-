@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { ArrowRight, Briefcase, Building2, Check, Eye, EyeOff, Lock, Mail, Phone, User, Wrench } from "lucide-react";
 import Link from "next/link";
@@ -10,18 +9,15 @@ import { PasswordStrength } from "./PasswordStrength";
 import { useAuthStore, UserRole } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { getSafeReturnUrl } from "@/lib/urlUtils";
-
 interface SignupFormProps {
   onSwitchToLogin: () => void;
 }
-
 export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawReturnTo = searchParams?.get("returnTo");
   const safeReturnTo = getSafeReturnUrl(rawReturnTo);
-
   const { registerUser } = useAuthStore();
   const [signupRole, setSignupRole] = useState<UserRole>("user");
   const [fullName, setFullName] = useState("");
@@ -29,26 +25,25 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setErrorMessage("Please enter a valid 10-digit Indian mobile number.");
+      return;
+    }
     if (!agreedToTerms) return;
     if (password !== confirmPassword) {
       setErrorMessage(t("auth.passwordsDoNotMatch"));
       return;
     }
-
     setIsLoading(true);
-
     try {
       const res = await registerUser({
         email,
@@ -58,14 +53,11 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         role: signupRole
       });
       setIsLoading(false);
-
       if (!res.success) {
         setErrorMessage(res.error || "Registration failed.");
         return;
       }
-
       setIsSubmitted(true);
-
       // Auto-redirect based on selected role after 800ms
       setTimeout(() => {
         if (signupRole === "provider") {
@@ -81,7 +73,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       setErrorMessage("An unexpected error occurred during registration.");
     }
   };
-
   const getRoleTitle = () => {
     switch (signupRole) {
       case "provider":
@@ -92,7 +83,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         return "User Account Created!";
     }
   };
-
   const getRoleDescription = () => {
     switch (signupRole) {
       case "provider":
@@ -103,13 +93,11 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         return "Welcome! Your User account is ready. Redirecting to the BelConnect Marketplace...";
     }
   };
-
   const getTargetUrl = () => {
     if (signupRole === "provider") return "/provider";
     if (signupRole === "job_provider") return "/jobprovider";
     return safeReturnTo;
   };
-
   if (isSubmitted) {
     return (
       <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center space-y-4">
@@ -136,14 +124,12 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       </div>
     );
   }
-
   return (
     <div className="w-full">
       <AuthHeader
         title={t("auth.createAccountTitle")}
         subtitle={t("auth.createAccountSub")}
       />
-
       {/* 3 Role Switcher Buttons on Top */}
       <div className="mb-6 p-1 bg-muted/70 dark:bg-zinc-800/70 rounded-xl grid grid-cols-3 gap-1 border border-border/50">
         <button
@@ -159,7 +145,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           <User className="w-3.5 h-3.5" />
           {t("auth.createGroupUser")}
         </button>
-
         <button
           type="button"
           onClick={() => setSignupRole("provider")}
@@ -173,7 +158,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           <Wrench className="w-3.5 h-3.5" />
           {t("auth.createGroupProvider")}
         </button>
-
         <button
           type="button"
           onClick={() => setSignupRole("job_provider")}
@@ -188,14 +172,12 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           {t("auth.createGroupEmployer")}
         </button>
       </div>
-
       {errorMessage && (
         <div className="mb-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2">
           <span>⚠️</span>
           <span>{errorMessage}</span>
         </div>
       )}
-
       <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
         {/* Full Name / Company Name Input */}
         <div>
@@ -231,7 +213,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             />
           </div>
         </div>
-
         {/* Phone Number */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -249,14 +230,17 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                   setPhone(val);
                 }
               }}
+              minLength={10}
               maxLength={10}
+              pattern="[6-9][0-9]{9}"
+              inputMode="numeric"
+              title="Enter a valid 10-digit Indian mobile number"
               placeholder="9876543210"
               className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:bg-background focus:ring-2 focus:ring-blue-600/40 focus:border-blue-600 transition-all text-sm outline-none placeholder:text-muted-foreground/60 text-foreground"
               suppressHydrationWarning
             />
           </div>
         </div>
-
         {/* Email Address */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -275,7 +259,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             />
           </div>
         </div>
-
         {/* Password */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -302,11 +285,9 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-
           {/* Password Strength Meter */}
           <PasswordStrength password={password} />
         </div>
-
         {/* Confirm Password */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -343,7 +324,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             </p>
           )}
         </div>
-
         {/* Terms Checkbox */}
         <div className="flex items-start gap-3 pt-1">
           <input
@@ -367,7 +347,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             .
           </label>
         </div>
-
         {/* Create Account CTA Button */}
         <button
           type="submit"
@@ -388,13 +367,11 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             t("auth.createAccountButton")
           )}
         </button>
-
         {/* Encrypted Security Badge */}
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-0.5">
           <span>🔒</span>
           <span>{t("auth.securityNote")}</span>
         </div>
-
         {/* Or continue with Divider */}
         <div className="relative py-1">
           <div className="absolute inset-0 flex items-center">
@@ -406,11 +383,9 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             </span>
           </div>
         </div>
-
         {/* Google SSO Button */}
         <GoogleButton accountType={signupRole === "user" ? "customer" : signupRole === "provider" ? "service_provider" : "job_provider"} />
       </form>
-
       {/* Switch to Login Link */}
       <div className="mt-6 text-center text-sm text-muted-foreground">
         {t("auth.alreadyHaveAccount")}{" "}

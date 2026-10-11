@@ -42,3 +42,22 @@ next-env.d.ts
 
 # Load test credentials
 loadtest/tokens*.json
+
+# Android Gradle generated files
+/android/.gradle/
+/android/build/
+/android/app/build/
+
+# Playwright generated artifacts
+**/playwright-report/
+**/test-results/
+**/blob-report/
+**/playwright/.cache/
+
+# Playwright screenshots generated in frontend root
+/frontend/belconnect-*.png
+/frontend/dashboard-security-*.png
+/frontend/security-check-*.png
+
+# Generated load testing reports
+/loadtest/*.html

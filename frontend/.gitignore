@@ -1,0 +1,20 @@
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+
+# Generated test screenshots in frontend root
+/belconnect-*.png
+/dashboard-security-*.png
+/security-check-*.png
+
+# Next.js
+/.next/
+/out/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.sample

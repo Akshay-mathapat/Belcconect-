@@ -15,12 +15,14 @@
     "findPerfectService": "Find the perfect service for your needs",
     "viewAll": "View all",
     "bookNow": "Book Now",
-    "jobs": "Jobs"
+    "jobs": "Jobs",
+    "employerWorkspace": "Employer Workspace",
+    "postJob": "Post a Job"
   },
   "hero": {
     "badge": "Trusted by 10,000+ customers in Belagavi",
-    "title": "Trusted Services, On Demand.",
-    "subtitle": "Book verified professionals for any service in Belagavi. Fast, reliable, and affordable.",
+    "title": "Services & Jobs in Belagavi",
+    "subtitle": "Book verified professionals or find local jobs — all in one trusted app.",
     "bookService": "Book a Service",
     "becomeProvider": "Become a Provider",
     "searchPlaceholder": "Search for Painter, Electrician, Plumber, Tutor...",
@@ -40,7 +42,13 @@
       "scheduled": "Scheduled",
       "completed": "Completed",
       "done": "Done"
-    }
+    },
+    "tabServices": "Services",
+    "tabJobs": "Jobs",
+    "jobsSearchPlaceholder": "Search jobs: electrician, driver, sales, technician...",
+    "findJobLink": "Find a job",
+    "hireStaffLink": "Hire staff",
+    "jobsTileSub": "Hiring Now"
   },
   "categories": {
     "home": "Home",
@@ -111,7 +119,8 @@
     "call": "Call",
     "at": "at",
     "details": "Details",
-    "message": "Message"
+    "message": "Message",
+    "customer": "Customer"
   },
   "booking": {
     "serviceDetails": "Service Details",
@@ -228,7 +237,22 @@
     "step2Title": "Book Instantly",
     "step2Desc": "Pick a convenient time slot and confirm in seconds.",
     "step3Title": "Get Work Done",
-    "step3Desc": "Verified professional arrives at your door, on time."
+    "step3Desc": "Verified professional arrives at your door, on time.",
+    "tabService": "Book a Service",
+    "tabJobSeeker": "Find a Job",
+    "tabEmployer": "Hire Talent",
+    "jobStep1Title": "Browse Local Jobs",
+    "jobStep1Desc": "Explore verified trade, technician, and business openings across Belagavi.",
+    "jobStep2Title": "Apply in Taps",
+    "jobStep2Desc": "Quickly submit your details and experience — 100% free for job seekers.",
+    "jobStep3Title": "Connect & Get Hired",
+    "jobStep3Desc": "Speak directly with local employers and start your new position.",
+    "hireStep1Title": "Post Your Opening",
+    "hireStep1Desc": "Describe your vacancy in under 2 minutes with local salary and role details.",
+    "hireStep2Title": "Review Candidates",
+    "hireStep2Desc": "Receive applications from verified local talent and skilled trade pros.",
+    "hireStep3Title": "Interview & Hire",
+    "hireStep3Desc": "Connect directly, conduct interviews, and hire the right person fast."
   },
   "whyUs": {
     "label": "Why Choose Us",
@@ -244,7 +268,9 @@
     "localTitle": "Local Support",
     "localDesc": "Dedicated support team based right here in Belagavi.",
     "guaranteeTitle": "Service Guarantee",
-    "guaranteeDesc": "Not satisfied? We'll redo the service or refund you."
+    "guaranteeDesc": "Not satisfied? We'll redo the service or refund you.",
+    "combinedTitle": "One Account for Services & Jobs",
+    "combinedDesc": "Book trusted home services or discover local career opportunities with a single unified BelConnect account."
   },
   "provider": {
     "label": "For Professionals",
@@ -303,7 +329,12 @@
     "cancellation": "Cancellation Policy",
     "tagline": "Connecting homes with trusted professionals.",
     "copyright": "All rights reserved.",
-    "madeIn": "Made with ❤️ in Belagavi"
+    "madeIn": "Made with ❤️ in Belagavi",
+    "jobsTitle": "Jobs & Hiring",
+    "findJobs": "Find Jobs",
+    "postJob": "Post a Job",
+    "employerSignUp": "Employer Sign Up",
+    "workAtBelconnect": "Work at BelConnect"
   },
   "jobprovider": {
     "overview": "Overview",
@@ -729,7 +760,9 @@
       "callDesc": "Call verified service providers directly in-app without revealing your personal phone number.",
       "menuTitle": "Account & Bookings",
       "menuDesc": "View active bookings, manage saved addresses, and update your profile.",
-      "searchExamples": "Electrician,Plumber,Cleaning,AC Repair"
+      "searchExamples": "Electrician,Plumber,Cleaning,AC Repair",
+      "jobsTitle": "Services & Jobs Switcher",
+      "jobsDesc": "Easily toggle between home services and verified local job listings in Belagavi."
     },
     "provider": {
       "dashboardTitle": "Provider Workspace",
@@ -843,5 +876,27 @@
     "plumber": "Plumber",
     "cleaning": "Cleaning",
     "acRepair": "AC Repair"
+  },
+  "jobsShowcase": {
+    "heading": "Explore Local Jobs in Belagavi",
+    "subheading": "Connect with local businesses hiring skilled professionals, technicians, and trade experts across Belagavi.",
+    "trustFree": "Free for job seekers",
+    "trustEmployers": "Local employers",
+    "trustApply": "Apply in a few taps",
+    "browseJobs": "Browse All Jobs",
+    "browseJobsPrompt": "Explore current openings in Belagavi",
+    "postAJob": "Post a Job",
+    "activeOpenings": "active openings in Belagavi",
+    "freshOpenings": "Fresh openings across Belagavi",
+    "emptyTitle": "Be the first employer to post in Belagavi",
+    "emptyDesc": "Reach thousands of local skilled professionals and job seekers across the city.",
+    "viewJob": "Details",
+    "popularTrades": "Browse Jobs by Trade & Skill"
+  },
+  "employerModal": {
+    "title": "Employer Account Required",
+    "description": "You are currently signed in as a {role}. To post jobs and recruit staff in Belagavi, please create an Employer account.",
+    "createAccount": "Create Employer Account",
+    "cancel": "Cancel"
   }
 }

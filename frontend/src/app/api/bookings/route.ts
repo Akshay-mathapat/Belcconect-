@@ -1,3 +1,4 @@
+import { validateBookingDateTime } from "@/lib/bookingDateValidation";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
@@ -50,16 +51,16 @@ export async function GET(request: Request) {
 
     // Retrieve bookings strictly for this specific customer or provider
     const bookingsRes = await query(
-      `SELECT 
-        b.id, 
-        b.customer_id, 
-        b.provider_id, 
+      `SELECT
+        b.id,
+        b.customer_id,
+        b.provider_id,
         b.provider_name,
-        b.service_name, 
-        b.category, 
-        b.date, 
-        b.time, 
-        b.status, 
+        b.service_name,
+        b.category,
+        b.date,
+        b.time,
+        b.status,
         b.rating,
         b.review_comment,
         b.cancellation_reason,
@@ -84,8 +85,8 @@ export async function GET(request: Request) {
       FROM bookings b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text 
-        FROM addresses 
+        SELECT DISTINCT ON (user_id) user_id, text
+        FROM addresses
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
       WHERE b.customer_id = $1 OR b.provider_id = $1
@@ -143,11 +144,101 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
+if (!providerId || !serviceName || !date || !time) {
+  return NextResponse.json(
+    { error: "Provider, service, date and time are required" },
+    { status: 400 }
+  );
+}
 
-    if (!providerId || !serviceName || !date) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
+// Strict YYYY-MM-DD date validation
+if (
+  typeof date !== "string" ||
+  !/^\d{4}-\d{2}-\d{2}$/.test(date)
+) {
+  return NextResponse.json(
+    { error: "Invalid booking date format" },
+    { status: 400 }
+  );
+}
 
+const [year, month, day] = date.split("-").map(Number);
+const calendarDate = new Date(
+  Date.UTC(year, month - 1, day)
+);
+
+if (
+  calendarDate.getUTCFullYear() !== year ||
+  calendarDate.getUTCMonth() + 1 !== month ||
+  calendarDate.getUTCDate() !== day
+) {
+  return NextResponse.json(
+    { error: "Invalid booking date" },
+    { status: 400 }
+  );
+}
+
+// Example: 9:00 AM - 10:00 AM
+// Accepts regular hyphen, en dash and em dash.
+const slotMatch =
+  typeof time === "string"
+    ? time.match(
+        /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*(?:\u2013|\u2014|-)\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+      )
+    : null;
+
+if (!slotMatch) {
+  return NextResponse.json(
+    { error: "Invalid time slot format" },
+    { status: 400 }
+  );
+}
+
+function to24Hour(hour: number, meridiem: string) {
+  return (hour % 12) + (meridiem.toUpperCase() === "PM" ? 12 : 0);
+}
+
+const startHour12 = Number(slotMatch[1]);
+const startMinute = Number(slotMatch[2]);
+const endHour12 = Number(slotMatch[4]);
+const endMinute = Number(slotMatch[5]);
+
+if (
+  startHour12 < 1 || startHour12 > 12 ||
+  endHour12 < 1 || endHour12 > 12 ||
+  startMinute > 59 || endMinute > 59
+) {
+  return NextResponse.json(
+    { error: "Invalid time slot values" },
+    { status: 400 }
+  );
+}
+
+const startMinutes =
+  to24Hour(startHour12, slotMatch[3]) * 60 + startMinute;
+
+const endMinutes =
+  to24Hour(endHour12, slotMatch[6]) * 60 + endMinute;
+
+if (endMinutes <= startMinutes) {
+  return NextResponse.json(
+    { error: "Time slot must end after it starts" },
+    { status: 400 }
+  );
+}
+
+// Convert selected local booking time (IST) to UTC
+const bookingStartUtc =
+  Date.UTC(year, month - 1, day) +
+  startMinutes * 60_000 -
+  330 * 60_000;
+
+if (bookingStartUtc <= Date.now()) {
+  return NextResponse.json(
+    { error: "Cannot book a past date or time slot" },
+    { status: 400 }
+  );
+}
     // Canonical provider validation: do not trust client-supplied or demo placeholder IDs.
     // A booking must always reference a real service_providers row, otherwise the provider
     // dashboard will never be able to find it by the same provider_id used at login.
@@ -299,8 +390,8 @@ export async function POST(request: Request) {
     // Check if the requested time slot is already booked for this date & provider
     if (date && time) {
       const existingCheck = await query(
-        `SELECT id FROM bookings 
-         WHERE date = $1 
+        `SELECT id FROM bookings
+         WHERE date = $1
            AND (time = $2 OR time ILIKE $3)
            AND provider_id = $4
            AND (status IS NULL OR LOWER(status) NOT IN ('cancelled', 'rejected'))
@@ -350,7 +441,7 @@ const bookingId = `B-${seqRes.rows[0].n}`;
 
     await query(
       `INSERT INTO bookings (
-        id, customer_id, provider_id, provider_name, service_name, category, 
+        id, customer_id, provider_id, provider_name, service_name, category,
         date, time, status, service_address_id, destination_latitude, destination_longitude,
         destination_place_id, destination_address, destination_landmark, destination_instructions
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
@@ -384,16 +475,16 @@ snapDestInstructions
     ).catch((e) => console.warn("Failed to pre-create conversation for booking:", e));
 
     const insertedRes = await query(
-      `SELECT 
-        b.id, 
-        b.customer_id, 
-        b.provider_id, 
+      `SELECT
+        b.id,
+        b.customer_id,
+        b.provider_id,
         b.provider_name,
-        b.service_name, 
-        b.category, 
-        b.date, 
-        b.time, 
-        b.status, 
+        b.service_name,
+        b.category,
+        b.date,
+        b.time,
+        b.status,
         b.rating,
         b.review_comment,
         b.created_at,
@@ -411,8 +502,8 @@ snapDestInstructions
       FROM bookings b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text 
-        FROM addresses 
+        SELECT DISTINCT ON (user_id) user_id, text
+        FROM addresses
         ORDER BY user_id, created_at ASC
       ) addr ON b.customer_id = addr.user_id
       WHERE b.id = $1`,
@@ -421,7 +512,24 @@ snapDestInstructions
 
     return NextResponse.json({ success: true, booking: mapRowToBooking(insertedRes.rows[0]) });
   } catch (error: any) {
+    if (
+      error?.code === "23505" &&
+      error?.constraint === "ux_bookings_provider_active_slot"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This time slot has already been booked. Please select another available slot."
+        },
+        { status: 409 }
+      );
+    }
+
     console.error("Error creating booking:", error);
-    return NextResponse.json({ error: "Could not create booking" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Could not create booking" },
+      { status: 500 }
+    );
   }
 }
