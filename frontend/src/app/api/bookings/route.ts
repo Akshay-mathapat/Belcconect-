@@ -97,7 +97,7 @@ export async function GET(request: Request) {
     return NextResponse.json(bookings);
   } catch (error: any) {
     console.error("Error retrieving bookings:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to retrieve bookings" }, { status: 500 });
   }
 }
 
@@ -348,12 +348,13 @@ const bookingId = `B-${seqRes.rows[0].n}`;
 
     const finalDestAddress = destinationAddress || address || "No address provided";
 
-    await query(
+    const insertRes = await query(
       `INSERT INTO bookings (
         id, customer_id, provider_id, provider_name, service_name, category, 
         date, time, status, service_address_id, destination_latitude, destination_longitude,
         destination_place_id, destination_address, destination_landmark, destination_instructions
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      RETURNING id`,
       [
         bookingId,
         validCustomerId,
@@ -373,6 +374,10 @@ snapDestLandmark,
 snapDestInstructions
       ]
     );
+
+    if (insertRes.rowCount !== 1) {
+      return NextResponse.json({ error: "Booking creation failed" }, { status: 503 });
+    }
 
     // Auto-create a brand new clean conversation for this booking
     const convId = `conv-${bookingId}`;
