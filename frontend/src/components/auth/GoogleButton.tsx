@@ -33,7 +33,9 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
   const [errorMessage, setErrorMessage] = useState("");
   const processedHandoffCodes = useRef(new Set<string>());
 
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+  const clientId =
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    "1001791216154-8kdago8m63cjruabn6ohsleudaa702sm.apps.googleusercontent.com";
 
   const getTrustedOAuthOrigin = () => {
     const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -184,11 +186,6 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
   }, [searchParams, setAuthUser, router]);
 
   const handleManualFallbackClick = () => {
-    if (!clientId) {
-      alert("Google Client ID is missing. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.");
-      return;
-    }
-
     setErrorMessage("");
     setIsLoading(true);
 
@@ -229,7 +226,15 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
     if (!popup) {
       setIsLoading(false);
       alert("Pop-up blocked. Please allow pop-ups for this site to sign in with Google.");
+      return;
     }
+
+    const timer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(timer);
+        setIsLoading(false);
+      }
+    }, 500);
   };
 
   return (

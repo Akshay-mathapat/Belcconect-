@@ -3,6 +3,16 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  env: {
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID:
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+      process.env.GOOGLE_CLIENT_ID ||
+      "1001791216154-8kdago8m63cjruabn6ohsleudaa702sm.apps.googleusercontent.com",
+    NEXT_PUBLIC_APP_URL:
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
+      "https://belcconect.vercel.app",
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

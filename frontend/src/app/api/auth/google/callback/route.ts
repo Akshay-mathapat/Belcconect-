@@ -22,8 +22,17 @@ export async function GET(request: Request) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
-  const appOrigin = APP_URL ? new URL(APP_URL).origin : "";
-  console.info("[GOOGLE_AUTH] redirectUriHost", APP_URL ? new URL(APP_URL).host : "missing");
+  const requestUrl = new URL(request.url);
+  const isLocalhost =
+    requestUrl.hostname === "localhost" ||
+    requestUrl.hostname === "127.0.0.1" ||
+    requestUrl.hostname === "::1";
+
+  const appOrigin = isLocalhost
+    ? requestUrl.origin
+    : (APP_URL ? new URL(APP_URL).origin : requestUrl.origin);
+
+  console.info("[GOOGLE_AUTH] redirectUriHost", appOrigin);
   console.info("[GOOGLE_AUTH] callbackReceived", true);
 
   // Helper to return HTML postMessage or redirect back
@@ -46,7 +55,7 @@ export async function GET(request: Request) {
             if (window.opener) {
               const payload = ${payloadStr};
               if (payload) {
-                window.opener.postMessage(payload, "${appOrigin}");
+                window.opener.postMessage(payload, "*");
               }
               window.close();
             } else {
@@ -61,8 +70,8 @@ export async function GET(request: Request) {
   };
 
   // 1. Startup & Credential Config Checks
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !APP_URL) {
-    console.error("[GOOGLE_OAUTH_CALLBACK_ERROR] Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or APP_URL");
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    console.error("[GOOGLE_OAUTH_CALLBACK_ERROR] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
     return renderCloseWindowScript({ type: "GOOGLE_AUTH_ERROR", error: "Server OAuth configuration error." });
   }
 

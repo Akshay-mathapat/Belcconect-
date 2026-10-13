@@ -113,7 +113,40 @@ io.use((socket, next) => {
 });
 
 const { Pool } = require("pg");
-const pool = new Pool({ connectionString: DATABASE_URL });
+
+const isLocalDbHost = (url) => {
+  try {
+    const parsed = new URL(url);
+    const host = (parsed.hostname || "").toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+};
+
+const useSsl =
+  !isLocalDbHost(DATABASE_URL) &&
+  (
+    NODE_ENV === "production" ||
+    DATABASE_URL.includes("render.com") ||
+    DATABASE_URL.includes("neon.tech") ||
+    DATABASE_URL.includes("supabase") ||
+    !DATABASE_URL.includes("localhost")
+  );
+
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: useSsl ? { rejectUnauthorized: false } : false,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+});
+
+pool.on("error", (err) => {
+  console.error("[Signaling Database] Unexpected idle PostgreSQL client error:", err.message);
+});
 const getAuthorizedCall = async (callId, userId) => {
   if (!callId || !userId) return null;
 

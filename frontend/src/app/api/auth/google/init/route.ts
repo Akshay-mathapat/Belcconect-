@@ -11,20 +11,28 @@ export async function GET(request: Request) {
   const roleNeutral = searchParams.get("roleNeutral") === "1";
 
   const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  const appUrl = process.env.APP_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
 
   if (!accountType) {
     return NextResponse.json({ error: "Invalid Google account type." }, { status: 400 });
   }
 
-  if (!clientId || !appUrl) {
+  if (!clientId) {
     return NextResponse.json(
       { error: "Google OAuth Client ID is missing on the server." },
       { status: 500 }
     );
   }
 
-  const appOrigin = new URL(appUrl).origin;
+  const requestUrl = new URL(request.url);
+  const isLocalhost =
+    requestUrl.hostname === "localhost" ||
+    requestUrl.hostname === "127.0.0.1" ||
+    requestUrl.hostname === "::1";
+
+  const appOrigin = isLocalhost
+    ? requestUrl.origin
+    : (process.env.APP_URL ? new URL(process.env.APP_URL).origin : requestUrl.origin);
+
   const redirectUri = `${appOrigin}/api/auth/google/callback`;
 
   const codeVerifier = crypto.randomBytes(32).toString("base64url");

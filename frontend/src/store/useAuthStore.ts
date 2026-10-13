@@ -463,6 +463,13 @@ export const useAuthStore = create<AuthState>()(
 
             set((state) => {
               const latestCurrent = get().currentUser || current;
+              const existingBookings = latestCurrent.bookings || [];
+              if (
+                existingBookings.length === mappedBookings.length &&
+                JSON.stringify(existingBookings) === JSON.stringify(mappedBookings)
+              ) {
+                return state;
+              }
               const updatedUser = { ...latestCurrent, bookings: mappedBookings };
               return {
                 currentUser: updatedUser,
@@ -492,6 +499,13 @@ export const useAuthStore = create<AuthState>()(
 
             set((state) => {
               const latestCurrent = get().currentUser || current;
+              const existingAddresses = latestCurrent.addresses || [];
+              if (
+                existingAddresses.length === addresses.length &&
+                JSON.stringify(existingAddresses) === JSON.stringify(addresses)
+              ) {
+                return state;
+              }
               const updatedUser = { ...latestCurrent, addresses };
               return {
                 currentUser: updatedUser,

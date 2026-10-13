@@ -103,11 +103,12 @@ export default function AccountPage() {
   }, []);
 
   const currentUserId = currentUser?.id;
+  const hasFetchedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isHydrated) return;
 
-        if (!currentUserId) {
+    if (!currentUserId) {
       router.push("/auth?mode=login&returnTo=/account");
       return;
     }
@@ -117,8 +118,12 @@ export default function AccountPage() {
       router.push("/auth?mode=login&returnTo=/account");
       return;
     }
-    fetchUserBookings().catch(() => {});
-    fetchUserAddresses().catch(() => {});
+
+    if (hasFetchedRef.current !== currentUserId) {
+      hasFetchedRef.current = currentUserId;
+      fetchUserBookings().catch(() => {});
+      fetchUserAddresses().catch(() => {});
+    }
 
     // Realtime updates handled via BroadcastChannel syncChannel (5s polling removed)
     let syncChannel: BroadcastChannel | null = null;
@@ -136,7 +141,7 @@ export default function AccountPage() {
         try { syncChannel.close(); } catch (e) {}
       }
     };
-    }, [fetchUserBookings, fetchUserAddresses, currentUserId, router, logout, isHydrated]);
+  }, [fetchUserBookings, fetchUserAddresses, currentUserId, router, logout, isHydrated]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
