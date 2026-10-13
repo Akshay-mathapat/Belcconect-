@@ -1,7 +1,6 @@
 import crypto from "crypto";
 
-// DO NOT REINTRODUCE HARDCODED FALLBACKS FOR SECRETS (JWT_SECRET, DATABASE_URL, SIGNALING_INTERNAL_SECRET, LIVEKIT_API_SECRET, VAPID_PRIVATE_KEY) UNDER ANY CIRCUMSTANCES, INCLUDING LOCAL DEV CONVENIENCE.
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET!;
 
 if (!JWT_SECRET && typeof window === "undefined") {
   throw new Error("FATAL: JWT_SECRET environment variable is missing.");
