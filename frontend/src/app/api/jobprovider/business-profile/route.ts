@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { query, isDatabaseUnavailableError } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
 
 // ── GET /api/jobprovider/business-profile — Fetch Profile ─────────────────
@@ -57,6 +57,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ profile: defaultProfile });
   } catch (error: any) {
     console.error("GET /api/jobprovider/business-profile error:", error);
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: "Database temporarily unavailable" }, { status: 503 });
+    }
     return NextResponse.json(
       { error: "Failed to fetch business profile" },
       { status: 500 }
@@ -171,6 +174,9 @@ export async function PUT(request: Request) {
     });
   } catch (error: any) {
     console.error("PUT /api/jobprovider/business-profile error:", error);
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: "Database temporarily unavailable" }, { status: 503 });
+    }
     return NextResponse.json(
       { error: "Failed to save business profile" },
       { status: 500 }

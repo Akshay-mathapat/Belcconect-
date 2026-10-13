@@ -294,6 +294,7 @@ export function isDatabaseUnavailableError(
   const message = error.message.toLowerCase();
 
   return (
+    message.includes("database_url") ||
     message.includes("connection timeout") ||
     message.includes("connection terminated") ||
     message.includes("connection refused") ||
