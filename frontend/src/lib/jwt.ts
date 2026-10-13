@@ -128,6 +128,16 @@ export function getAuthenticatedUser(request: Request): SessionPayload | null {
       }
     }
 
+    // 3. Check Query parameter: ?token=<token>
+    try {
+      const url = new URL(request.url);
+      const queryToken = url.searchParams.get("token");
+      if (queryToken && queryToken.trim()) {
+        const verified = verifyJwtToken(queryToken.trim());
+        if (verified) return verified;
+      }
+    } catch (_) {}
+
     return null;
   } catch (e) {
     return null;

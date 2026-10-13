@@ -66,7 +66,7 @@ export async function GET(
     const filename = app.resume_filename || `resume-${applicationId}.pdf`;
     const mime = app.resume_mime || "application/pdf";
 
-    // 1. Remote Vercel Blob URL handling
+    // 1. Remote Vercel Blob / Cloud Storage URL handling
     if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
       const blobResponse = await fetch(targetUrl);
       if (!blobResponse.ok) {
@@ -85,7 +85,48 @@ export async function GET(
       });
     }
 
-    // 2. Local Filesystem path handling (/uploads/job-resumes/...)
+    // 2. PostgreSQL Database-backed resume handling (/api/jobs/resumes/res_... or res_...)
+    if (targetUrl.includes("/api/jobs/resumes/") || targetUrl.startsWith("res_")) {
+      try {
+        const { getResumeFromDatabase } = await import("@/lib/jobResumes");
+        const resumeId = targetUrl.replace(/^\/api\/jobs\/resumes\//, "").trim();
+        const dbRecord = await getResumeFromDatabase(resumeId);
+
+        if (dbRecord) {
+          return new NextResponse(dbRecord.buffer, {
+            status: 200,
+            headers: {
+              "Content-Type": dbRecord.mime || mime,
+              "Content-Disposition": `attachment; filename="${encodeURIComponent(dbRecord.filename || filename)}"`,
+              "X-Content-Type-Options": "nosniff",
+              "Cache-Control": "private, no-cache, no-store, must-revalidate",
+            },
+          });
+        }
+      } catch (dbErr: any) {
+        console.warn("Database resume retrieval warning:", dbErr?.message || dbErr);
+      }
+    }
+
+    // 3. Base64 Data URL handling (data:application/pdf;base64,...)
+    if (targetUrl.startsWith("data:")) {
+      const commaIdx = targetUrl.indexOf(",");
+      if (commaIdx !== -1) {
+        const base64Data = targetUrl.substring(commaIdx + 1);
+        const fileBuffer = Buffer.from(base64Data, "base64");
+        return new NextResponse(fileBuffer, {
+          status: 200,
+          headers: {
+            "Content-Type": mime,
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-cache, no-store, must-revalidate",
+          },
+        });
+      }
+    }
+
+    // 4. Local Filesystem path handling (/uploads/job-resumes/...)
     const relativePath = targetUrl.startsWith("/") ? targetUrl.slice(1) : targetUrl;
     const fullPath = path.join(process.cwd(), "public", relativePath);
 
@@ -102,7 +143,24 @@ export async function GET(
       });
     }
 
-    return NextResponse.json({ error: "Resume file not found on local storage" }, { status: 404 });
+    // 5. Fallback: Search PostgreSQL for candidate's latest uploaded resume
+    try {
+      const { getLatestResumeByUser } = await import("@/lib/jobResumes");
+      const fallbackRecord = await getLatestResumeByUser(app.candidate_id);
+      if (fallbackRecord) {
+        return new NextResponse(fallbackRecord.buffer, {
+          status: 200,
+          headers: {
+            "Content-Type": fallbackRecord.mime || mime,
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(fallbackRecord.filename || filename)}"`,
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-cache, no-store, must-revalidate",
+          },
+        });
+      }
+    } catch (_) {}
+
+    return NextResponse.json({ error: "Resume file not found on storage" }, { status: 404 });
   } catch (error: any) {
     console.error("GET /api/jobs/applications/[id]/resume error:", error);
     if (isDatabaseUnavailableError(error)) {

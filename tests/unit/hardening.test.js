@@ -290,3 +290,46 @@ describe("4. Booking ID Sequence & Route Security Tests", () => {
   });
 });
 
+describe("5. Job Resume Serverless Storage Hardening Tests", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+
+  test("1) migration 026 creates job_resumes table with BYTEA data storage", () => {
+    const migrationPath = path.resolve(__dirname, "../../migrations/026_job_resumes_storage.sql");
+    assert.ok(fs.existsSync(migrationPath), "Migration 026 file must exist");
+    const sql = fs.readFileSync(migrationPath, "utf-8");
+    assert.ok(sql.includes("CREATE TABLE IF NOT EXISTS public.job_resumes"), "Must create job_resumes table");
+    assert.ok(sql.includes("BYTEA"), "Must use BYTEA for file data storage");
+    assert.ok(sql.includes("idx_job_resumes_user_id"), "Must create index on user_id");
+  });
+
+  test("2) resume upload route contains serverless environment check and database fallback", () => {
+    const routePath = path.resolve(__dirname, "../../frontend/src/app/api/jobs/resume-upload/route.ts");
+    assert.ok(fs.existsSync(routePath), "Resume upload route must exist");
+    const code = fs.readFileSync(routePath, "utf-8");
+    assert.ok(code.includes("isServerless"), "Must check isServerless before local fs operations");
+    assert.ok(code.includes("saveResumeToDatabase"), "Must support saveResumeToDatabase PostgreSQL tier");
+    assert.ok(code.includes("/api/jobs/resumes/"), "Must return /api/jobs/resumes/ path");
+    assert.ok(code.includes("BLOB_READ_WRITE_TOKEN"), "Must support Vercel Blob tier");
+  });
+
+  test("3) resume download route supports database records and data URLs", () => {
+    const routePath = path.resolve(__dirname, "../../frontend/src/app/api/jobs/applications/[id]/resume/route.ts");
+    assert.ok(fs.existsSync(routePath), "Resume download route must exist");
+    const code = fs.readFileSync(routePath, "utf-8");
+    assert.ok(code.includes("getResumeFromDatabase"), "Must query getResumeFromDatabase");
+    assert.ok(code.includes("data:"), "Must support base64 data URLs");
+    assert.ok(code.includes("getLatestResumeByUser"), "Must have fallback search");
+  });
+
+  test("4) direct resume route /api/jobs/resumes/[id] exists and verifies authorization", () => {
+    const directRoutePath = path.resolve(__dirname, "../../frontend/src/app/api/jobs/resumes/[id]/route.ts");
+    assert.ok(fs.existsSync(directRoutePath), "Direct resume route must exist");
+    const code = fs.readFileSync(directRoutePath, "utf-8");
+    assert.ok(code.includes("getResumeFromDatabase"), "Must fetch resume from database");
+    assert.ok(code.includes("isOwner"), "Must verify resume owner");
+    assert.ok(code.includes("isAuthorizedEmployer"), "Must verify employer permissions");
+  });
+});
+
+

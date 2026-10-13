@@ -113,34 +113,77 @@ export async function POST(request: Request) {
     let resumePath = "";
     let resumeUrl = "";
 
-    // Try Vercel Blob if credentials are key-configured
+    // Tier 1: Try Vercel Blob if credentials are key-configured
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       try {
         const blob = await put(blobPathname, buffer, {
           access: "private",
           contentType: magicCheck.detectedMime || "application/pdf",
         });
-        resumePath = blob.pathname || blob.url;
+        resumePath = blob.url || blob.pathname;
         resumeUrl = blob.url;
       } catch (blobErr: any) {
         console.warn("Vercel Blob upload warning:", blobErr?.message || blobErr);
       }
     }
 
-    // Local filesystem storage fallback for local development or when Blob token is absent
+    // Tier 2: PostgreSQL Database Storage (safe on serverless read-only filesystem)
     if (!resumePath) {
-      const sanitizedUserId = authUser.userId.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const relativeSubdir = path.join("uploads", "job-resumes", sanitizedUserId);
-      const targetDir = path.join(process.cwd(), "public", relativeSubdir);
+      const resumeId = `res_${Date.now()}_${crypto.randomBytes(8).toString("hex")}`;
+      try {
+        const { saveResumeToDatabase } = await import("@/lib/jobResumes");
+        const savedToDb = await saveResumeToDatabase({
+          id: resumeId,
+          userId: authUser.userId,
+          filename: safeOriginalName,
+          mime: magicCheck.detectedMime,
+          size: file.size,
+          buffer,
+        });
 
-      await fs.promises.mkdir(targetDir, { recursive: true });
+        if (savedToDb) {
+          resumePath = `/api/jobs/resumes/${resumeId}`;
+          resumeUrl = `/api/jobs/resumes/${resumeId}`;
+        }
+      } catch (dbErr: any) {
+        console.warn("PostgreSQL resume storage warning:", dbErr?.message || dbErr);
+      }
+    }
 
-      const localFileName = `${crypto.randomUUID()}${ext}`;
-      const fullFilePath = path.join(targetDir, localFileName);
-      await fs.promises.writeFile(fullFilePath, buffer);
+    // Tier 3: Local filesystem storage fallback for local development only (never on serverless read-only fs)
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (!isServerless) {
+      try {
+        const sanitizedUserId = authUser.userId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const relativeSubdir = path.join("uploads", "job-resumes", sanitizedUserId);
+        const targetDir = path.join(process.cwd(), "public", relativeSubdir);
 
-      resumePath = `/uploads/job-resumes/${sanitizedUserId}/${localFileName}`;
-      resumeUrl = `/uploads/job-resumes/${sanitizedUserId}/${localFileName}`;
+        await fs.promises.mkdir(targetDir, { recursive: true });
+
+        const localFileName = `${crypto.randomUUID()}${ext}`;
+        const fullFilePath = path.join(targetDir, localFileName);
+        await fs.promises.writeFile(fullFilePath, buffer);
+
+        if (!resumePath) {
+          resumePath = `/uploads/job-resumes/${sanitizedUserId}/${localFileName}`;
+          resumeUrl = `/uploads/job-resumes/${sanitizedUserId}/${localFileName}`;
+        }
+      } catch (fsErr: any) {
+        console.warn("Local filesystem storage warning:", fsErr?.message || fsErr);
+      }
+    }
+
+    // Tier 4: Base64 data URL fallback if neither cloud, DB, nor filesystem was usable
+    if (!resumePath && buffer.length <= 3.5 * 1024 * 1024) {
+      resumePath = `data:${magicCheck.detectedMime};base64,${buffer.toString("base64")}`;
+      resumeUrl = resumePath;
+    }
+
+    if (!resumePath) {
+      return NextResponse.json(
+        { error: "Failed to store resume. Storage backend temporarily unavailable." },
+        { status: 503 }
+      );
     }
 
     return NextResponse.json(
