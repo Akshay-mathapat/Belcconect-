@@ -48,9 +48,10 @@ test.describe('Job Provider (Employer) Full Flow — Portal, Job Posting, Candid
     await page.goto('/jobprovider/candidates', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('body')).toBeVisible();
 
-    // Verify candidates panel, search, or status pipeline
-    const candidatesHeader = page.locator('h1, h2, div[class*="candidate"], div[class*="application"]').first();
-    await expect(candidatesHeader).toBeVisible({ timeout: 15000 });
+    // Verify candidates panel heading and search box using Playwright accessible locators
+    const candidatesHeading = page.getByRole('heading', { name: /applications/i }).or(page.getByRole('heading', { level: 3 }));
+    await expect(candidatesHeading).toBeVisible({ timeout: 15000 });
+    await expect(page.getByPlaceholder(/search candidates/i)).toBeVisible();
   });
 
   test('5) Job Provider can configure company business profile', async ({ page }) => {
@@ -63,3 +64,4 @@ test.describe('Job Provider (Employer) Full Flow — Portal, Job Posting, Candid
     await expect(profileForm).toBeVisible({ timeout: 15000 });
   });
 });
+
