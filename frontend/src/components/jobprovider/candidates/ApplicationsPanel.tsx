@@ -248,8 +248,14 @@ export function ApplicationsPanel() {
           <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading candidate applications…
         </div>
       ) : error ? (
-        <div className="p-6 text-center text-red-500 rounded-2xl border border-red-500/20 bg-red-500/5">
-          {error}
+        <div className="p-6 text-center text-red-500 rounded-2xl border border-red-500/20 bg-red-500/5 space-y-3">
+          <p className="text-sm font-medium">{error}</p>
+          <button
+            onClick={fetchCandidates}
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 transition-colors cursor-pointer"
+          >
+            Retry Loading Candidates
+          </button>
         </div>
       ) : (
         <div className={`grid gap-4 ${selected ? "grid-cols-1 lg:grid-cols-5" : "grid-cols-1"}`}>

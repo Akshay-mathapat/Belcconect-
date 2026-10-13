@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { panelVariants } from "../mockData";
+import { getAuthToken } from "@/lib/jwt";
 
 interface InterviewItem {
   id: string;
@@ -48,8 +49,13 @@ export function InterviewsPanel() {
   const fetchInterviews = async () => {
     setLoading(true);
     try {
+      const token = getAuthToken();
       const url = filterTab === "all" ? "/api/jobprovider/interviews" : `/api/jobprovider/interviews?status=${filterTab}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setInterviews(data.interviews || []);
@@ -63,9 +69,13 @@ export function InterviewsPanel() {
 
   const updateStatus = async (interviewId: string, status: string) => {
     try {
+      const token = getAuthToken();
       const res = await fetch("/api/jobprovider/interviews", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ interviewId, status }),
       });
       if (res.ok) {

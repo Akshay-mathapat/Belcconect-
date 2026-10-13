@@ -120,12 +120,12 @@ export async function parseAndValidate<T>(
     const result = schema.safeParse(body);
     if (!result.success) {
       const errorMessages = result.error.issues.map(
-        (err) => `${err.path.join(".")}: ${err.message}`
+        (err) => `${err.path.length > 0 ? `${err.path.join(".")}: ` : ""}${err.message}`
       );
       return {
         response: NextResponse.json(
           {
-            error: "Validation error",
+            error: errorMessages.length === 1 ? errorMessages[0] : "Validation error",
             details: errorMessages,
           },
           { status: 400 }
@@ -164,6 +164,7 @@ export const createJobSchema = z.object({
   requirements: z.string().trim().max(10000).optional().nullable(),
   perksBenefits: z.string().trim().max(5000).optional().nullable(),
   deadline: z.string().trim().max(50).optional().nullable(),
+  isBoosted: z.boolean().optional().default(false),
   status: z.enum(["draft", "active", "closed", "expired"]).optional().default("active"),
   contactEmail: z.string().trim().toLowerCase().email("Invalid contact email format").max(254).optional().or(z.literal("")),
 });

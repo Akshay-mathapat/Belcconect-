@@ -99,7 +99,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
       router.push("/login");
       return;
     }
-    if (currentUser.role !== "job_provider") {
+    if (currentUser.role !== "job_provider" && currentUser.role !== "admin") {
       router.push("/");
     }
   }, [currentUser, router, isHydrated]);

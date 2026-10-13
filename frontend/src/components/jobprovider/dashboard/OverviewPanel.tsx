@@ -30,28 +30,30 @@ export function OverviewPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        setLoading(true);
-        const token = getAuthToken();
-        const res = await fetch("/api/jobprovider/stats", {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getAuthToken();
+      const res = await fetch("/api/jobprovider/stats", {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to load dashboard metrics");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load dashboard metrics");
 
-        setStats(data);
-      } catch (err: any) {
-        console.error("Overview stats error:", err);
-        setError(err.message || "Failed to load stats");
-      } finally {
-        setLoading(false);
-      }
+      setStats(data);
+    } catch (err: any) {
+      console.error("Overview stats error:", err);
+      setError(err.message || "Failed to load stats");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchStats();
   }, []);
 
@@ -130,8 +132,14 @@ export function OverviewPanel() {
           <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading employer statistics…
         </div>
       ) : error ? (
-        <div className="p-6 text-center text-red-500 rounded-2xl border border-red-500/20 bg-red-500/5">
-          {error}
+        <div className="p-6 text-center text-red-500 rounded-2xl border border-red-500/20 bg-red-500/5 space-y-3">
+          <p className="text-sm font-medium">{error}</p>
+          <button
+            onClick={fetchStats}
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 transition-colors cursor-pointer"
+          >
+            Retry Loading Dashboard
+          </button>
         </div>
       ) : (
         <>

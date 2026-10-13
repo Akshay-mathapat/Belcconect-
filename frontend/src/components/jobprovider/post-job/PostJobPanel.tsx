@@ -61,6 +61,12 @@ export function PostJobPanel() {
       return;
     }
 
+    if (description.trim().length < 10) {
+      setError("Job description must be at least 10 characters long");
+      setLoading(false);
+      return;
+    }
+
     try {
       const token = getAuthToken();
       const res = await fetch("/api/jobs", {
@@ -82,13 +88,17 @@ export function PostJobPanel() {
           requirements: requirements.trim() || undefined,
           perksBenefits: perksBenefits.trim() || undefined,
           contactEmail: contactEmail.trim() || undefined,
+          isBoosted,
           status: targetStatus,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to post job");
+        const errorDetail = Array.isArray(data.details) && data.details.length > 0
+          ? data.details.join(" • ")
+          : (data.error || "Failed to post job");
+        throw new Error(errorDetail);
       }
 
       setPosted(true);
@@ -281,6 +291,7 @@ export function PostJobPanel() {
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="date"
+                  min={new Date().toISOString().split("T")[0]}
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
                   className={`${inputCls} pl-9`}
@@ -303,14 +314,19 @@ export function PostJobPanel() {
           </div>
 
           <div>
-            <label className={labelCls}>{t("jobprovider.jobDescription")} *</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-foreground">{t("jobprovider.jobDescription")} *</label>
+              <span className={`text-xs ${description.trim().length >= 10 ? "text-muted-foreground" : "text-amber-500 font-medium"}`}>
+                {description.trim().length} / 10 min chars
+              </span>
+            </div>
             <textarea
               required
               rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={`${inputCls} resize-none`}
-              placeholder="Describe the role, day-to-day responsibilities, expectations…"
+              placeholder="Describe the role, day-to-day responsibilities, expectations (at least 10 characters)…"
             />
           </div>
 

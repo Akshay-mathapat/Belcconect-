@@ -128,8 +128,14 @@ export function MyJobsPanel() {
           <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading job listings…
         </div>
       ) : error ? (
-        <div className="p-6 text-center text-red-500 rounded-2xl border border-red-500/20 bg-red-500/5">
-          {error}
+        <div className="p-6 text-center text-red-500 rounded-2xl border border-red-500/20 bg-red-500/5 space-y-3">
+          <p className="text-sm font-medium">{error}</p>
+          <button
+            onClick={fetchJobs}
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 transition-colors cursor-pointer"
+          >
+            Retry Loading Jobs
+          </button>
         </div>
       ) : jobs.length === 0 ? (
         <div className="p-12 text-center rounded-2xl border border-border bg-card">

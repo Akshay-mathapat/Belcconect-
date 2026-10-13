@@ -7,7 +7,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { nativeCallBridge } from "@/lib/nativeCallBridge";
 import { recreateChatSocket, disconnectChatSocket } from "@/lib/socketChat";
 
-export type UserRole = "user" | "provider" | "job_provider";
+export type UserRole = "user" | "provider" | "job_provider" | "admin";
 
 export interface SavedAddress {
   id: string;
