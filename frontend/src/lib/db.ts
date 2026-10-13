@@ -65,6 +65,25 @@ function readPositiveInt(
   return parsed;
 }
 
+export function resolveDatabaseUrl(): string | undefined {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  if (process.env.POSTGRES_URL) return process.env.POSTGRES_URL;
+  if (process.env.DATABASE_URI) return process.env.DATABASE_URI;
+  if (process.env.POSTGRESQL_URL) return process.env.POSTGRESQL_URL;
+
+  // Resilient auto-detection: find ANY env var containing a postgres URL
+  for (const [key, val] of Object.entries(process.env)) {
+    if (
+      typeof val === "string" &&
+      (val.startsWith("postgresql://") || val.startsWith("postgres://"))
+    ) {
+      return val;
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Return the shared PostgreSQL connection pool.
  */
@@ -73,11 +92,7 @@ export function getPool(): Pool {
     return globalThis.postgresPool;
   }
 
-  const connectionString =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.DATABASE_URI ||
-    process.env.POSTGRESQL_URL;
+  const connectionString = resolveDatabaseUrl();
 
   if (!connectionString) {
     throw new Error(

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query, isDatabaseUnavailableError } from "@/lib/db";
 
-export const revalidate = 60; // 60 seconds ISR cache
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

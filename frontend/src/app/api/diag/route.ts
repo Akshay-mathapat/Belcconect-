@@ -20,14 +20,34 @@ export async function GET() {
     k.toUpperCase().includes("AUTH")
   );
 
+  const detectedDbKey = Object.entries(process.env).find(
+    ([_, v]) => typeof v === "string" && (v.startsWith("postgresql://") || v.startsWith("postgres://"))
+  )?.[0] || null;
+
+  const customEnvKeys = envKeys
+    .filter(
+      (k) =>
+        !k.startsWith("npm_") &&
+        !k.startsWith("__") &&
+        !k.startsWith("VERCEL_") &&
+        !k.startsWith("NODE_") &&
+        !k.startsWith("AWS_") &&
+        !k.startsWith("PATH") &&
+        !k.startsWith("SHELL") &&
+        !k.startsWith("HOME")
+    )
+    .sort();
+
   return NextResponse.json({
     status: "ok",
     hasDatabaseUrl: Boolean(
       process.env.DATABASE_URL ||
       process.env.POSTGRES_URL ||
       process.env.DATABASE_URI ||
-      process.env.POSTGRESQL_URL
+      process.env.POSTGRESQL_URL ||
+      detectedDbKey
     ),
+    detectedDbKey,
     hasJwtSecret: Boolean(
       process.env.JWT_SECRET ||
       process.env.NEXTAUTH_SECRET ||
@@ -37,5 +57,7 @@ export async function GET() {
     nodeEnv: process.env.NODE_ENV || "unknown",
     dbKeysFound,
     jwtKeysFound,
+    customEnvKeys,
   });
 }
+
