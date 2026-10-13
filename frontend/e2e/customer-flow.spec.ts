@@ -62,3 +62,4 @@ test.describe('Customer Full Flow — Discovery, Jobs, Application & Account', (
     await expect(accountContent).toBeVisible({ timeout: 15000 });
   });
 });
+

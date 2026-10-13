@@ -106,3 +106,4 @@ export async function loginAsJobProvider(page: Page) {
 
   return { user, token };
 }
+

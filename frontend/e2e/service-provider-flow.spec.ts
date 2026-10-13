@@ -52,3 +52,4 @@ test.describe('Service Provider Full Flow — Dashboard, Bookings, Services & Sc
     await expect(profileForm).toBeVisible({ timeout: 15000 });
   });
 });
+
