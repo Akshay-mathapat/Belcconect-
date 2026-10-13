@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuthStore, BookingItem } from "@/store/useAuthStore";
+import { useAuthStore, BookingItem, getStoredUserId, getStoredAuthToken } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/common/LanguageSelector";
 import CallButton from "@/components/calls/CallButton";
@@ -108,19 +108,22 @@ export default function AccountPage() {
   useEffect(() => {
     if (!isHydrated) return;
 
-    if (!currentUserId) {
+    const token = getStoredAuthToken();
+    const storedId = currentUserId || getStoredUserId();
+
+    if (!storedId && !token) {
       router.push("/auth?mode=login&returnTo=/account");
       return;
     }
     // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
-    if (currentUserId.startsWith("user-")) {
+    if (storedId && storedId.startsWith("user-")) {
       logout();
       router.push("/auth?mode=login&returnTo=/account");
       return;
     }
 
-    if (hasFetchedRef.current !== currentUserId) {
-      hasFetchedRef.current = currentUserId;
+    if (hasFetchedRef.current !== (currentUserId || null)) {
+      hasFetchedRef.current = currentUserId || null;
       fetchUserBookings().catch(() => {});
       fetchUserAddresses().catch(() => {});
     }

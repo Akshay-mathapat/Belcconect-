@@ -966,7 +966,7 @@ export default function Navigation() {
 
                       <Link
 
-                        href={currentUser.role === "provider" ? "/provider" : currentUser.role === "job_provider" ? "/jobprovider" : "/account"}
+                        href={currentUser.role === "provider" ? "/provider" : currentUser.role === "job_provider" ? "/jobprovider/dashboard" : "/account"}
 
                         data-tour="my-bookings"
 
@@ -1435,7 +1435,7 @@ export default function Navigation() {
 
                     <Link
 
-                      href={currentUser.role === "provider" ? "/provider" : currentUser.role === "job_provider" ? "/jobprovider" : "/account"}
+                      href={currentUser.role === "provider" ? "/provider" : currentUser.role === "job_provider" ? "/jobprovider/dashboard" : "/account"}
 
                       onClick={() => setMobileOpen(false)}
 

@@ -90,12 +90,7 @@ export async function registerAndSubscribeUser(userId: string): Promise<boolean>
       console.log("[WebPush] Successfully subscribed user to push notifications:", userId);
       return true;
     } else {
-      if (res && res.status === 401) {
-        console.warn("[WebPush] Push subscription rejected with 401. Halting retries.");
-        triggerAuthExpired();
-      } else {
-        console.warn("[WebPush] Failed to store push subscription on server.");
-      }
+      console.warn("[WebPush] Failed or rejected storing push subscription on server (push is optional).");
       return false;
     }
   } catch (err: any) {

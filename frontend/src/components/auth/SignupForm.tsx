@@ -19,7 +19,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawReturnTo = searchParams?.get("returnTo");
+  const rawReturnTo = searchParams?.get("returnTo") || searchParams?.get("redirect");
   const safeReturnTo = getSafeReturnUrl(rawReturnTo);
 
   const { registerUser } = useAuthStore();
@@ -66,16 +66,16 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
       setIsSubmitted(true);
 
-      // Auto-redirect based on selected role after 800ms
+      // Auto-redirect directly to appropriate dashboard after 500ms
       setTimeout(() => {
         if (signupRole === "provider") {
-          router.push("/provider");
+          router.push(safeReturnTo !== "/" ? safeReturnTo : "/provider");
         } else if (signupRole === "job_provider") {
-          router.push("/jobprovider");
+          router.push(safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard");
         } else {
           router.push(safeReturnTo);
         }
-      }, 800);
+      }, 500);
     } catch (err) {
       setIsLoading(false);
       setErrorMessage("An unexpected error occurred during registration.");

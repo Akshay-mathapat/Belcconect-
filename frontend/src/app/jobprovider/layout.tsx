@@ -21,7 +21,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
 import { JobProviderSearchDropdown } from "@/components/jobprovider/layout/JobProviderSearchDropdown";
@@ -95,11 +95,12 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
   useEffect(() => {
     if (!isHydrated) return;
 
-    if (!currentUser) {
+    const token = getStoredAuthToken();
+    if (!currentUser && !token) {
       router.push("/login");
       return;
     }
-    if (currentUser.role !== "job_provider" && currentUser.role !== "admin") {
+    if (currentUser && currentUser.role !== "job_provider" && currentUser.role !== "admin") {
       router.push("/");
     }
   }, [currentUser, router, isHydrated]);
@@ -133,7 +134,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
     else router.push("/jobprovider/dashboard");
   };
 
-  if (!currentUser || currentUser.role !== "job_provider") {
+  if (!currentUser || (currentUser.role !== "job_provider" && currentUser.role !== "admin")) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>

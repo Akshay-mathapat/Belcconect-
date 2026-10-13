@@ -32,6 +32,19 @@ export function getSafeReturnUrl(returnTo?: string | null, fallback: string = "/
     // Must NOT contain Windows backslashes or drive letters
     if (decoded.includes("\\") || decoded.includes(":")) return fallback;
 
+    // Must NOT redirect back to authentication pages to prevent login bounce loops
+    const lower = decoded.toLowerCase();
+    if (
+      lower === "/login" ||
+      lower.startsWith("/login?") ||
+      lower === "/register" ||
+      lower.startsWith("/register?") ||
+      lower === "/auth" ||
+      lower.startsWith("/auth?")
+    ) {
+      return fallback;
+    }
+
     return decoded;
   } catch (e) {
     return fallback;

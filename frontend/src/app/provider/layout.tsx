@@ -28,7 +28,7 @@ import {
   Video
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
@@ -133,11 +133,12 @@ export default function ProviderLayout({
   useEffect(() => {
     if (!isHydrated) return;
 
-    if (!currentUser) {
+    const token = getStoredAuthToken();
+    if (!currentUser && !token) {
       router.push("/login");
       return;
     }
-    if (currentUser.role !== "provider") {
+    if (currentUser && currentUser.role !== "provider" && (currentUser as any).role !== "admin") {
       router.push("/");
     }
   }, [currentUser, router, isHydrated]);
@@ -170,7 +171,7 @@ export default function ProviderLayout({
     );
   }
 
-  if (!currentUser || currentUser.role !== "provider") {
+  if (!currentUser || (currentUser.role !== "provider" && (currentUser as any).role !== "admin")) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>

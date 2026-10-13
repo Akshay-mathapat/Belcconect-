@@ -22,7 +22,7 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawReturnTo = searchParams?.get("returnTo");
+  const rawReturnTo = searchParams?.get("returnTo") || searchParams?.get("redirect");
   const safeReturnTo = getSafeReturnUrl(rawReturnTo);
 
   const accountType = initialAccountType || "customer";
@@ -49,7 +49,7 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
         return;
       }
 
-      // Register Service Worker & Subscribe to Web Push Notifications upon login
+      // Register Service Worker & Subscribe to Web Push Notifications upon login (optional background task)
       if (res.user?.id) {
         registerAndSubscribeUser(res.user.id).catch(() => {});
       }
@@ -57,16 +57,16 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
       setIsSubmitted(true);
       
       const userRole = res.user?.role || "user";
-      // Auto-redirect based on detected role after 800ms
+      // Auto-redirect directly to the appropriate dashboard after 500ms
       setTimeout(() => {
         if (userRole === "provider") {
-          router.push("/provider");
+          router.push(safeReturnTo !== "/" ? safeReturnTo : "/provider");
         } else if (userRole === "job_provider") {
-          router.push("/jobprovider");
+          router.push(safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard");
         } else {
           router.push(safeReturnTo);
         }
-      }, 800);
+      }, 500);
     } catch (err) {
       setIsLoading(false);
       setErrorMessage("An unexpected error occurred during login.");
@@ -74,8 +74,9 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
   };
 
   const getRedirectPath = () => {
-    if (currentUser?.role === "provider") return "/provider";
-    if (currentUser?.role === "job_provider") return "/jobprovider";
+    const role = currentUser?.role;
+    if (role === "provider") return safeReturnTo !== "/" ? safeReturnTo : "/provider";
+    if (role === "job_provider") return safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard";
     return safeReturnTo;
   };
 

@@ -232,7 +232,10 @@ export const useAuthStore = create<AuthState>()(
             }
 
             set((state) => {
-              const list = state.usersList.map((u) => (u.id === user.id ? user : u));
+              const exists = state.usersList.some((u) => u.id === user.id);
+              const list = exists
+                ? state.usersList.map((u) => (u.id === user.id ? user : u))
+                : [...state.usersList, user];
               return { currentUser: user, usersList: list };
             });
 
@@ -592,6 +595,7 @@ export function getStoredAuthToken(): string | null {
     return authUser.token.trim();
   }
   if (typeof window !== "undefined") {
+    // 1. Check direct keys
     const keys = ["cityconnect_auth_token", "cityconnect_token", "auth_token"];
     for (const key of keys) {
       const val = localStorage.getItem(key);
@@ -599,6 +603,18 @@ export function getStoredAuthToken(): string | null {
         return val.trim();
       }
     }
+    // 2. Check JSON store
+    try {
+      const rawStore = localStorage.getItem("belconnect-auth-store");
+      if (rawStore) {
+        const parsed = JSON.parse(rawStore);
+        const storeToken = parsed?.state?.currentUser?.token;
+        if (storeToken && typeof storeToken === "string" && storeToken.trim().length > 10) {
+          return storeToken.trim();
+        }
+      }
+    } catch (e) {}
+    // 3. Check cookie
     try {
       const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
       if (match && match[1] && match[1] !== "undefined" && match[1] !== "null" && match[1].trim().length > 10) {
@@ -613,11 +629,18 @@ export function getStoredUserId(): string | null {
   const authUser = useAuthStore.getState().currentUser;
   if (authUser?.id) return authUser.id;
   if (typeof window !== "undefined") {
-    return (
-      localStorage.getItem("cityconnect_user_id") ||
-      localStorage.getItem("user_id") ||
-      null
-    );
+    // 1. Direct keys
+    const directId = localStorage.getItem("cityconnect_user_id") || localStorage.getItem("user_id");
+    if (directId) return directId;
+    // 2. JSON store
+    try {
+      const rawStore = localStorage.getItem("belconnect-auth-store");
+      if (rawStore) {
+        const parsed = JSON.parse(rawStore);
+        const storeId = parsed?.state?.currentUser?.id;
+        if (storeId) return storeId;
+      }
+    } catch (e) {}
   }
   return null;
 }
@@ -627,14 +650,17 @@ export function getStoredUserId(): string | null {
 if (typeof window !== "undefined") {
   window.addEventListener("auth:expired", () => {
     try {
+      const path = window.location.pathname.toLowerCase();
+      // NEVER clear authentication state or force redirect if user is on /login, /auth, or /register
+      if (path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/register")) {
+        return;
+      }
+
       const store = useAuthStore.getState();
       if (store.currentUser) {
         console.warn("[AUTH] Session expired. Clearing authenticated state and redirecting.");
         store.logout();
-        const path = window.location.pathname;
-        if (!path.startsWith("/login") && !path.startsWith("/auth") && !path.startsWith("/register")) {
-          window.location.href = `/login?expired=1&returnTo=${encodeURIComponent(path)}`;
-        }
+        window.location.href = `/login?expired=1&returnTo=${encodeURIComponent(window.location.pathname)}`;
       }
     } catch (e) {
       console.error("[AUTH] Error handling auth:expired:", e);

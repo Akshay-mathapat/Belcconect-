@@ -31,6 +31,8 @@ export interface AuthFetchOptions {
  */
 export function getClientToken(): string | null {
   if (typeof window === "undefined") return null;
+
+  // 1. Check direct token keys in localStorage
   const keys = ["cityconnect_token", "auth_token", "cityconnect_auth_token"];
   for (const key of keys) {
     const val = localStorage.getItem(key);
@@ -38,6 +40,20 @@ export function getClientToken(): string | null {
       return val.trim();
     }
   }
+
+  // 2. Check persisted zustand store in localStorage
+  try {
+    const rawStore = localStorage.getItem("belconnect-auth-store");
+    if (rawStore) {
+      const parsed = JSON.parse(rawStore);
+      const storeToken = parsed?.state?.currentUser?.token;
+      if (storeToken && typeof storeToken === "string" && storeToken.trim().length > 10) {
+        return storeToken.trim();
+      }
+    }
+  } catch (e) {}
+
+  // 3. Fallback to auth_token cookie
   try {
     const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
     if (match && match[1] && match[1] !== "undefined" && match[1] !== "null" && match[1].trim().length > 10) {
@@ -52,6 +68,14 @@ let isHandlingAuthExpired = false;
 let lastAuthExpiredTime = 0;
 
 export function triggerAuthExpired() {
+  if (typeof window !== "undefined") {
+    const p = window.location.pathname.toLowerCase();
+    // NEVER trigger auth logout or wipe tokens while the user is actively on auth/login pages
+    if (p.startsWith("/login") || p.startsWith("/auth") || p.startsWith("/register")) {
+      return;
+    }
+  }
+
   const now = Date.now();
   // Debounce to at most once per 5 seconds
   if (isHandlingAuthExpired || (now - lastAuthExpiredTime < 5000)) {
