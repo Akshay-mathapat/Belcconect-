@@ -133,3 +133,4 @@ export async function getLatestResumeByUser(userId: string): Promise<StoredResum
     createdAt: row.created_at,
   };
 }
+

@@ -12,3 +12,4 @@ CREATE TABLE IF NOT EXISTS public.job_resumes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_job_resumes_user_id ON public.job_resumes (user_id, created_at DESC);
+

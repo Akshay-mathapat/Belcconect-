@@ -63,7 +63,7 @@ export async function GET(
     const filename = record.filename || `resume-${resumeId}.pdf`;
     const mime = record.mime || "application/pdf";
 
-    return new NextResponse(record.buffer, {
+    return new NextResponse(new Uint8Array(record.buffer), {
       status: 200,
       headers: {
         "Content-Type": mime,
@@ -80,3 +80,4 @@ export async function GET(
     return NextResponse.json({ error: "Failed to download resume" }, { status: 500 });
   }
 }
+

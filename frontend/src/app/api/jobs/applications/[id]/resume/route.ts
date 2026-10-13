@@ -93,7 +93,7 @@ export async function GET(
         const dbRecord = await getResumeFromDatabase(resumeId);
 
         if (dbRecord) {
-          return new NextResponse(dbRecord.buffer, {
+          return new NextResponse(new Uint8Array(dbRecord.buffer), {
             status: 200,
             headers: {
               "Content-Type": dbRecord.mime || mime,
@@ -114,7 +114,7 @@ export async function GET(
       if (commaIdx !== -1) {
         const base64Data = targetUrl.substring(commaIdx + 1);
         const fileBuffer = Buffer.from(base64Data, "base64");
-        return new NextResponse(fileBuffer, {
+        return new NextResponse(new Uint8Array(fileBuffer), {
           status: 200,
           headers: {
             "Content-Type": mime,
@@ -132,7 +132,7 @@ export async function GET(
 
     if (fs.existsSync(fullPath)) {
       const fileBuffer = await fs.promises.readFile(fullPath);
-      return new NextResponse(fileBuffer, {
+      return new NextResponse(new Uint8Array(fileBuffer), {
         status: 200,
         headers: {
           "Content-Type": mime,
@@ -148,7 +148,7 @@ export async function GET(
       const { getLatestResumeByUser } = await import("@/lib/jobResumes");
       const fallbackRecord = await getLatestResumeByUser(app.candidate_id);
       if (fallbackRecord) {
-        return new NextResponse(fallbackRecord.buffer, {
+        return new NextResponse(new Uint8Array(fallbackRecord.buffer), {
           status: 200,
           headers: {
             "Content-Type": fallbackRecord.mime || mime,
