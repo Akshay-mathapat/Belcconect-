@@ -4,16 +4,23 @@
  */
 
 function resolveSiteUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "");
+
   if (!envUrl) {
-    // In production build, fail fast with a clear message if NEXT_PUBLIC_SITE_URL is not set
+    // In production build, fail fast with a clear message if no URL environment variable is set
     if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV === "production") {
       throw new Error(
-        "FATAL SEO CONFIG ERROR: NEXT_PUBLIC_SITE_URL environment variable is required in production builds but is missing. Please set NEXT_PUBLIC_SITE_URL (e.g. 'https://belconnect.in' or 'https://belconnect.vercel.app') in your Vercel Project Settings."
+        "FATAL SEO CONFIG ERROR: NEXT_PUBLIC_SITE_URL (or NEXT_PUBLIC_APP_URL) environment variable is required in production builds but is missing. Please set NEXT_PUBLIC_SITE_URL in your Vercel Project Settings."
       );
     }
-    // Safe fallback for local development, CI tests, and preview branches
-    const fallback = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
+    // Safe fallback for local development and CI tests
+    const fallback = process.env.APP_URL || "http://localhost:3000";
     return fallback.trim().replace(/\/+$/, "");
   }
   return envUrl.trim().replace(/\/+$/, "");

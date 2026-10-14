@@ -17,6 +17,39 @@ if (!appUrl) {
   );
 }
 
+const privateNoIndexPaths = [
+  "/account",
+  "/account/:path*",
+  "/admin",
+  "/admin/:path*",
+  "/provider",
+  "/provider/:path*",
+  "/job-provider",
+  "/job-provider/:path*",
+  "/jobprovider",
+  "/jobprovider/:path*",
+  "/bookings",
+  "/bookings/:path*",
+  "/book",
+  "/book/:path*",
+  "/auth",
+  "/auth/:path*",
+  "/login",
+  "/login/:path*",
+  "/register",
+  "/register/:path*",
+];
+
+const privateNoIndexHeaders = privateNoIndexPaths.map((source) => ({
+  source,
+  headers: [
+    {
+      key: "X-Robots-Tag",
+      value: "noindex, nofollow",
+    },
+  ],
+}));
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   env: {
@@ -30,6 +63,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      ...privateNoIndexHeaders,
       {
         source: "/:path*",
         headers: [
