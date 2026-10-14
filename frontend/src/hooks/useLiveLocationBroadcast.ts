@@ -190,8 +190,8 @@ export function useLiveLocationBroadcast(
           apiUrl = window.location.origin;
         }
       }
-      if (!apiUrl) {
-        apiUrl = "https://belcconect.vercel.app";
+      if (!apiUrl && typeof window !== "undefined") {
+        apiUrl = window.location.origin;
       }
       apiUrl = apiUrl.replace(/\/+$/, "");
       if (!apiUrl.endsWith("/api")) {

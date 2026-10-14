@@ -17,7 +17,9 @@ export async function GET(
     const blobPathname = pathSegments.join("/");
 
     // 1. Enforce strict prefix
-    if (!blobPathname.startsWith("chat-attachments/")) {
+    const isChat = blobPathname.startsWith("chat-attachments/");
+    const isKyc = blobPathname.startsWith("kyc-documents/");
+    if (!isChat && !isKyc) {
       return NextResponse.json({ error: "Invalid attachment path" }, { status: 400 });
     }
 
@@ -33,7 +35,7 @@ export async function GET(
     }
 
     // 3. Strict character whitelist
-    if (!/^chat-attachments\/[a-zA-Z0-9._\/-]+$/.test(blobPathname)) {
+    if (!/^(chat-attachments|kyc-documents)\/[a-zA-Z0-9._\/-]+$/.test(blobPathname)) {
       return NextResponse.json({ error: "Invalid attachment path" }, { status: 400 });
     }
 
@@ -51,6 +53,13 @@ export async function GET(
 
     if (authUser.role === "admin") {
       isAuthorized = true;
+    } else if (isKyc) {
+      // KYC document photos are strictly private: accessible only to owner provider or admin
+      const ownerId = pathSegments[1];
+      const sanitizedUser = authUser.userId ? authUser.userId.replace(/[^a-zA-Z0-9_-]/g, "_") : "";
+      if (authUser.userId && (authUser.userId === ownerId || sanitizedUser === ownerId)) {
+        isAuthorized = true;
+      }
     } else if (authUser.userId) {
       // Fast path: if path format is chat-attachments/<userId>/... and requester matches uploader
       if (pathSegments.length >= 3 && pathSegments[1] === authUser.userId) {

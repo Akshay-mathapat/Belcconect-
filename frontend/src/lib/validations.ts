@@ -18,6 +18,10 @@ export const googleAuthSchema = z.object({
   accountType: z.string().optional(),
   role: z.string().optional(),
 });
+
+import { normalizeIndianPhone } from "./phone";
+export { normalizeIndianPhone };
+
 export const registerSchema = z.object({
   email: z
     .string()
@@ -38,8 +42,9 @@ export const registerSchema = z.object({
   phone: z
     .string()
     .trim()
-    .max(50, "Phone number is too long")
-    .optional(),
+    .refine((val) => normalizeIndianPhone(val) !== null, {
+      message: "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9."
+    }),
   role: z.enum(["user", "provider", "job_provider"]),
   avatar: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
 });
@@ -133,7 +138,7 @@ export async function parseAndValidate<T>(
       };
     }
     return { data: result.data };
-  } catch (error) {
+  } catch {
     return {
       response: NextResponse.json(
         { error: "Invalid JSON request body" },

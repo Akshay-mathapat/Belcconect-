@@ -41,57 +41,16 @@ const CallContext = createContext<CallContextType>({
   socket: null
 });
 
+import { getSignalingUrl } from "@/lib/signalingUrl";
+
 export const useCallContext = () => useContext(CallContext);
-
-// ─── Authoritative signaling URL resolution ─────────────────────────────────
-function resolveSignalingUrl(): string | null {
-  const envUrl = process.env.NEXT_PUBLIC_SIGNALING_URL?.trim();
-
-  // If environment variable is explicitly set to a non-localhost remote URL, honor it (excluding Vercel serverless URLs)
-  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1") && !envUrl.includes("vercel.app")) {
-    return envUrl;
-  }
-
-  if (typeof window !== "undefined") {
-    const browserHost = window.location.hostname;
-    const protocol = window.location.protocol;
-    const isLocalBrowser = browserHost === "localhost" || browserHost === "127.0.0.1";
-
-    if (browserHost.includes("devtunnels.ms")) {
-      const derivedSignalingHost = browserHost.replace(/-3000(?=\.|\b)/, "-4001");
-      return `${protocol}//${derivedSignalingHost}`;
-    }
-
-    // Production domains, Vercel deployments, or standalone Android APK
-    if (
-      browserHost.includes("vercel.app") ||
-      browserHost.includes("belcconect") ||
-      browserHost.includes("cityconnect") ||
-      (!isLocalBrowser &&
-        !browserHost.endsWith(".local") &&
-        !browserHost.startsWith("192.168.") &&
-        !browserHost.startsWith("10."))
-    ) {
-      return "https://belcconect-backend.onrender.com";
-    }
-
-    if (isLocalBrowser) {
-      return `http://${browserHost}:4001`;
-    }
-
-    return `${protocol}//${browserHost}:4001`;
-  }
-
-  if (envUrl && envUrl.length > 0) return envUrl;
-  return "https://belcconect-backend.onrender.com";
-}
 
 export function CallProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { currentUser } = useAuthStore();
 
   const currentUserId = useMemo(() => {
-    const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+    const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
     const isProviderPortal = pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider");
     if (currentUser?.id) return currentUser.id;
     return isDemo ? (isProviderPortal ? "provider-1" : "customer-1") : "";
@@ -166,7 +125,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const uid = currentUserIdRef.current;
     if (!id || !uid) return false;
     if (id === uid) return true;
-    if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+    if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
       if ((uid.includes("prov") || uid === "provider-1") && (id.includes("prov") || id === "provider-1")) return true;
       if ((uid.includes("cust") || uid === "customer-1") && (id.includes("cust") || id === "customer-1")) return true;
     }
@@ -350,7 +309,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       const matchesMe = (id: string) => {
         if (!id || !uid) return false;
         if (id === uid) return true;
-        if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+        if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
           if ((uid.includes("prov") || uid === "provider-1") && (id.includes("prov") || id === "provider-1")) return true;
           if ((uid.includes("cust") || uid === "customer-1") && (id.includes("cust") || id === "customer-1")) return true;
         }
@@ -501,7 +460,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       return Promise.resolve();
     }
 
-    const signalingUrl = resolveSignalingUrl();
+    const signalingUrl = getSignalingUrl();
     if (!signalingUrl) {
       const err = new Error(
         `[SIGNALING_CONFIG_ERROR] No valid signaling server URL configured.`
@@ -1040,7 +999,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           const matchesMe = (id: string) => {
             if (!id || !uid) return false;
             if (id === uid) return true;
-            if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+            if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
               if ((uid.includes("prov") || uid === "provider-1") && (id.includes("prov") || id === "provider-1")) return true;
               if ((uid.includes("cust") || uid === "customer-1") && (id.includes("cust") || id === "customer-1")) return true;
             }

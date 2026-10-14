@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Navigation, Radio, Clock, ShieldCheck, ExternalLink, MapPin, Loader2, AlertCircle } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import { useTranslation } from "@/lib/i18n";
+import { BELAGAVI_CITY_CENTER, shouldRefreshRoute, computeFallbackRoute } from "@/lib/maps/mapService";
 
 interface CustomerTrackingMapProps {
   bookingId: string;
@@ -329,79 +330,108 @@ export default function CustomerTrackingMap({
     return () => clearInterval(timerInterval);
   }, [lastPingTimestamp]);
 
-  // 4. Fetch OSRM Route strictly between REAL provider position & destination (No fake movement)
+  // 4. Fetch Server-side Directions with 50m movement guard & offline fallback
+  const lastRouteCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [isDegradedRoute, setIsDegradedRoute] = useState(false);
+  const [degradedReason, setDegradedReason] = useState<string | null>(null);
+
   useEffect(() => {
     if (!providerCoords) return;
     let isMounted = true;
 
-    async function fetchOsrmRoute() {
+    async function fetchDirections(force = false) {
       if (!providerCoords) return;
       const hasValidDest = isValidCoord(destinationLatitude, destinationLongitude);
       if (!hasValidDest) {
         setRouteAvailable(false);
         return;
       }
-      try {
-        const destLat = Number(destinationLatitude);
-        const destLng = Number(destinationLongitude);
-        const pLat = providerCoords.lat;
-        const pLng = providerCoords.lng;
-        const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${destLng},${destLat}?overview=full&geometries=geojson`;
 
+      const pLat = providerCoords.lat;
+      const pLng = providerCoords.lng;
+      const destLat = Number(destinationLatitude);
+      const destLng = Number(destinationLongitude);
+
+      // Only re-fetch route if provider moved more than 50 meters (avoids API quota burn)
+      if (!force && !shouldRefreshRoute(lastRouteCoordsRef.current, providerCoords, 50)) {
+        return;
+      }
+
+      try {
+        const url = `/api/location/directions?originLat=${pLat}&originLng=${pLng}&destLat=${destLat}&destLng=${destLng}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
-        if (!res.ok) throw new Error("OSRM route fetch failed");
+        if (!res.ok) throw new Error(`Directions API failed with status ${res.status}`);
 
         const data = await res.json();
-        if (!isMounted || !data.routes || data.routes.length === 0) return;
+        if (!isMounted || !data.success) return;
 
-        const route = data.routes[0];
-        const distMetersVal = Math.round(route.distance);
-        const durationMinsVal = Math.ceil(route.duration / 60);
-
-        setDistanceMeters(distMetersVal);
-        setEtaMins(durationMinsVal);
+        setDistanceMeters(data.distanceMeters);
+        setEtaMins(data.durationMinutes);
         setRouteAvailable(true);
+        setIsDegradedRoute(!!data.fallback);
+        setDegradedReason(data.fallbackReason || null);
+        lastRouteCoordsRef.current = { lat: pLat, lng: pLng };
 
-        if (route.geometry && route.geometry.coordinates) {
-          const latLngs = route.geometry.coordinates.map(([lng, lat]: [number, number]) => ({ lat, lng }));
+        const coords: Array<{ lat: number; lng: number }> = data.coordinates || [];
 
-          // Draw Polyline on Leaflet Map
-          if (leafletMapRef.current) {
-            const L = (await import("leaflet")).default;
-            const polylinePoints = latLngs.map((pt: { lat: number; lng: number }) => [pt.lat, pt.lng]);
+        // Draw Polyline on Leaflet Map
+        if (leafletMapRef.current && coords.length > 0) {
+          const L = (await import("leaflet")).default;
+          const polylinePoints: [number, number][] = coords.map((pt) => [pt.lat, pt.lng]);
 
-            if (routePolylineRef.current) {
-              routePolylineRef.current.setLatLngs(polylinePoints);
-            } else {
-              routePolylineRef.current = L.polyline(polylinePoints, {
-                color: "#2563eb",
-                weight: 5,
-                opacity: 0.85
-              }).addTo(leafletMapRef.current);
-            }
+          if (routePolylineRef.current) {
+            routePolylineRef.current.setLatLngs(polylinePoints);
+            routePolylineRef.current.setStyle({
+              color: data.fallback ? "#f59e0b" : "#2563eb",
+              dashArray: data.fallback ? "8, 8" : undefined
+            });
+          } else {
+            routePolylineRef.current = L.polyline(polylinePoints, {
+              color: data.fallback ? "#f59e0b" : "#2563eb",
+              dashArray: data.fallback ? "8, 8" : undefined,
+              weight: 5,
+              opacity: 0.85
+            }).addTo(leafletMapRef.current);
           }
         }
       } catch (err) {
-        console.warn("[CustomerTrackingMap] OSRM Route fetch fallback:", err);
+        console.warn("[CustomerTrackingMap] Route fetch fallback, activating offline/degraded mode:", err);
         if (isMounted) {
-          setRouteAvailable(false);
-          if (routePolylineRef.current && leafletMapRef.current) {
-            try {
-              leafletMapRef.current.removeLayer(routePolylineRef.current);
-              routePolylineRef.current = null;
-            } catch (e) {}
+          // Graceful offline fallback: straight line + 20 km/h Belagavi city traffic travel time
+          const fb = computeFallbackRoute({ lat: pLat, lng: pLng }, { lat: destLat, lng: destLng });
+          setDistanceMeters(fb.distanceMeters);
+          setEtaMins(fb.durationMinutes);
+          setRouteAvailable(true);
+          setIsDegradedRoute(true);
+          setDegradedReason(fb.fallbackReason || null);
+          lastRouteCoordsRef.current = { lat: pLat, lng: pLng };
+
+          if (leafletMapRef.current) {
+            const L = (await import("leaflet")).default;
+            const points: [number, number][] = [[pLat, pLng], [destLat, destLng]];
+            if (routePolylineRef.current) {
+              routePolylineRef.current.setLatLngs(points);
+              routePolylineRef.current.setStyle({ color: "#f59e0b", dashArray: "8, 8" });
+            } else {
+              routePolylineRef.current = L.polyline(points, {
+                color: "#f59e0b",
+                dashArray: "8, 8",
+                weight: 4,
+                opacity: 0.8
+              }).addTo(leafletMapRef.current);
+            }
           }
         }
       }
     }
 
-    fetchOsrmRoute();
-    const routeInterval = setInterval(fetchOsrmRoute, 35000);
+    fetchDirections(true);
+    const routeInterval = setInterval(() => fetchDirections(false), 35000);
 
     return () => {
       isMounted = false;
@@ -435,7 +465,7 @@ export default function CustomerTrackingMap({
           ? [destLat!, destLng!]
           : providerCoords
           ? [providerCoords.lat, providerCoords.lng]
-          : [0, 0]; // Default handled gracefully if both missing
+          : [BELAGAVI_CITY_CENTER.lat, BELAGAVI_CITY_CENTER.lng];
 
         const map = L.map(container, {
           center: initialCenter,
@@ -722,8 +752,18 @@ export default function CustomerTrackingMap({
           </div>
         </div>
 
-        {/* Single Authoritative Pill Badge */}
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border backdrop-blur-md ${
+        <div className="flex items-center gap-2">
+          {isDegradedRoute && (
+            <span
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md"
+              title={degradedReason || "Direct estimate based on 20 km/h city traffic"}
+            >
+              ⚡ Direct Estimate (20 km/h)
+            </span>
+          )}
+
+          {/* Single Authoritative Pill Badge */}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border backdrop-blur-md ${
           freshnessStatus === "live"
             ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
             : freshnessStatus === "updating"
@@ -745,6 +785,7 @@ export default function CustomerTrackingMap({
           {secsAgo > 0 && freshnessStatus !== "unavailable" && ` (${secsAgo}s)`}
         </span>
       </div>
+    </div>
 
       {/* Map Canvas with Floating Overlay when Provider Coords are Absent */}
       <div className="relative w-full h-[320px] sm:h-[400px] bg-slate-900">

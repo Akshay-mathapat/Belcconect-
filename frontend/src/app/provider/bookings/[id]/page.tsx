@@ -460,7 +460,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {booking.status === "Requested" && (
                   <button
                     disabled={loading}
@@ -483,11 +483,45 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
                 {booking.status === "OnTheWay" && (
                   <button
                     disabled={loading}
-                    onClick={() => handleStatusChange("Started")}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                    onClick={() => handleStatusChange("Arrived")}
+                    className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    Start Work
+                    <MapPin className="w-3.5 h-3.5 text-white" />
+                    <span>I Have Arrived</span>
                   </button>
+                )}
+                {booking.status === "Arrived" && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={loading}
+                      onClick={() => handleStatusChange("Started")}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                    >
+                      Start Work
+                    </button>
+                    {(() => {
+                      const arrivedTs = booking.arrivedAt ? new Date(booking.arrivedAt).getTime() : null;
+                      const minsWaited = arrivedTs ? Math.floor((Date.now() - arrivedTs) / 60000) : 0;
+                      const canReportNoShow = minsWaited >= 10;
+                      return (
+                        <button
+                          disabled={loading || !canReportNoShow}
+                          onClick={() => {
+                            if (!confirm("Are you sure you want to report a customer no-show after waiting on-site for at least 10 minutes?")) return;
+                            handleStatusChange("CustomerNoShow");
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            canReportNoShow
+                              ? "bg-rose-500/10 text-rose-600 border-rose-500/30 hover:bg-rose-500/20"
+                              : "bg-muted text-muted-foreground/60 border-border cursor-not-allowed"
+                          }`}
+                          title={canReportNoShow ? "Report customer no-show" : `Available after waiting 10 minutes on-site (${Math.max(0, 10 - minsWaited)}m remaining)`}
+                        >
+                          Customer No-Show {canReportNoShow ? "" : `(${Math.max(0, 10 - minsWaited)}m wait)`}
+                        </button>
+                      );
+                    })()}
+                  </div>
                 )}
                 {booking.status === "Started" && (
                   <button

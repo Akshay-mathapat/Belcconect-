@@ -64,6 +64,11 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
   const [isReporting, setIsReporting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
 
+  // Provider No-Show Modal State
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
+  const [noShowReason, setNoShowReason] = useState("Provider did not arrive within 30 minutes of accepting");
+  const [isReportingNoShow, setIsReportingNoShow] = useState(false);
+
   // Review Form State
   const [ratingValue, setRatingValue] = useState(5);
   const [reviewText, setReviewText] = useState("");
@@ -200,6 +205,38 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       alert("Network error submitting report");
     } finally {
       setIsReporting(false);
+    }
+  };
+
+  const handleReportProviderNoShow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    setIsReportingNoShow(true);
+    try {
+      const token = currentUser?.token || getStoredAuthToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          status: "ProviderNoShow",
+          noShowReason: noShowReason.trim()
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBooking(data.booking);
+        setShowNoShowModal(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to report provider no-show");
+      }
+    } catch (err) {
+      alert("Network error reporting provider no-show");
+    } finally {
+      setIsReportingNoShow(false);
     }
   };
 
@@ -357,7 +394,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
     );
   }
 
-  const isActiveTracking = ["Accepted", "OnTheWay", "Started"].includes(booking.status);
+  const isActiveTracking = ["Accepted", "OnTheWay", "Arrived", "Started"].includes(booking.status);
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-16 px-4 sm:px-6 lg:px-8">
@@ -378,13 +415,37 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
               Order #{booking.id}
             </span>
 
-            {["Requested", "Accepted"].includes(booking.status) && (
+            {/* Customer Cancellation: Allowed strictly before provider has arrived */}
+            {["Requested", "Accepted", "OnTheWay"].includes(booking.status) && (
               <button
                 type="button"
                 onClick={() => setShowCancelModal(true)}
                 className="px-3 py-1 rounded-xl text-xs font-bold text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 border border-border hover:border-rose-500/30 transition-all cursor-pointer"
               >
                 Cancel Order
+              </button>
+            )}
+
+            {/* Customer Provider No-Show Action: Allowed when accepted/traveling for >= 30 min */}
+            {["Accepted", "OnTheWay"].includes(booking.status) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const acceptedTimestamp = booking.acceptedAt
+                    ? new Date(booking.acceptedAt).getTime()
+                    : booking.createdAt
+                    ? new Date(booking.createdAt).getTime()
+                    : null;
+                  const elapsedMinutes = acceptedTimestamp ? Math.floor((Date.now() - acceptedTimestamp) / 60000) : 0;
+                  if (elapsedMinutes < 30) {
+                    alert(`Provider No-Show can be reported 30 minutes after acceptance. Please wait ${30 - elapsedMinutes} more minute(s).`);
+                  } else {
+                    setShowNoShowModal(true);
+                  }
+                }}
+                className="px-3 py-1 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all cursor-pointer"
+              >
+                Provider No-Show
               </button>
             )}
 
@@ -576,7 +637,13 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
                   </span>
                 </div>
                 <h3 className="text-xl font-heading font-extrabold text-foreground">
-                  Your Service Professional is {booking.status === "OnTheWay" ? "on the way!" : "assigned & ready"}
+                  {booking.status === "Arrived"
+                    ? "Your Service Professional has arrived on-site!"
+                    : booking.status === "Started"
+                    ? "Service is currently in progress"
+                    : booking.status === "OnTheWay"
+                    ? "Your Service Professional is on the way!"
+                    : "Your Service Professional is assigned & ready"}
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-xl">
                   {booking.providerName} is using live GPS location streaming. Track their movement on the map above in real-time.
@@ -764,6 +831,127 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
           </div>
         )}
 
+        {/* ═══════ STATE 3C: EXPIRED ═══════ */}
+        {booking.status === "Expired" && (
+          <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card to-card p-6 sm:p-10 space-y-6 max-w-2xl mx-auto shadow-xl">
+            <div className="w-16 h-16 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto">
+              <Clock className="w-9 h-9" />
+            </div>
+
+            <div className="text-center space-y-2 max-w-lg mx-auto">
+              <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider border border-amber-500/20">
+                Booking Request Expired
+              </span>
+              <h2 className="text-2xl font-heading font-extrabold text-foreground">
+                No Response Received in Time
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Your booking request expired because the service professional did not accept within 10 minutes. BelConnect has found alternative verified professionals in Belagavi for you.
+              </p>
+            </div>
+
+            {booking.suggestedProviders && booking.suggestedProviders.length > 0 ? (
+              <div className="space-y-4 pt-2">
+                <div className="text-left">
+                  <h4 className="text-sm font-bold text-foreground">
+                    Suggested Available Professionals
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Top rated verified experts in {booking.category || "this category"} ready to take your request:
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {booking.suggestedProviders.slice(0, 3).map((pro) => (
+                    <div
+                      key={pro.id}
+                      className="p-4 rounded-2xl border border-border bg-card hover:border-blue-500/40 hover:shadow-md transition-all flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-2">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-lg flex items-center justify-center shadow-sm">
+                          {pro.name ? pro.name.charAt(0).toUpperCase() : "P"}
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm text-foreground line-clamp-1">{pro.name}</h5>
+                          <p className="text-[11px] text-muted-foreground line-clamp-1">{pro.serviceTitle || booking.category}</p>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                          <span>{pro.rating ? pro.rating.toFixed(1) : "5.0"}</span>
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/services?category=${encodeURIComponent(booking.category || "")}&providerId=${pro.id}`}
+                        className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold text-center transition-all shadow-sm block"
+                      >
+                        Book This Pro
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center pt-2">
+                <Link
+                  href={`/services?category=${encodeURIComponent(booking.category || "")}`}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all"
+                >
+                  <span>Browse Available Providers</span>
+                </Link>
+              </div>
+            )}
+
+            <div className="text-center pt-2">
+              <Link
+                href="/account"
+                className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return to My Bookings</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════ STATE 3D: NO-SHOW ═══════ */}
+        {(booking.status === "ProviderNoShow" || booking.status === "CustomerNoShow") && (
+          <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-8 sm:p-10 text-center space-y-4 max-w-xl mx-auto shadow-md">
+            <div className="w-14 h-14 bg-rose-500/10 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5">
+              <span className="px-3 py-0.5 rounded-full bg-rose-500/10 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                {booking.status === "ProviderNoShow" ? "Provider No-Show" : "Customer No-Show"}
+              </span>
+              <h2 className="text-xl font-heading font-bold text-foreground">
+                {booking.status === "ProviderNoShow"
+                  ? "Service Professional Did Not Arrive"
+                  : "Customer Unavailable On-Site"}
+              </h2>
+              {booking.noShowReason && (
+                <p className="text-xs text-muted-foreground">
+                  Reason: <strong className="text-foreground">{booking.noShowReason}</strong>
+                </p>
+              )}
+            </div>
+            <div className="pt-3 flex items-center justify-center gap-3">
+              <Link
+                href="/services"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md hover:bg-blue-700 transition-all"
+              >
+                <span>Book Another Pro</span>
+              </Link>
+              <Link
+                href="/account"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted font-bold text-xs transition-all"
+              >
+                <span>Back to Account</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Structured Cancellation Modal */}
         {showCancelModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -842,6 +1030,65 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
                     className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
                   >
                     {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Provider No-Show Modal */}
+        {showNoShowModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2 text-amber-600">
+                  <Clock className="w-5 h-5" />
+                  <h3 className="font-heading text-lg font-bold text-foreground">
+                    Report Provider No-Show
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNoShowModal(false)}
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleReportProviderNoShow} className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  It has been more than 30 minutes since your booking was accepted. If the service professional has not arrived and is unreachable, you can report a no-show. This will record a reliability penalty on the provider and notify administration.
+                </p>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground block">
+                    Details / Reason:
+                  </label>
+                  <textarea
+                    value={noShowReason}
+                    onChange={(e) => setNoShowReason(e.target.value)}
+                    rows={3}
+                    className="w-full p-3 rounded-xl border border-border bg-background text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none resize-none"
+                    placeholder="e.g. Waited 35 minutes, phone unreachable..."
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNoShowModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isReportingNoShow}
+                    className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isReportingNoShow ? "Reporting..." : "Confirm No-Show"}
                   </button>
                 </div>
               </form>

@@ -1,3 +1,5 @@
+import type { CallRecord } from "@/lib/calls";
+
 export interface SocketSignalPayload {
   type:
     | "call:initiate"
@@ -13,7 +15,7 @@ export interface SocketSignalPayload {
     | "call:connected";
   targetUserId?: string;
   targetUserIds?: string[];
-  call: any;
+  call: CallRecord | Record<string, unknown>;
   livekit?: {
     serverUrl: string;
     participantToken: string;
@@ -26,15 +28,14 @@ export interface SocketSignalPayload {
   endedAt?: string;
 }
 
-const SIGNALING_SERVER_URL =
-  process.env.SIGNALING_SERVER_URL ||
-  process.env.NEXT_PUBLIC_SIGNALING_URL ||
-  (process.env.NODE_ENV === "production" ? "https://belcconect-backend.onrender.com" : "http://localhost:4001");
+import { getSignalingUrl } from "@/lib/signalingUrl";
+
+const SIGNALING_SERVER_URL = getSignalingUrl();
 // DO NOT FALL BACK TO ANY DEFAULT VALUE, EMPTY STRING INCLUDED, FOR A SECRET USED IN AN AUTHORIZATION OR SIGNATURE CHECK — FAIL STARTUP INSTEAD.
 const SIGNALING_INTERNAL_SECRET = process.env.SIGNALING_INTERNAL_SECRET;
 
-if (!SIGNALING_INTERNAL_SECRET && typeof window === "undefined") {
-  throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing.");
+if ((!SIGNALING_INTERNAL_SECRET || SIGNALING_INTERNAL_SECRET.length < 32) && typeof window === "undefined") {
+  throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing or shorter than 32 characters.");
 }
 
 /**
@@ -72,8 +73,9 @@ export async function sendCallSignal(payload: SocketSignalPayload): Promise<bool
       return false;
     }
     return true;
-  } catch (error: any) {
-    console.warn(`[socketSignaling] Signal relay non-critical notice: ${error.message || error}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[socketSignaling] Signal relay non-critical notice: ${message}`);
     return false;
   }
 }

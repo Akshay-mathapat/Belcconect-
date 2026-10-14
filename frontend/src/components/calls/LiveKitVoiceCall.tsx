@@ -47,7 +47,7 @@ function ConnectingCallOverlay({
   currentUserId: string;
   onEndCall: () => void;
 }) {
-  const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
   const isCaller = currentUserId === call.callerId || (isDemo && currentUserId.includes("cust"));
 
   const peerName = isCaller ? (call.receiverName || "Service Partner") : (call.callerName || "Customer");
@@ -189,7 +189,7 @@ function LiveKitVoiceContent({
   const [waitingTimeout, setWaitingTimeout] = useState(false);
   const connectTimestampRef = useRef<number>(Date.now());
 
-  const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
   const isCaller = currentUserId === call.callerId || (isDemo && currentUserId.includes("cust"));
 
   const peerName = isCaller ? (call.receiverName || "Service Partner") : (call.callerName || "Customer");

@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  // 1. Rate Limiting Check: Max 5 support requests per 10 minutes to prevent spam
+  const rateLimit = await checkRateLimit(request, 5, 10 * 60 * 1000);
+  if (!rateLimit.isAllowed && rateLimit.response) {
+    return rateLimit.response;
+  }
+
   try {
     const authUser = getAuthenticatedUser(request);
 
-    if (!authUser) {
+    if (!authUser || !authUser.userId) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
         { status: 401 }

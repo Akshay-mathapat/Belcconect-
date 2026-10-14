@@ -1,8 +1,19 @@
+import { getMapsProvider } from "@/lib/maps/mapService";
+
 const TILE_SOURCES = {
-  osm: (z: string, x: string, y: string) =>
-    `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
+  google: (z: string, x: string, y: string) =>
+    `https://mt1.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`,
+  carto: (z: string, x: string, y: string) =>
+    `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`,
   esri: (z: string, x: string, y: string) =>
     `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+  osm: (z: string, x: string, y: string) => {
+    // In production or when MAPS_PROVIDER is google, redirect away from tile.openstreetmap.org
+    if (process.env.NODE_ENV === "production" || getMapsProvider() === "google") {
+      return `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`;
+    }
+    return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+  }
 } as const;
 
 function isTileCoordinate(value: string) {

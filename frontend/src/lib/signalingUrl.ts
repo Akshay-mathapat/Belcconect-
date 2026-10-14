@@ -1,31 +1,55 @@
 /**
  * Single source of truth for resolving the Socket.IO signaling server URL.
- * Handles trailing slashes, environment variables, Dev Tunnels, localhost dev,
- * and production Render defaults.
+ *
+ * Rules:
+ * - URL must come ONLY from environment variables (NEXT_PUBLIC_SIGNALING_URL or SIGNALING_SERVER_URL).
+ * - Normalized to have NO trailing slash.
+ * - In production, if the signaling URL points to a *.vercel.app host, logs a loud fatal error:
+ *   Socket.IO cannot run on Vercel serverless; it must point to the Render backend.
  */
 export function getSignalingUrl(): string {
-  // 1. Check environment variables
   const rawUrl =
-    process.env.NEXT_PUBLIC_SIGNALING_URL ||
-    process.env.SIGNALING_SERVER_URL;
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SIGNALING_URL) ||
+    (typeof process !== "undefined" && process.env.SIGNALING_SERVER_URL) ||
+    "";
 
-  if (rawUrl && typeof rawUrl === "string") {
-    let cleaned = rawUrl.trim();
-    // Strip trailing slashes
-    while (cleaned.endsWith("/")) {
-      cleaned = cleaned.slice(0, -1);
-    }
-    // If it's a remote URL (not localhost and not Vercel, which doesn't support WebSockets), honor it directly
-    if (cleaned && !cleaned.includes("localhost") && !cleaned.includes("127.0.0.1") && !cleaned.includes("vercel.app")) {
-      return cleaned;
-    }
+  let cleaned = typeof rawUrl === "string" ? rawUrl.trim() : "";
+
+  // Strip trailing slashes
+  while (cleaned.endsWith("/")) {
+    cleaned = cleaned.slice(0, -1);
   }
 
-  // 2. Client-side browser inspection
+  const isProduction =
+    typeof process !== "undefined" && process.env.NODE_ENV === "production";
+
+  // Check if signaling URL mistakenly points to Vercel
+  if (cleaned.includes("vercel.app")) {
+    console.error(
+      `[FATAL SIGNALING CONFIG ERROR] Signaling URL "${cleaned}" points to Vercel! ` +
+      `Socket.IO cannot run on Vercel serverless infrastructure. ` +
+      `It MUST point to your Render backend web service (e.g. NEXT_PUBLIC_SIGNALING_URL=https://your-backend.onrender.com).`
+    );
+  }
+
+  // If environment variable is configured, return the normalized URL
+  if (cleaned) {
+    return cleaned;
+  }
+
+  // Production check: environment variable is strictly required
+  if (isProduction) {
+    console.error(
+      `[FATAL SIGNALING CONFIG ERROR] NEXT_PUBLIC_SIGNALING_URL is missing in production! ` +
+      `Real-time calls, live location tracking, and chat require a running Render backend service.`
+    );
+    return "";
+  }
+
+  // Non-production / Local development fallbacks only
   if (typeof window !== "undefined") {
     const browserHost = window.location.hostname;
     const protocol = window.location.protocol;
-    const isLocalBrowser = browserHost === "localhost" || browserHost === "127.0.0.1";
 
     // VS Code Dev Tunnels forwarding port 3000 -> 4001
     if (browserHost.includes("devtunnels.ms")) {
@@ -33,26 +57,10 @@ export function getSignalingUrl(): string {
       return `${protocol}//${derivedSignalingHost}`;
     }
 
-    // Local desktop development
-    if (isLocalBrowser) {
+    if (browserHost === "localhost" || browserHost === "127.0.0.1") {
       return `http://${browserHost}:4001`;
     }
-
-    // Production domains, Vercel deployments, or standalone Android APK
-    return "https://belcconect-backend.onrender.com";
   }
 
-  // 3. Server-side / fallback
-  if (rawUrl && typeof rawUrl === "string") {
-    let cleaned = rawUrl.trim();
-    while (cleaned.endsWith("/")) {
-      cleaned = cleaned.slice(0, -1);
-    }
-    if (cleaned) return cleaned;
-  }
-
-  return process.env.NODE_ENV === "production"
-    ? "https://belcconect-backend.onrender.com"
-    : "http://localhost:4001";
+  return "http://localhost:4001";
 }
-

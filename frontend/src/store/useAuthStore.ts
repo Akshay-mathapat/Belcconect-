@@ -34,7 +34,7 @@ export interface BookingItem {
   provider: string;
   providerId?: string;
   date: string;
-  status: "Requested" | "Accepted" | "Rejected" | "OnTheWay" | "Started" | "Completed" | "Cancelled" | "Upcoming" | "ReviewSubmitted";
+  status: "Requested" | "Accepted" | "Rejected" | "OnTheWay" | "Arrived" | "Started" | "Completed" | "Cancelled" | "Upcoming" | "ReviewSubmitted" | "Expired" | "ProviderNoShow" | "CustomerNoShow";
   rating?: number;
   reviewComment?: string;
   createdAt?: string;

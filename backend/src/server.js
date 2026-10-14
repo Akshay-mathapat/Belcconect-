@@ -20,6 +20,7 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = normalizeSecret(process.env.JWT_SECRET);
 const SIGNALING_SECRET = normalizeSecret(process.env.SIGNALING_INTERNAL_SECRET);
+const INTERNAL_API_SECRET = normalizeSecret(process.env.INTERNAL_API_SECRET || process.env.SIGNALING_INTERNAL_SECRET);
 const DATABASE_URL = process.env.DATABASE_URL;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://belcconect.vercel.app";
 const PORT = process.env.PORT || process.env.SIGNALING_PORT || 4001;
@@ -28,11 +29,14 @@ const ALLOW_VERCEL_PREVIEWS = process.env.ALLOW_VERCEL_PREVIEWS === "true";
 const ALLOW_DEVTUNNELS = process.env.ALLOW_DEVTUNNELS === "true";
 
 // Validate essential environment variables on startup
-if (!JWT_SECRET) {
-  throw new Error("FATAL: JWT_SECRET environment variable is missing.");
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
 }
-if (!SIGNALING_SECRET) {
-  throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing.");
+if (!SIGNALING_SECRET || SIGNALING_SECRET.length < 32) {
+  throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing or shorter than 32 characters.");
+}
+if (!INTERNAL_API_SECRET || INTERNAL_API_SECRET.length < 32) {
+  throw new Error("FATAL: INTERNAL_API_SECRET environment variable is missing or shorter than 32 characters.");
 }
 if (!DATABASE_URL) {
   throw new Error("FATAL: DATABASE_URL environment variable is missing.");
@@ -40,6 +44,7 @@ if (!DATABASE_URL) {
 
 console.log("[Signaling] JWT_SECRET SHA-256 fingerprint: " + getSecretFingerprint(JWT_SECRET));
 console.log("[Signaling] SIGNALING_INTERNAL_SECRET SHA-256 fingerprint: " + getSecretFingerprint(SIGNALING_SECRET));
+console.log("[Signaling] INTERNAL_API_SECRET SHA-256 fingerprint: " + getSecretFingerprint(INTERNAL_API_SECRET));
 
 const getCorsOrigin = (origin, callback) => {
   if (!origin) return callback(null, true);
@@ -515,7 +520,7 @@ if (targetRooms.length > 0) {
       }
 
       // Server-side enforcement of active tracking lifecycle statuses
-      const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Started"];
+      const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Arrived", "Started"];
       if (!ACTIVE_TRACKING_STATUSES.includes(booking.status)) {
         console.warn(`[Location Auth] Rejected location broadcast: booking ${bookingId} status is '${booking.status}'`);
         socket.emit("error", { message: `Location update rejected: booking status '${booking.status}' is not in active tracking window` });
@@ -579,7 +584,7 @@ if (targetRooms.length > 0) {
       }
 
       // Server-side enforcement of active tracking lifecycle statuses
-      const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Started"];
+      const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Arrived", "Started"];
       if (!ACTIVE_TRACKING_STATUSES.includes(booking.status)) {
         console.warn(`[Location Auth] Rejected customer location broadcast: booking ${bookingId} status is '${booking.status}'`);
         socket.emit("error", { message: `Location update rejected: booking status '${booking.status}' is not in active tracking window` });
@@ -979,21 +984,42 @@ if (targetRooms.length > 0) {
 
 setInterval(runStaleCallCleanup, 15000);
 
-app.get("/health", (req, res) => {
-  res.json({ 
-    status: "ok", 
-    service: "CityConnect Signaling Server", 
-    signaling: true,
-    timestamp: new Date().toISOString() 
+app.get("/health", async (req, res) => {
+  let dbStatus = "ok";
+  try {
+    await pool.query("SELECT 1");
+  } catch (err) {
+    dbStatus = "error";
+  }
+
+  const statusCode = dbStatus === "ok" ? 200 : 503;
+  res.status(statusCode).json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    db: dbStatus
   });
 });
 
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, "0.0.0.0", async () => {
   console.log(`=======================================================`);
-  console.log(`CityConnect Signaling Server running on port ${PORT} (0.0.0.0)`);
-  console.log(`Local health check: http://localhost:${PORT}/health`);
-  console.log(`For physical-phone testing, expose this port via Dev Tunnel`);
-  console.log(`Then set: NEXT_PUBLIC_SIGNALING_URL=https://<tunnel-id>-${PORT}.inc1.devtunnels.ms`);
+  console.log(`BelConnect Signaling Server running on port ${PORT} (0.0.0.0)`);
+  console.log(`[CORS] Allowed Origins: ${ALLOWED_ORIGIN}`);
+  if (ALLOW_VERCEL_PREVIEWS) {
+    console.log(`[CORS] Vercel preview deployments allowed: true`);
+  }
+  if (ALLOW_DEVTUNNELS) {
+    console.log(`[CORS] Dev tunnels allowed: true`);
+  }
+
+  // Startup database connectivity verification (no secrets logged)
+  try {
+    await pool.query("SELECT 1");
+    console.log(`[Database] PostgreSQL connection: ok`);
+  } catch (dbErr) {
+    console.error(`[Database] PostgreSQL connection: error (${dbErr.message})`);
+  }
+
+  console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`=======================================================`);
 });
 

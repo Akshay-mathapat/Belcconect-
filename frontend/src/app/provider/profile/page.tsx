@@ -30,6 +30,7 @@ export default function ProviderProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showSavedAlert, setShowSavedAlert] = useState(false);
   const [isKycModalOpen, setIsKycModalOpen] = useState(false);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
 
   const ratedBookings = bookings.filter((b) => b.rating !== undefined && b.rating !== null && b.rating > 0);
   const totalReviews = ratedBookings.length;
@@ -113,9 +114,40 @@ export default function ProviderProfilePage() {
     setTimeout(() => setShowSavedAlert(false), 3000);
   };
 
-  const handleKycDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleKycDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Document file size exceeds 10MB limit. Please upload a smaller image or PDF.");
+      return;
+    }
+
+    try {
+      setIsUploadingDoc(true);
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("category", "kyc");
+
+      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") : null);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: uploadData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          setKycForm((prev) => ({
+            ...prev,
+            documentPhoto: data.url
+          }));
+          return;
+        }
+      }
+
+      // Local preview fallback if upload is unavailable
       const reader = new FileReader();
       reader.onloadend = () => {
         setKycForm((prev) => ({
@@ -124,12 +156,26 @@ export default function ProviderProfilePage() {
         }));
       };
       reader.readAsDataURL(file);
+    } catch (uploadErr) {
+      console.warn("KYC document upload error, using local preview fallback:", uploadErr);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setKycForm((prev) => ({
+          ...prev,
+          documentPhoto: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingDoc(false);
     }
   };
 
   // Fetch persisted KYC details from PostgreSQL database on load
   useEffect(() => {
-    const providerId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "");
+    const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+    const providerId = currentUser?.id || (isDemo ? "provider-1" : "");
+    if (!providerId) return;
     fetch(`/api/provider/kyc?providerId=${encodeURIComponent(providerId)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -165,7 +211,27 @@ export default function ProviderProfilePage() {
       return;
     }
 
-    const providerId = currentUser?.id || (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? "provider-1" : "");
+    // Client-side format validation
+    if (kycForm.documentType === "Aadhaar Card") {
+      const cleanAadhaar = kycForm.documentNumber.replace(/[\s-]/g, "");
+      if (!/^\d{12}$/.test(cleanAadhaar)) {
+        alert("Please enter a valid 12-digit Aadhaar number (e.g. 1234 5678 9012).");
+        return;
+      }
+    } else if (kycForm.documentType === "PAN Card") {
+      const cleanPan = kycForm.documentNumber.trim().toUpperCase();
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        alert("Please enter a valid 10-character PAN number (e.g. ABCDE1234F).");
+        return;
+      }
+    }
+
+    const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+    const providerId = currentUser?.id || (isDemo ? "provider-1" : "");
+    if (!providerId) {
+      alert("Please log in to submit KYC documents.");
+      return;
+    }
 
     const updatedKyc = {
       isVerified: false,
@@ -564,6 +630,10 @@ export default function ProviderProfilePage() {
                     placeholder="e.g. ABCDE1234F or 1234 5678 9012"
                     className="w-full p-3 rounded-xl bg-muted/40 border border-border focus:outline-none focus:ring-2 focus:ring-blue-600/30"
                   />
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Privacy Notice: Full document numbers are validated only for format. Only the last 4 digits (e.g. XXXX-XXXX-1234) are permanently stored.</span>
+                  </p>
                 </div>
 
                 {/* Full Name on Document */}

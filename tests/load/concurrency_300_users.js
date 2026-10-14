@@ -33,7 +33,12 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const JWT_SECRET = normalizeSecret(process.env.JWT_SECRET || "cityconnect_jwt_secret_key_2026_belagavi_prod");
+const rawJwtSecret = process.env.JWT_SECRET;
+if (!rawJwtSecret || normalizeSecret(rawJwtSecret).length < 32) {
+  console.error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
+  process.exit(1);
+}
+const JWT_SECRET = normalizeSecret(rawJwtSecret);
 
 // Command-line args
 const args = process.argv.slice(2);

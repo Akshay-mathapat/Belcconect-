@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const searchQuery = searchParams.get("query");
 
+    const authUser = getAuthenticatedUser(request);
     let baseWhere = "WHERE s.is_available = TRUE";
     const queryParams: any[] = [];
     let paramIndex = 1;
@@ -16,9 +17,15 @@ export async function GET(request: Request) {
     if (providerId) {
       baseWhere += ` AND s.provider_id = $${paramIndex++}`;
       queryParams.push(providerId);
+
+      // Only the provider themselves or an admin can view services of an unverified provider
+      const isOwnerOrAdmin = authUser && (authUser.userId === providerId || authUser.role === "admin");
+      if (!isOwnerOrAdmin) {
+        baseWhere += " AND u.verification_status = 'verified'";
+      }
     } else {
-      // Marketplace customer discovery: show only services from currently available providers
-      baseWhere += " AND u.is_available = TRUE";
+      // Marketplace customer discovery: show only services from currently available and verified providers
+      baseWhere += " AND u.is_available = TRUE AND u.verification_status = 'verified'";
     }
 
     if (category) {

@@ -1,22 +1,12 @@
 import crypto from "crypto";
-
-function getJwtSecretCandidates(): string[] {
-  const primary = (
-    process.env.JWT_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.AUTH_SECRET ||
-    "cityconnect_jwt_secret_key_2026_belagavi_prod"
-  ).trim();
-  const cleaned = primary.replace(/^["']|["']$/g, "").trim();
-  const set = new Set<string>();
-  if (cleaned) set.add(cleaned);
-  if (primary) set.add(primary);
-  set.add("cityconnect_jwt_secret_key_2026_belagavi_prod");
-  return Array.from(set);
-}
+import { normalizeSecret } from "./secretNormalizer";
 
 export function getJwtSecret(): string {
-  return getJwtSecretCandidates()[0];
+  const secret = normalizeSecret(process.env.JWT_SECRET);
+  if (!secret || secret.length < 32) {
+    throw new Error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
+  }
+  return secret;
 }
 
 export interface SessionPayload {
@@ -77,23 +67,16 @@ export function verifyJwtToken(token: string): SessionPayload | null {
 
     const [encodedHeader, encodedPayload, signature] = parts;
 
-    const candidates = getJwtSecretCandidates();
-    let matches = false;
-    for (const sec of candidates) {
-      const expected = crypto
-        .createHmac("sha256", sec)
-        .update(`${encodedHeader}.${encodedPayload}`)
-        .digest("base64")
-        .replace(/=/g, "")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_");
-      if (signature === expected) {
-        matches = true;
-        break;
-      }
-    }
+    const secret = getJwtSecret();
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(`${encodedHeader}.${encodedPayload}`)
+      .digest("base64")
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
 
-    if (!matches) return null;
+    if (signature !== expected) return null;
 
     const payload: SessionPayload = JSON.parse(base64UrlDecode(encodedPayload));
     if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {

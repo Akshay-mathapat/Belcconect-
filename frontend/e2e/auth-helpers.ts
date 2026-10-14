@@ -5,7 +5,11 @@ import crypto from 'crypto';
  * Generates a valid HMAC-SHA256 JWT token compatible with BelConnect backend.
  */
 export function createTestToken(payload: { userId: string; email: string; role: string; name: string }): string {
-  const secret = (process.env.JWT_SECRET || "cityconnect_jwt_secret_key_2026_belagavi_prod").trim().replace(/^["']|["']$/g, "");
+  const rawSecret = process.env.JWT_SECRET;
+  if (!rawSecret || rawSecret.trim().replace(/^["']|["']$/g, "").length < 32) {
+    throw new Error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters in test environment.");
+  }
+  const secret = rawSecret.trim().replace(/^["']|["']$/g, "");
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 7 * 24 * 3600;

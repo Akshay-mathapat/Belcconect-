@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function GET(
   request: Request,
@@ -18,6 +19,18 @@ export async function GET(
     }
 
     const provider = providerRes.rows[0];
+
+    // Enforce that unverified providers are not publicly accessible
+    if (provider.verification_status !== "verified") {
+      const authUser = getAuthenticatedUser(request);
+      const isOwnerOrAdmin = authUser && (authUser.userId === id || authUser.role === "admin");
+      if (!isOwnerOrAdmin) {
+        return NextResponse.json(
+          { error: "This service provider profile is pending verification and not yet publicly listed." },
+          { status: 403 }
+        );
+      }
+    }
 
     // Query real registered services for this provider from PostgreSQL
     const servicesRes = await query(
@@ -99,7 +112,7 @@ export async function GET(
       provider: {
         id: provider.id,
         name: provider.name,
-        phone: provider.phone || "+91 98765 00000",
+        phone: provider.phone || "",
         email: provider.email,
         avatar: provider.avatar || "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=200&q=80",
         experience: 4,

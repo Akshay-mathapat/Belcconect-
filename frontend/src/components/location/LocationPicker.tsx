@@ -16,6 +16,7 @@ import {
   Info,
   Loader2
 } from "lucide-react";
+import { BELAGAVI_CITY_CENTER } from "@/lib/maps/mapService";
 
 export interface ConfirmedLocationData {
   type: string; // 'Home' | 'Office' | 'Other'
@@ -41,9 +42,9 @@ interface LocationPickerProps {
   initialLocation?: Partial<ConfirmedLocationData>;
 }
 
-// Default center: Belagavi, Karnataka
-const DEFAULT_LAT = 15.8497;
-const DEFAULT_LNG = 74.4977;
+// Default center: Belagavi City Center, Karnataka
+const DEFAULT_LAT = BELAGAVI_CITY_CENTER.lat;
+const DEFAULT_LNG = BELAGAVI_CITY_CENTER.lng;
 
 export default function LocationPicker({ onConfirm, onCancel, initialLocation }: LocationPickerProps) {
   // Coordinates State

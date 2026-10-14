@@ -1,17 +1,27 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const googleClientId =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+if (!googleClientId) {
+  throw new Error(
+    "FATAL: NEXT_PUBLIC_GOOGLE_CLIENT_ID (or GOOGLE_CLIENT_ID) environment variable is missing."
+  );
+}
+
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+if (!appUrl) {
+  throw new Error(
+    "FATAL: NEXT_PUBLIC_APP_URL (or APP_URL) environment variable is missing."
+  );
+}
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   env: {
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID:
-      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-      process.env.GOOGLE_CLIENT_ID ||
-      "1001791216154-8kdago8m63cjruabn6ohsleudaa702sm.apps.googleusercontent.com",
-    NEXT_PUBLIC_APP_URL:
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.APP_URL ||
-      "https://belcconect.vercel.app",
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID: googleClientId,
+    NEXT_PUBLIC_APP_URL: appUrl,
   },
   images: {
     remotePatterns: [

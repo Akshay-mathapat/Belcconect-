@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const serverUrl = process.env.CAPACITOR_SERVER_URL || 'https://belcconect.vercel.app';
+const serverUrl = process.env.CAPACITOR_SERVER_URL || 'https://belconnect.vercel.app';
 
 const config: CapacitorConfig = {
   appId: 'com.cityconnect.app',

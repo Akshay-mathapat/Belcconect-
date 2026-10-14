@@ -1,8 +1,9 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { query, hashPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { parseAndValidate, registerSchema } from "@/lib/validations";
+import { parseAndValidate, registerSchema, normalizeIndianPhone } from "@/lib/validations";
 
 export async function POST(request: Request) {
   // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
@@ -22,7 +23,16 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check if user already exists in any table in PostgreSQL
+    // Normalise and strictly validate Indian phone number
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!normalizedPhone) {
+      return NextResponse.json(
+        { error: "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9." },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists in any table in PostgreSQL
     const custCheck = await query("SELECT id FROM customers WHERE email = $1", [cleanEmail]);
     const provCheck = await query("SELECT id FROM service_providers WHERE email = $1", [cleanEmail]);
     const empCheck = await query("SELECT id FROM job_providers WHERE email = $1", [cleanEmail]);
@@ -34,12 +44,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Role-prefixed UID generation
-    let prefix = "cust";
-    if (role === "provider") prefix = "prov";
-    if (role === "job_provider") prefix = "emp";
+    // Check if phone number is already registered across customers, providers, or job providers
+    const phoneCheck = await query(
+      `SELECT id FROM customers WHERE phone = $1
+       UNION ALL
+       SELECT id FROM service_providers WHERE phone = $1
+       UNION ALL
+       SELECT id FROM job_providers WHERE phone = $1
+       LIMIT 1`,
+      [normalizedPhone]
+    );
 
-    const userId = `${prefix}-${Date.now()}`;
+    if (phoneCheck.rows.length > 0) {
+      return NextResponse.json(
+        { error: "This mobile number is already registered to an account. Please use another number or sign in." },
+        { status: 409 }
+      );
+    }
+
+    // Safe UUID generation using crypto.randomUUID()
+    const userId = crypto.randomUUID();
     const hashedPassword = await hashPassword(password);
     const defaultAvatar = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name || cleanEmail)}`;
 
@@ -53,7 +77,7 @@ export async function POST(request: Request) {
         userId,
         cleanEmail,
         name || cleanEmail.split("@")[0],
-        phone || "+91 98765 00000",
+        normalizedPhone,
         defaultAvatar,
         hashedPassword
       ]

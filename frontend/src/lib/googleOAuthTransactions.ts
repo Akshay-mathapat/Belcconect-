@@ -8,8 +8,8 @@ const MOBILE_HANDOFF_TTL_SECONDS = 2 * 60;
 // DO NOT REINTRODUCE HARDCODED FALLBACKS FOR SECRETS (JWT_SECRET, DATABASE_URL, SIGNALING_INTERNAL_SECRET, LIVEKIT_API_SECRET, VAPID_PRIVATE_KEY) UNDER ANY CIRCUMSTANCES, INCLUDING LOCAL DEV CONVENIENCE.
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-if (!JWT_SECRET && typeof window === "undefined") {
-  throw new Error("FATAL: JWT_SECRET environment variable is missing.");
+if ((!JWT_SECRET || JWT_SECRET.length < 32) && typeof window === "undefined") {
+  throw new Error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
 }
 
 function hashValue(value: string): string {

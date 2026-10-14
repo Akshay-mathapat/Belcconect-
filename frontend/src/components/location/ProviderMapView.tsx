@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Navigation, Compass, AlertCircle, Info, Radio, Clock, ExternalLink, ShieldCheck } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import { useTranslation } from "@/lib/i18n";
+import { BELAGAVI_CITY_CENTER, shouldRefreshRoute, computeFallbackRoute } from "@/lib/maps/mapService";
 
 interface ProviderMapViewProps {
   bookingId?: string;
@@ -179,69 +180,102 @@ export default function ProviderMapView({
     return () => clearInterval(timerInterval);
   }, [lastPingTimestamp]);
 
-  // 3. Compute OSRM Route & ETA for Provider Map
+  // 3. Compute Server-side Route & ETA for Provider Map with 50m movement guard & offline fallback
+  const lastRouteCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [isDegradedRoute, setIsDegradedRoute] = useState(false);
+  const [degradedReason, setDegradedReason] = useState<string | null>(null);
+
   useEffect(() => {
     if (!hasCustomerCoords || !providerCoords) return;
 
     let isMounted = true;
 
-    async function fetchOsrmRoute() {
-      try {
-        const { lat: pLat, lng: pLng } = providerCoords!;
-        const cLat = Number(latitude);
-        const cLng = Number(longitude);
-        const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${cLng},${cLat}?overview=full&geometries=geojson`;
+    async function fetchDirections(force = false) {
+      if (!providerCoords) return;
+      const { lat: pLat, lng: pLng } = providerCoords;
+      const cLat = Number(latitude);
+      const cLng = Number(longitude);
 
+      // Only refresh route if moved more than 50 meters
+      if (!force && !shouldRefreshRoute(lastRouteCoordsRef.current, providerCoords, 50)) {
+        return;
+      }
+
+      try {
+        const url = `/api/location/directions?originLat=${pLat}&originLng=${pLng}&destLat=${cLat}&destLng=${cLng}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
-        if (!res.ok) throw new Error("OSRM route failed");
+        if (!res.ok) throw new Error(`Directions API failed with status ${res.status}`);
 
         const data = await res.json();
-        if (!isMounted || !data.routes || data.routes.length === 0) return;
+        if (!isMounted || !data.success) return;
 
-        const route = data.routes[0];
-        const distKmVal = Number((route.distance / 1000).toFixed(1));
-        const durationMinsVal = Math.ceil(route.duration / 60);
-
+        const distKmVal = Number((data.distanceMeters / 1000).toFixed(1));
         setDistanceKm(distKmVal);
-        setEtaMins(durationMinsVal);
+        setEtaMins(data.durationMinutes);
         setRouteAvailable(true);
+        setIsDegradedRoute(!!data.fallback);
+        setDegradedReason(data.fallbackReason || null);
+        lastRouteCoordsRef.current = { lat: pLat, lng: pLng };
+
+        const coords: Array<{ lat: number; lng: number }> = data.coordinates || [];
 
         // Draw Route Polyline
-        if (leafletMapRef.current && route.geometry && route.geometry.coordinates) {
+        if (leafletMapRef.current && coords.length > 0) {
           const L = (await import("leaflet")).default;
-          const latLngs = route.geometry.coordinates.map(([lng, lat]: [number, number]) => [lat, lng]);
+          const latLngs: [number, number][] = coords.map((pt) => [pt.lat, pt.lng]);
 
           if (routePolylineRef.current) {
             routePolylineRef.current.setLatLngs(latLngs);
+            routePolylineRef.current.setStyle({
+              color: data.fallback ? "#f59e0b" : "#2563eb",
+              dashArray: data.fallback ? "8, 8" : undefined
+            });
           } else {
             routePolylineRef.current = L.polyline(latLngs, {
-              color: "#2563eb",
+              color: data.fallback ? "#f59e0b" : "#2563eb",
+              dashArray: data.fallback ? "8, 8" : undefined,
               weight: 5,
               opacity: 0.85
             }).addTo(leafletMapRef.current);
           }
         }
       } catch (err) {
-        console.warn("[ProviderMapView] OSRM Route fallback:", err);
+        console.warn("[ProviderMapView] Route fetch fallback, activating offline/degraded mode:", err);
         if (isMounted) {
-          setRouteAvailable(false);
-          if (routePolylineRef.current && leafletMapRef.current) {
-            try {
-              leafletMapRef.current.removeLayer(routePolylineRef.current);
-              routePolylineRef.current = null;
-            } catch (e) {}
+          const fb = computeFallbackRoute({ lat: pLat, lng: pLng }, { lat: cLat, lng: cLng });
+          setDistanceKm(Number((fb.distanceMeters / 1000).toFixed(1)));
+          setEtaMins(fb.durationMinutes);
+          setRouteAvailable(true);
+          setIsDegradedRoute(true);
+          setDegradedReason(fb.fallbackReason || null);
+          lastRouteCoordsRef.current = { lat: pLat, lng: pLng };
+
+          if (leafletMapRef.current) {
+            const L = (await import("leaflet")).default;
+            const points: [number, number][] = [[pLat, pLng], [cLat, cLng]];
+            if (routePolylineRef.current) {
+              routePolylineRef.current.setLatLngs(points);
+              routePolylineRef.current.setStyle({ color: "#f59e0b", dashArray: "8, 8" });
+            } else {
+              routePolylineRef.current = L.polyline(points, {
+                color: "#f59e0b",
+                dashArray: "8, 8",
+                weight: 4,
+                opacity: 0.8
+              }).addTo(leafletMapRef.current);
+            }
           }
         }
       }
     }
 
-    fetchOsrmRoute();
-    const interval = setInterval(fetchOsrmRoute, 35000);
+    fetchDirections(true);
+    const interval = setInterval(() => fetchDirections(false), 35000);
 
     return () => {
       isMounted = false;
@@ -268,8 +302,8 @@ export default function ProviderMapView({
       const container = mapContainerRef.current;
       if (!container) return;
 
-      const destLat = hasCustomerCoords ? Number(latitude) : (providerCoords ? providerCoords.lat : 0);
-      const destLng = hasCustomerCoords ? Number(longitude) : (providerCoords ? providerCoords.lng : 0);
+      const destLat = hasCustomerCoords ? Number(latitude) : (providerCoords ? providerCoords.lat : BELAGAVI_CITY_CENTER.lat);
+      const destLng = hasCustomerCoords ? Number(longitude) : (providerCoords ? providerCoords.lng : BELAGAVI_CITY_CENTER.lng);
 
       if (!leafletMapRef.current) {
         const map = L.map(container, {
@@ -555,6 +589,14 @@ export default function ProviderMapView({
           <div>
             <h3 className="font-heading font-extrabold text-sm sm:text-base text-white leading-tight flex items-center gap-2">
               <span>{t("location.customerDestination")}</span>
+              {isDegradedRoute && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                  title={degradedReason || "Direct estimate based on 20 km/h Belagavi city traffic"}
+                >
+                  ⚡ Direct (20 km/h)
+                </span>
+              )}
             </h3>
             <p className="text-xs text-slate-300 font-medium">
               {distanceKm !== null ? `${distanceKm} km (${etaMins || 0} mins)` : t("location.routeUnavailable")}

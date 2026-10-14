@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getMapsProvider } from "@/lib/maps/mapService";
 
 interface CacheEntry {
   data: any;
@@ -50,9 +51,11 @@ export async function GET(request: Request) {
 
     // 3. Execute lookup with upstream timeout
     const fetchPromise = (async () => {
+      const mapsProvider = getMapsProvider();
       const googleKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-      if (googleKey) {
+      // Primary: Google Maps Platform Geocoding API
+      if ((mapsProvider === "google" || !mapsProvider) && googleKey) {
         try {
           const googleRes = await fetch(
             `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleKey}`,
@@ -84,6 +87,7 @@ export async function GET(request: Request) {
             return {
               success: true,
               provider: "google",
+              fallback: false,
               address: top.formatted_address,
               placeId: top.place_id,
               locality: locality || city,
@@ -95,59 +99,65 @@ export async function GET(request: Request) {
             };
           }
         } catch (err) {
-          console.warn("Google Maps reverse geocode failed, falling back to OSM Nominatim:", err);
+          console.warn("[Reverse-Geocode] Google Maps Geocoding failed:", err);
         }
       }
 
-      // Fallback: OpenStreetMap Nominatim reverse geocoding API with 3s timeout
-      try {
-        const osmRes = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-          {
-            headers: {
-              "User-Agent": "BelConnect-LocationService/2.0 (support@belconnect.in)"
-            },
-            signal: AbortSignal.timeout(3000)
+      // Fallback: OpenStreetMap Nominatim reverse geocoding API ONLY allowed in dev/test
+      if (mapsProvider === "osm" && process.env.NODE_ENV !== "production") {
+        try {
+          const osmRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+            {
+              headers: {
+                "User-Agent": "BelConnect-Dev/1.0 (dev-testing@belconnect.in)"
+              },
+              signal: AbortSignal.timeout(3000)
+            }
+          );
+
+          if (osmRes.ok) {
+            const osmData = await osmRes.json();
+            const addr = osmData.address || {};
+
+            const locality = addr.suburb || addr.neighbourhood || addr.residential || addr.road || "";
+            const city = addr.city || addr.town || addr.village || addr.county || "Belagavi";
+            const state = addr.state || "Karnataka";
+            const pincode = addr.postcode || "";
+            const buildingName = addr.building || addr.amenity || addr.historic || "";
+
+            const parts = [buildingName, locality, city, state, pincode].filter(Boolean);
+            const formatted = osmData.display_name || parts.join(", ");
+
+            return {
+              success: true,
+              provider: "osm",
+              fallback: false,
+              address: formatted,
+              placeId: osmData.place_id ? `osm-${osmData.place_id}` : null,
+              buildingName,
+              locality: locality || city,
+              city,
+              state,
+              pincode,
+              latitude: lat,
+              longitude: lng
+            };
           }
-        );
-
-        if (osmRes.ok) {
-          const osmData = await osmRes.json();
-          const addr = osmData.address || {};
-
-          const locality = addr.suburb || addr.neighbourhood || addr.residential || addr.road || "";
-          const city = addr.city || addr.town || addr.village || addr.county || "Belagavi";
-          const state = addr.state || "Karnataka";
-          const pincode = addr.postcode || "";
-          const buildingName = addr.building || addr.amenity || addr.historic || "";
-
-          const parts = [buildingName, locality, city, state, pincode].filter(Boolean);
-          const formatted = osmData.display_name || parts.join(", ");
-
-          return {
-            success: true,
-            provider: "openstreetmap",
-            address: formatted,
-            placeId: osmData.place_id ? `osm-${osmData.place_id}` : null,
-            buildingName,
-            locality: locality || city,
-            city,
-            state,
-            pincode,
-            latitude: lat,
-            longitude: lng
-          };
+        } catch (osmErr) {
+          // Fall through to graceful coordinate preservation
         }
-      } catch (osmErr) {
-        // Fall through to graceful coordinate preservation
       }
 
-      // If both upstream providers are unavailable or rate-limited:
-      // Preserve coordinates and return clear fallback state without fabricating misleading address
+      // Offline / Degraded Fallback:
+      // When upstream providers are unavailable or in production without Google key,
+      // preserve coordinates and return clear fallback state without blank UI or misleading address.
       return {
         success: true,
+        fallback: true,
         unavailable: true,
-        address: `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        provider: "fallback",
+        address: `Belagavi, Karnataka (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
         city: "Belagavi",
         state: "Karnataka",
         latitude: lat,

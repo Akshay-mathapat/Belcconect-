@@ -32,11 +32,8 @@ export default function NotificationBell() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const userId =
-    currentUser?.id ||
-    (process.env.NEXT_PUBLIC_DEMO_MODE === "true"
-      ? "customer-1"
-      : "");
+  const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const userId = currentUser?.id || (isDemo ? "customer-1" : "");
 
   /**
    * Fetch notifications only for a valid authenticated/demo user.

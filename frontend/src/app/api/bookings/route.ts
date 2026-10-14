@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-
 import { getAuthenticatedUser } from "@/lib/jwt";
+import { normalizeIndianPhone } from "@/lib/validations";
+import { lazyExpireUserBookings } from "@/lib/bookingExpiry";
 
 // Helper to map DB row to Frontend Booking type
 function mapRowToBooking(row: any) {
@@ -36,6 +37,15 @@ function mapRowToBooking(row: any) {
     providerCurrentLatitude: row.provider_current_latitude != null ? parseFloat(row.provider_current_latitude) : null,
     providerCurrentLongitude: row.provider_current_longitude != null ? parseFloat(row.provider_current_longitude) : null,
     providerLocationUpdatedAt: row.provider_location_updated_at ? new Date(row.provider_location_updated_at).toISOString() : null,
+    acceptedAt: row.accepted_at ? new Date(row.accepted_at).toISOString() : null,
+    arrivedAt: row.arrived_at ? new Date(row.arrived_at).toISOString() : null,
+    startedAt: row.started_at ? new Date(row.started_at).toISOString() : null,
+    completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
+    expiredAt: row.expired_at ? new Date(row.expired_at).toISOString() : null,
+    noShowAt: row.no_show_at ? new Date(row.no_show_at).toISOString() : null,
+    noShowType: row.no_show_type || null,
+    noShowReason: row.no_show_reason || null,
+    noShowReportedBy: row.no_show_reported_by || null,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
   };
 }
@@ -47,6 +57,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = authUser.userId;
+
+    // Trigger lazy auto-expiry sweep on pending bookings for this user
+    await lazyExpireUserBookings(userId).catch(() => {});
 
     // Retrieve bookings strictly for this specific customer or provider
     const bookingsRes = await query(
@@ -77,6 +90,15 @@ export async function GET(request: Request) {
         b.provider_current_latitude,
         b.provider_current_longitude,
         b.provider_location_updated_at,
+        b.accepted_at,
+        b.arrived_at,
+        b.started_at,
+        b.completed_at,
+        b.expired_at,
+        b.no_show_at,
+        b.no_show_type,
+        b.no_show_reason,
+        b.no_show_reported_by,
         COALESCE(c.name, 'Customer') AS customer_name,
         COALESCE(c.phone, '') AS customer_phone,
         COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
@@ -144,6 +166,28 @@ export async function POST(request: Request) {
       );
     }
 
+    // Require valid Indian mobile number for customer before booking (e.g. Google OAuth signups)
+    const custRes = await query("SELECT id, phone FROM customers WHERE id = $1 LIMIT 1", [validCustomerId]);
+    let custPhone = custRes.rows[0]?.phone;
+    if (!custPhone || custPhone.trim().length === 0 || custPhone.includes("98765 00000")) {
+      const payloadPhone = normalizeIndianPhone(body.customerPhone || body.phone);
+      if (payloadPhone) {
+        await query(
+          "UPDATE customers SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = '' OR phone LIKE '%98765 00000%')",
+          [payloadPhone, validCustomerId]
+        );
+        custPhone = payloadPhone;
+      } else {
+        return NextResponse.json(
+          {
+            error: "A valid 10-digit Indian mobile number is required to make a booking. Please add your phone number.",
+            code: "PHONE_REQUIRED"
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!providerId || !serviceName || !date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
@@ -161,11 +205,17 @@ export async function POST(request: Request) {
       );
     }
 
-    let validProviderId = requestedProviderId;
+    const validProviderId = requestedProviderId;
     try {
-      const proCheck = await query("SELECT id, is_available FROM service_providers WHERE id = $1 LIMIT 1", [validProviderId]);
+      const proCheck = await query("SELECT id, is_available, verification_status FROM service_providers WHERE id = $1 LIMIT 1", [validProviderId]);
       if (proCheck.rows.length === 0) {
         return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
+      }
+      if (proCheck.rows[0].verification_status !== "verified") {
+        return NextResponse.json(
+          { error: "This service provider has not been verified yet and cannot accept bookings." },
+          { status: 400 }
+        );
       }
       if (!proCheck.rows[0].is_available) {
         return NextResponse.json(
@@ -173,8 +223,8 @@ export async function POST(request: Request) {
           { status: 409 }
         );
       }
-    } catch (e: any) {
-      return NextResponse.json({ error: e.message || "Invalid service provider account" }, { status: 400 });
+    } catch (e: unknown) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Invalid service provider account" }, { status: 400 });
     }
 
     // Validate destination coordinates strictly if supplied (-90 <= lat <= 90, -180 <= lng <= 180)

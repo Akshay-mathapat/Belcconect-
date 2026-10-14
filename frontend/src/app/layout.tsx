@@ -19,27 +19,65 @@ const outfit = Outfit({
   display: "swap",
 });
 
+import {
+  SITE_URL,
+  SITE_NAME,
+  DEFAULT_DESCRIPTION,
+  GOOGLE_SITE_VERIFICATION,
+  BING_SITE_VERIFICATION
+} from "@/lib/seo";
+
 export const metadata: Metadata = {
-  title: "BelConnect — Trusted Services, On Demand",
-  description:
-    "Book verified professionals for electrical, plumbing, cleaning, painting, AC repair, salon, tutoring, and more in Belagavi. Fast, reliable, affordable services marketplace.",
-  keywords: [
-    "services",
-    "Belagavi",
-    "electrician",
-    "plumber",
-    "cleaning",
-    "salon",
-    "AC repair",
-    "verified professionals",
-    "book services online",
-  ],
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "BelConnect - Book Trusted Home Services in Belagavi",
+    template: "%s | BelConnect Belagavi",
+  },
+  description: DEFAULT_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
-    title: "BelConnect — Trusted Services, On Demand",
-    description:
-      "Book verified professionals for any service in Belagavi. Fast, reliable, and affordable.",
     type: "website",
     locale: "en_IN",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: "BelConnect - Book Trusted Home Services in Belagavi",
+    description: DEFAULT_DESCRIPTION,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "BelConnect - Belagavi Local Home Services & Verified Professionals",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BelConnect - Book Trusted Home Services in Belagavi",
+    description: DEFAULT_DESCRIPTION,
+    creator: "@BelConnect",
+    images: ["/opengraph-image"],
+  },
+  verification: {
+    google: GOOGLE_SITE_VERIFICATION || undefined,
+    other: BING_SITE_VERIFICATION
+      ? {
+          "msvalidate.01": [BING_SITE_VERIFICATION],
+        }
+      : undefined,
   },
   icons: {
     icon: "/belconnect.png",
@@ -49,7 +87,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "BelConnect",
+    title: SITE_NAME,
   },
 };
 

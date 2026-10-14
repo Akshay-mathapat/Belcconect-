@@ -27,7 +27,11 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const dbUrl = process.env.DATABASE_URL || "postgresql://postgres:Akshay_a015@127.0.0.1:5432/cityconnect";
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("FATAL: DATABASE_URL environment variable is required.");
+  process.exit(1);
+}
 
 // Strict Production Guard
 const isProduction =

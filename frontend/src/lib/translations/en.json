@@ -158,6 +158,10 @@
     "payAfterServiceDetails": "Cash on completion",
     "confirmBooking": "Confirm Booking",
     "bookingConfirmed": "Booking Confirmed!",
+    "addPhoneTitle": "Add Mobile Number",
+    "addPhoneSub": "Required before booking",
+    "addPhoneDesc": "Please enter your 10-digit Indian mobile number so the service professional can coordinate with you.",
+    "saveAndContinue": "Save & Continue",
     "professionalAssigned": "Your professional has been assigned and is on the way.",
     "redirecting": "Redirecting to your dashboard...",
     "goToDashboard": "Go to Dashboard",
@@ -639,7 +643,11 @@
     "cancel": "Cancel",
     "providerNotSelected": "Service provider not selected.",
     "customerAccountRequired": "Customer account required for this action.",
-    "sessionExpired": "Session expired. Please log in again."
+    "sessionExpired": "Session expired. Please log in again.",
+    "invalidIndianPhone": "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.",
+    "phoneAlreadyRegistered": "This mobile number is already registered. Please use another number or sign in.",
+    "phoneRequiredToBook": "Please add your mobile number to complete this booking.",
+    "phoneRequiredToAccept": "Please add your mobile number before accepting bookings."
   },
   "account": {
     "myBookings": "My Bookings",
@@ -843,5 +851,20 @@
     "plumber": "Plumber",
     "cleaning": "Cleaning",
     "acRepair": "AC Repair"
+  },
+  "bookingLifecycle": {
+    "bookingExpiredTitle": "Booking Expired",
+    "bookingExpiredBody": "This booking request expired because no response was received within 10 minutes. BelConnect has found alternative verified professionals in Belagavi for you.",
+    "suggestedProvidersTitle": "Suggested Verified Professionals",
+    "suggestedProvidersSubtitle": "Available pros in the same category ready to take your request",
+    "providerNoShowTitle": "Provider No-Show",
+    "providerNoShowDesc": "The service professional did not arrive within 30 minutes of accepting your booking.",
+    "customerNoShowTitle": "Customer No-Show",
+    "customerNoShowDesc": "Customer unavailable after waiting 10 minutes on-site.",
+    "reportProviderNoShow": "Report Provider No-Show",
+    "reportCustomerNoShow": "Report Customer No-Show",
+    "bookSuggestedPro": "Book This Pro",
+    "waitingForArrival": "Professional is on the way to your location",
+    "arrivedOnSite": "Professional has arrived at your address"
   }
 }

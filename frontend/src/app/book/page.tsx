@@ -2,7 +2,7 @@
 
 import Footer from "@/components/sections/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, ArrowRight, MapPin, Plus, Navigation, AlertCircle, Sparkles } from "lucide-react";
+import { CheckCircle2, ArrowRight, MapPin, Plus, Navigation, AlertCircle, Sparkles, Phone } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
@@ -14,11 +14,15 @@ import { useTranslation } from "@/lib/i18n";
 
 function BookingFlow() {
   const router = useRouter();
-  const { currentUser, addAddress } = useAuthStore();
+  const { currentUser, addAddress, updateProfile } = useAuthStore();
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const service = searchParams.get("service") || "Service";
   const proId = searchParams.get("pro");
+
+  const [showPhonePromptModal, setShowPhonePromptModal] = useState(false);
+  const [promptPhone, setPromptPhone] = useState("");
+  const [phonePromptError, setPhonePromptError] = useState("");
 
   const savedAddresses = currentUser?.addresses || [];
 
@@ -104,12 +108,12 @@ function BookingFlow() {
     }
   };
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (overridePhone?: string) => {
     setIsSubmitting(true);
     try {
       const customerId = currentUser?.id || getStoredUserId();
       const customerName = currentUser?.name;
-      const customerPhone = currentUser?.phone;
+      const customerPhone = overridePhone || currentUser?.phone;
       const customerPhoto = currentUser?.avatar || "";
       const resolvedProviderId = proId;
       const token = currentUser?.token || getStoredAuthToken();
@@ -117,6 +121,13 @@ function BookingFlow() {
       if (!customerId || !token) {
         const currentPath = `/book?${searchParams.toString()}`;
         router.push(`/auth?mode=login&returnTo=${encodeURIComponent(currentPath)}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // If user does not have a phone number (e.g. Google OAuth signups), prompt them first
+      if (!customerPhone || customerPhone.trim().length === 0 || customerPhone.includes("98765 00000")) {
+        setShowPhonePromptModal(true);
         setIsSubmitting(false);
         return;
       }
@@ -491,7 +502,7 @@ function BookingFlow() {
               </div>
 
               <button
-                onClick={handleConfirm}
+                onClick={() => handleConfirm()}
                 disabled={isSubmitting}
                 className="w-full min-h-[44px] flex justify-center items-center py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer disabled:opacity-50"
               >
@@ -534,6 +545,83 @@ function BookingFlow() {
           )}
         </div>
       </motion.div>
+
+      {/* Phone Number Prompt Modal for Google OAuth or Missing Phone Users */}
+      {showPhonePromptModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-card text-card-foreground rounded-2xl shadow-xl border border-border max-w-sm w-full p-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center shrink-0">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  {t("booking.addPhoneTitle") || "Add Mobile Number"}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("booking.addPhoneSub") || "Required before booking"}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              {t("booking.addPhoneDesc") || "Please enter your 10-digit Indian mobile number so the service professional can coordinate with you."}
+            </p>
+
+            {phonePromptError && (
+              <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-lg">
+                {phonePromptError}
+              </div>
+            )}
+
+            <div className="relative mb-4">
+              <input
+                type="tel"
+                value={promptPhone}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  if (val.length <= 10) setPromptPhone(val);
+                }}
+                maxLength={10}
+                placeholder="9876543210"
+                className="w-full px-3 py-2.5 text-sm bg-muted/40 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-foreground"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowPhonePromptModal(false)}
+                className="px-3 py-2 text-xs text-muted-foreground hover:bg-muted rounded-xl transition-colors"
+              >
+                {t("common.cancel") || "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const digits = promptPhone.replace(/\D/g, "");
+                  if (!/^[6-9]\d{9}$/.test(digits)) {
+                    setPhonePromptError(t("auth.invalidIndianPhone") || "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
+                    return;
+                  }
+                  const formatted = `+91${digits}`;
+                  setPhonePromptError("");
+                  try {
+                    await updateProfile({ phone: formatted });
+                    setShowPhonePromptModal(false);
+                    await handleConfirm(formatted);
+                  } catch (e: unknown) {
+                    setPhonePromptError(e instanceof Error ? e.message : "Failed to update phone number.");
+                  }
+                }}
+                className="px-4 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow transition-colors"
+              >
+                {t("booking.saveAndContinue") || "Save & Continue"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

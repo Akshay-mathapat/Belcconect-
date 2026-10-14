@@ -169,8 +169,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const signalingPort = process.env.SIGNALING_PORT || 4001;
       // DO NOT FALL BACK TO ANY DEFAULT VALUE, EMPTY STRING INCLUDED, FOR A SECRET USED IN AN AUTHORIZATION OR SIGNATURE CHECK — FAIL STARTUP INSTEAD.
       const internalSecret = process.env.SIGNALING_INTERNAL_SECRET;
-      if (!internalSecret && typeof window === "undefined") {
-        throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing.");
+      if ((!internalSecret || internalSecret.length < 32) && typeof window === "undefined") {
+        throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing or shorter than 32 characters.");
       }
       fetch(`http://127.0.0.1:${signalingPort}/api/chat/broadcast`, {
         method: "POST",

@@ -36,6 +36,12 @@ const STEPS: StepConfig[] = [
     icon: MapPin,
   },
   {
+    key: "Arrived",
+    label: "Arrived",
+    sublabel: "On Site",
+    icon: MapPin,
+  },
+  {
     key: "Started",
     label: "In Progress",
     sublabel: "Work Started",
@@ -51,6 +57,42 @@ const STEPS: StepConfig[] = [
 
 export default function BookingStatusStepper({ status, className = "" }: BookingStatusStepperProps) {
   const isCancelled = (status as string) === "Cancelled" || status === "Rejected";
+  const isExpired = status === "Expired";
+  const isNoShow = status === "ProviderNoShow" || status === "CustomerNoShow";
+
+  if (isExpired) {
+    return (
+      <div className={`p-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-between ${className}`}>
+        <div className="flex items-center gap-3">
+          <Clock className="w-5 h-5 shrink-0" />
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider">Booking Expired</h4>
+            <p className="text-[11px] opacity-90">No provider response received within 10 minutes. Alternative providers are available below.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isNoShow) {
+    return (
+      <div className={`p-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-between ${className}`}>
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider">
+              {status === "ProviderNoShow" ? "Provider No-Show Reported" : "Customer No-Show Reported"}
+            </h4>
+            <p className="text-[11px] opacity-80">
+              {status === "ProviderNoShow"
+                ? "The service professional did not arrive within 30 minutes of acceptance."
+                : "The provider arrived on-site but was unable to reach the customer after waiting 10 minutes."}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isCancelled) {
     return (
@@ -83,7 +125,7 @@ export default function BookingStatusStepper({ status, className = "" }: Booking
       </div>
 
       {/* Stepper Bar */}
-      <div className="grid grid-cols-5 gap-2 pt-2">
+      <div className="grid grid-cols-6 gap-2 pt-2">
         {STEPS.map((step, idx) => {
           const isCompleted = activeStepIdx > idx;
           const isCurrent = activeStepIdx === idx;

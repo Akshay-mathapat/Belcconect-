@@ -2,12 +2,16 @@ export type BookingStatus =
   | "Requested"
   | "Accepted"
   | "OnTheWay"
+  | "Arrived"
   | "Started"
   | "Completed"
   | "Cancelled"
   | "PaymentReceived"
   | "ReviewSubmitted"
-  | "Rejected";
+  | "Rejected"
+  | "Expired"
+  | "ProviderNoShow"
+  | "CustomerNoShow";
 
 export interface Booking {
   id: string;
@@ -41,6 +45,23 @@ export interface Booking {
   providerCurrentLatitude?: number | null;
   providerCurrentLongitude?: number | null;
   providerLocationUpdatedAt?: string | null;
+  acceptedAt?: string | null;
+  arrivedAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  expiredAt?: string | null;
+  noShowAt?: string | null;
+  noShowType?: string | null;
+  noShowReason?: string | null;
+  noShowReportedBy?: string | null;
+  suggestedProviders?: Array<{
+    id: string;
+    name: string;
+    avatar: string | null;
+    rating: number;
+    phone?: string | null;
+    serviceTitle?: string | null;
+  }>;
 }
 
 export interface ServiceFAQ {

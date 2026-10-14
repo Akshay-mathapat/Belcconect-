@@ -3,7 +3,7 @@
 	"appName": "BelConnect",
 	"webDir": "public",
 	"server": {
-		"url": "https://belcconect.vercel.app",
+		"url": "https://belconnect.vercel.app",
 		"cleartext": false
 	}
 }

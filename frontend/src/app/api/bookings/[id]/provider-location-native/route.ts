@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
+import { getSignalingUrl } from "@/lib/signalingUrl";
 
 const ACTIVE_TRACKING_STATUSES = ["OnTheWay", "Started"];
 
@@ -175,23 +176,8 @@ export async function POST(
       source: "android-native"
     };
 
-    // Determine signaling server.
-    let signalingUrl =
-      process.env.SIGNALING_SERVER_URL ||
-      process.env.NEXT_PUBLIC_SIGNALING_URL ||
-      "https://belcconect-backend.onrender.com";
-
-    // Prevent production from accidentally using localhost.
-    if (
-      process.env.NODE_ENV === "production" &&
-      (
-        signalingUrl.includes("localhost") ||
-        signalingUrl.includes("127.0.0.1")
-      )
-    ) {
-      signalingUrl =
-        "https://belcconect-backend.onrender.com";
-    }
+    // Determine signaling server via single source of truth
+    const signalingUrl = getSignalingUrl();
 
     /*
      * SEC-04

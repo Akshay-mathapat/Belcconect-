@@ -122,8 +122,7 @@ export async function resolveGoogleIdentity({
     }
 
     const targetTable = oauthAccountTypeToTable(requestedAccountType);
-    const prefix = requestedAccountType === "customer" ? "cust" : requestedAccountType === "service_provider" ? "prov" : "emp";
-    const newUserId = `${prefix}-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const newUserId = crypto.randomUUID();
     await dbClient.query(
       `INSERT INTO ${targetTable} (id, email, name, avatar, google_id)
        VALUES ($1, $2, $3, $4, $5)`,

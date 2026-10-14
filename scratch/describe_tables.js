@@ -1,7 +1,12 @@
 const { Pool } = require('../frontend/node_modules/pg');
 
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("FATAL: DATABASE_URL environment variable is required.");
+  process.exit(1);
+}
 const p = new Pool({
-  connectionString: 'postgresql://postgres:Akshay_a015@127.0.0.1:5432/cityconnect',
+  connectionString: dbUrl,
 });
 
 async function describe() {

@@ -47,6 +47,12 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       return;
     }
 
+    const cleanDigits = phone.replace(/\D/g, "");
+    if (!/^[6-9]\d{9}$/.test(cleanDigits)) {
+      setErrorMessage(t("auth.invalidIndianPhone") || "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -54,7 +60,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         email,
         password,
         name: fullName,
-        phone,
+        phone: `+91${cleanDigits}`,
         role: signupRole
       });
       setIsLoading(false);
@@ -76,7 +82,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           router.push(safeReturnTo);
         }
       }, 500);
-    } catch (err) {
+    } catch {
       setIsLoading(false);
       setErrorMessage("An unexpected error occurred during registration.");
     }
