@@ -333,8 +333,11 @@ export const isDatabaseExhaustionError = isDatabaseUnavailableError;
 class Argon2ConcurrencyLimiter {
   private active = 0;
   private queue: Array<() => void> = [];
+  private maxConcurrent: number;
 
-  constructor(private maxConcurrent: number = 4) {}
+  constructor(maxConcurrent: number = 4) {
+    this.maxConcurrent = maxConcurrent;
+  }
 
   async run<T>(fn: () => Promise<T>): Promise<T> {
     if (this.active >= this.maxConcurrent) {
