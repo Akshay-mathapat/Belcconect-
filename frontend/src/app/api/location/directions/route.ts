@@ -134,12 +134,11 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Fallback / Dev provider (avoiding public OSRM in production)
-    if (provider === "osm" && process.env.NODE_ENV !== "production") {
-      try {
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson`;
-        const res = await fetch(osrmUrl, { signal: AbortSignal.timeout(4000) });
-        if (res.ok) {
+    // 3. Fallback routing via OSRM if Google Directions API is unavailable or denied
+    try {
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson`;
+      const res = await fetch(osrmUrl, { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
           const data = await res.json();
           if (data.routes && data.routes.length > 0) {
             const r = data.routes[0];
