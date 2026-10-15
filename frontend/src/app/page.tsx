@@ -5,6 +5,8 @@ import Footer from "@/components/sections/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL, DEFAULT_DESCRIPTION, SUPPORT_EMAIL, SOCIAL_PROFILES } from "@/lib/seo";
 
+import { JobsPamphletShowcase } from "@/components/sections/JobsPamphletShowcase";
+
 export default function Home() {
   const websiteSchema = {
     "@context": "https://schema.org",
@@ -86,6 +88,7 @@ export default function Home() {
       <JsonLd data={[websiteSchema, organizationSchema]} />
       <Hero />
       <TrustMetrics />
+      <JobsPamphletShowcase />
       <ServiceCategories />
       <Footer />
     </>
