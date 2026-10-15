@@ -91,8 +91,8 @@ const userBenefits = [
   },
   {
     icon: ShieldCheck,
-    title: "Verified Local Pros",
-    description: "Every professional is background checked & skill tested."
+    title: "Registered Local Pros",
+    description: "Connect with registered local service providers in Belagavi."
   },
   {
     icon: CreditCard,
@@ -101,8 +101,8 @@ const userBenefits = [
   },
   {
     icon: ThumbsUp,
-    title: "Service Happiness Commitment",
-    description: "Not satisfied? We will re-service or make it right."
+    title: "Community Feedback",
+    description: "Direct in-app communication and reviews from real customer bookings."
   }
 ];
 

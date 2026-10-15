@@ -205,7 +205,7 @@ export function Hero() {
                       {catName}
                     </span>
                     <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">
-                      {t("trust.professionals")}
+                      Local Services
                     </span>
                   </Link>
                 </motion.div>

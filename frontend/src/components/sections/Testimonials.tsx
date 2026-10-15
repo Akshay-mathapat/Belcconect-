@@ -1,10 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
 import { TESTIMONIALS } from "@/constants/site";
 
-function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[number] }) {
+interface ReviewItem {
+  id: string;
+  name: string;
+  service: string;
+  rating: number;
+  quote: string;
+  avatar: string;
+}
+
+function TestimonialCard({ testimonial }: { testimonial: ReviewItem }) {
   return (
     <div 
       tabIndex={0}
@@ -40,7 +50,37 @@ function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[num
 }
 
 export function Testimonials() {
-  const doubled = [...TESTIMONIALS, ...TESTIMONIALS];
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+
+  useEffect(() => {
+    // Attempt to load genuine customer reviews from completed bookings
+    fetch("/api/reviews?limit=10")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const formatted = data.map((r: any) => ({
+            id: r.id || String(Math.random()),
+            name: r.customerName || "Verified Customer",
+            service: r.serviceName || "Home Service",
+            rating: Number(r.rating) || 5,
+            quote: r.comment || "",
+            avatar: (r.customerName || "C").slice(0, 2).toUpperCase(),
+          })).filter((r: ReviewItem) => r.quote.trim().length > 0);
+          setReviews(formatted);
+        }
+      })
+      .catch(() => {
+        // Silently ignore - do not display mock reviews
+      });
+  }, []);
+
+  // TRUTH AUDIT: Mock reviews must never run in production.
+  // If there are no real customer reviews yet, do not render fabricated testimonials.
+  if (reviews.length === 0) {
+    return null;
+  }
+
+  const doubled = [...reviews, ...reviews];
 
   return (
     <section className="py-20 sm:py-28 bg-muted/30 dark:bg-muted/10 overflow-hidden">
@@ -59,7 +99,7 @@ export function Testimonials() {
             Trusted by the community
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-lg">
-            See what people are saying about their experience with CityConnect.
+            See verified feedback from customers who booked local services on BelConnect.
           </p>
         </motion.div>
       </div>
@@ -68,7 +108,7 @@ export function Testimonials() {
       <div className="relative group">
         <div className="flex gap-5 animate-marquee w-max">
           {doubled.map((testimonial, i) => (
-            <TestimonialCard key={`${testimonial.name}-${i}`} testimonial={testimonial} />
+            <TestimonialCard key={`${testimonial.id}-${i}`} testimonial={testimonial} />
           ))}
         </div>
         {/* Fade edges */}

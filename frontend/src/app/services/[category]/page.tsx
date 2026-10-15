@@ -17,8 +17,7 @@ export default function ServicesCategoryPage() {
   const categoryId = params.category as string;
   const category = SERVICE_CATEGORIES.find(c => c.id === categoryId) || {
     name: "Services",
-    description: "Explore our verified professionals.",
-    startingPrice: 199
+    description: "Explore registered local service professionals."
   };
 
   const { requireAuth, authDialogProps } = useRequireAuth();

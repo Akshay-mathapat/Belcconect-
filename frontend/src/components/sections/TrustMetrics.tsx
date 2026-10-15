@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
+import { SERVICE_CATEGORIES } from "@/constants/site";
 
-const METRICS = [
-  { value: 10000, suffix: "+", label: "Bookings Completed" },
-  { value: 500, suffix: "+", label: "Verified Professionals" },
-  { value: 4.8, suffix: "", label: "Average Rating", isDecimal: true },
-  { value: 15, suffix: "+", label: "Service Categories" },
-];
+interface MetricItem {
+  value: number;
+  suffix: string;
+  label: string;
+  isDecimal?: boolean;
+}
 
 function AnimatedCounter({ target, isDecimal, suffix }: { target: number; isDecimal?: boolean; suffix: string }) {
   const [count, setCount] = useState(0);
@@ -17,8 +18,8 @@ function AnimatedCounter({ target, isDecimal, suffix }: { target: number; isDeci
 
   useEffect(() => {
     if (!isInView) return;
-    const duration = 2000;
-    const steps = 60;
+    const duration = 1500;
+    const steps = 40;
     const increment = target / steps;
     let current = 0;
     const timer = setInterval(() => {
@@ -41,11 +42,91 @@ function AnimatedCounter({ target, isDecimal, suffix }: { target: number; isDeci
 }
 
 export function TrustMetrics() {
+  const [metrics, setMetrics] = useState<MetricItem[]>([
+    { value: SERVICE_CATEGORIES.length, suffix: "+", label: "Service Categories" },
+    { value: 100, suffix: "%", label: "Direct In-App Booking" },
+    { value: 100, suffix: "%", label: "Belagavi Local Focus" },
+    { value: 100, suffix: "%", label: "ID Verification Required" },
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/platform/metrics")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!isMounted || !data) return;
+
+        const dynamicMetrics: MetricItem[] = [];
+
+        // 1. Service categories count (factual)
+        dynamicMetrics.push({
+          value: data.categoryCount || SERVICE_CATEGORIES.length,
+          suffix: "+",
+          label: "Service Categories",
+        });
+
+        // 2. Verified active professionals
+        if (data.verifiedProviders > 0) {
+          dynamicMetrics.push({
+            value: data.verifiedProviders,
+            suffix: "+",
+            label: "Verified Professionals",
+          });
+        } else {
+          dynamicMetrics.push({
+            value: 100,
+            suffix: "%",
+            label: "Belagavi Local Focus",
+          });
+        }
+
+        // 3. Completed bookings
+        if (data.completedBookings > 0) {
+          dynamicMetrics.push({
+            value: data.completedBookings,
+            suffix: "+",
+            label: "Bookings Completed",
+          });
+        } else {
+          dynamicMetrics.push({
+            value: 100,
+            suffix: "%",
+            label: "Direct In-App Booking",
+          });
+        }
+
+        // 4. Real customer rating or ID verification standard
+        if (data.avgRating && data.reviewCount > 0) {
+          dynamicMetrics.push({
+            value: data.avgRating,
+            suffix: "",
+            label: "Average Rating",
+            isDecimal: true,
+          });
+        } else {
+          dynamicMetrics.push({
+            value: 100,
+            suffix: "%",
+            label: "ID Verification Required",
+          });
+        }
+
+        setMetrics(dynamicMetrics);
+      })
+      .catch(() => {
+        // Fallback to truthful static baseline
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <section className="relative border-y border-border bg-muted/30 dark:bg-muted/10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          {METRICS.map((metric, i) => (
+          {metrics.map((metric, i) => (
             <motion.div
               key={metric.label}
               initial={{ opacity: 0, y: 16 }}
@@ -55,7 +136,7 @@ export function TrustMetrics() {
               className="text-center"
             >
               <p className="text-3xl sm:text-4xl lg:text-5xl font-bold font-heading text-foreground tracking-tight">
-                <AnimatedCounter target={metric.value} isDecimal={"isDecimal" in metric} suffix={metric.suffix} />
+                <AnimatedCounter target={metric.value} isDecimal={metric.isDecimal} suffix={metric.suffix} />
               </p>
               <p className="mt-1.5 text-sm text-muted-foreground font-medium">
                 {metric.label}

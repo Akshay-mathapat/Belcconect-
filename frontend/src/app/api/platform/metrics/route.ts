@@ -1,0 +1,43 @@
+import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import { SERVICE_CATEGORIES } from "@/constants/site";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/platform/metrics
+ * Returns truthful, real-time database counts for platform transparency.
+ * No hardcoded or fabricated statistics.
+ */
+export async function GET() {
+  try {
+    const [bookingsRes, providersRes, reviewsRes] = await Promise.all([
+      query("SELECT COUNT(*) AS count FROM public.bookings WHERE status = 'Completed'"),
+      query("SELECT COUNT(*) AS count FROM public.service_providers WHERE verification_status = 'verified' AND is_available = true"),
+      query("SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) as review_count FROM public.reviews")
+    ]);
+
+    const completedBookings = parseInt(bookingsRes.rows[0]?.count || "0", 10);
+    const verifiedProviders = parseInt(providersRes.rows[0]?.count || "0", 10);
+    const reviewCount = parseInt(reviewsRes.rows[0]?.review_count || "0", 10);
+    const avgRating = reviewCount > 0 && reviewsRes.rows[0]?.avg_rating ? parseFloat(reviewsRes.rows[0].avg_rating) : null;
+    const categoryCount = SERVICE_CATEGORIES.length;
+
+    return NextResponse.json({
+      completedBookings,
+      verifiedProviders,
+      avgRating,
+      reviewCount,
+      categoryCount
+    });
+  } catch (err: any) {
+    console.error("Platform metrics retrieval error:", err.message);
+    return NextResponse.json({
+      completedBookings: 0,
+      verifiedProviders: 0,
+      avgRating: null,
+      reviewCount: 0,
+      categoryCount: SERVICE_CATEGORIES.length
+    });
+  }
+}

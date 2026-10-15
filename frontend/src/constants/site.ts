@@ -17,22 +17,18 @@ export const SERVICE_CATEGORIES = [
 ] as const;
 
 /* ═══════ Trust Metrics ═══════ */
+// Baseline categories and service metrics. Real dynamic counts are fetched from the database.
 export const TRUST_METRICS = [
-  { value: 10000, suffix: "+", i18nKey: "trust.bookings" },
-  { value: 500, suffix: "+", i18nKey: "trust.professionals" },
-  { value: 4.8, suffix: "", i18nKey: "trust.rating", isDecimal: true },
-  { value: 15, suffix: "+", i18nKey: "trust.categories" },
+  { value: 11, suffix: "+", i18nKey: "trust.categories" },
+  { value: 100, suffix: "%", i18nKey: "trust.directBooking" },
+  { value: 100, suffix: "%", i18nKey: "trust.localBelagavi" },
+  { value: 100, suffix: "%", i18nKey: "trust.verifiedIdentity" },
 ] as const;
 
 /* ═══════ Testimonials ═══════ */
-export const TESTIMONIALS = [
-  { name: "Priya Sharma", service: "Home Cleaning", rating: 5, quote: "Absolutely spotless work! The team was professional, and thorough. Will definitely book again.", avatar: "PS" },
-  { name: "Rahul Kulkarni", service: "AC Repair", rating: 5, quote: "Fixed my AC quickly. Great quality work with no hidden surprises. Highly recommend!", avatar: "RK" },
-  { name: "Anita Desai", service: "Salon at Home", rating: 5, quote: "Best salon experience without leaving home. The stylist was skilled and used premium products.", avatar: "AD" },
-  { name: "Vikram Patil", service: "Electrical", rating: 4, quote: "Quick response. Fixed all wiring issues professionally. Great service.", avatar: "VP" },
-  { name: "Sneha Joshi", service: "Plumbing", rating: 5, quote: "Emergency plumbing fixed right away! The support is a lifesaver. Thank you CityConnect!", avatar: "SJ" },
-  { name: "Amit Hegde", service: "Painting", rating: 5, quote: "Transformed our entire apartment. Clean work, no mess left behind. Worth every rupee.", avatar: "AH" },
-] as const;
+// Real customer reviews are loaded from the database reviews table.
+// Hardcoded fake testimonials removed per Truth Audit (Batch R1). Mock data must never run in production.
+export const TESTIMONIALS = [] as const;
 
 /* ═══════ Belagavi Areas ═══════ */
 export const BELAGAVI_AREAS = [

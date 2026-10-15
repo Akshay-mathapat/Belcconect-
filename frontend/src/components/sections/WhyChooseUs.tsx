@@ -8,12 +8,54 @@ export function WhyChooseUs() {
   const { t } = useTranslation();
 
   const features = [
-    { icon: ShieldCheck, titleKey: "whyUs.verifiedTitle", descKey: "whyUs.verifiedDesc", fallbackTitle: "Verified Professionals", fallbackDesc: "Every professional undergoes strict background checks and skill verification.", gradient: "from-primary/10 to-violet-500/5" },
-    { icon: Tag, titleKey: "whyUs.pricingTitle", descKey: "whyUs.pricingDesc", fallbackTitle: "Quality Assured", fallbackDesc: "High quality services delivered directly to your home by experts.", gradient: "from-emerald-500/10 to-green-500/5" },
-    { icon: Zap, titleKey: "whyUs.fastTitle", descKey: "whyUs.fastDesc", fallbackTitle: "Fast Response", fallbackDesc: "Average response time under 30 minutes for most services.", gradient: "from-blue-500/10 to-cyan-500/5" },
-    { icon: Lock, titleKey: "whyUs.secureTitle", descKey: "whyUs.secureDesc", fallbackTitle: "Secure Payments", fallbackDesc: "Pay securely online or in cash after the service is completed.", gradient: "from-blue-500/10 to-cyan-500/5" },
-    { icon: HeadphonesIcon, titleKey: "whyUs.localTitle", descKey: "whyUs.localDesc", fallbackTitle: "Local Support", fallbackDesc: "Our Belagavi-based support team is here to help you 24/7.", gradient: "from-pink-500/10 to-rose-500/5" },
-    { icon: Award, titleKey: "whyUs.guaranteeTitle", descKey: "whyUs.guaranteeDesc", fallbackTitle: "Service Guarantee", fallbackDesc: "Not satisfied? We will redo the work or refund your money.", gradient: "from-teal-500/10 to-cyan-500/5" },
+    { 
+      icon: ShieldCheck, 
+      titleKey: "whyUs.verifiedTitle", 
+      descKey: "whyUs.verifiedDesc", 
+      fallbackTitle: "Verified Identity", 
+      fallbackDesc: "Service providers submit government identification for admin review before profile approval.", 
+      gradient: "from-primary/10 to-violet-500/5" 
+    },
+    { 
+      icon: Tag, 
+      titleKey: "whyUs.pricingTitle", 
+      descKey: "whyUs.pricingDesc", 
+      fallbackTitle: "Transparent Pricing", 
+      fallbackDesc: "View estimated costs and service details directly before booking.", 
+      gradient: "from-emerald-500/10 to-green-500/5" 
+    },
+    { 
+      icon: Zap, 
+      titleKey: "whyUs.fastTitle", 
+      descKey: "whyUs.fastDesc", 
+      fallbackTitle: "Local Neighborhood Pros", 
+      fallbackDesc: "Directly connect with nearby service providers across Belagavi neighborhoods.", 
+      gradient: "from-blue-500/10 to-cyan-500/5" 
+    },
+    { 
+      icon: Lock, 
+      titleKey: "whyUs.secureTitle", 
+      descKey: "whyUs.secureDesc", 
+      fallbackTitle: "In-App Privacy", 
+      fallbackDesc: "In-app chat and calling protect your phone number and personal contact details.", 
+      gradient: "from-blue-500/10 to-cyan-500/5" 
+    },
+    { 
+      icon: HeadphonesIcon, 
+      titleKey: "whyUs.localTitle", 
+      descKey: "whyUs.localDesc", 
+      fallbackTitle: "Direct Booking", 
+      fallbackDesc: "Schedule and manage your appointments directly with local professionals.", 
+      gradient: "from-pink-500/10 to-rose-500/5" 
+    },
+    { 
+      icon: Award, 
+      titleKey: "whyUs.guaranteeTitle", 
+      descKey: "whyUs.guaranteeDesc", 
+      fallbackTitle: "Real Customer Feedback", 
+      fallbackDesc: "Read verified ratings and feedback from customers after completed bookings.", 
+      gradient: "from-teal-500/10 to-cyan-500/5" 
+    },
   ];
 
   return (

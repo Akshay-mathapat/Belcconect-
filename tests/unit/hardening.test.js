@@ -1398,3 +1398,86 @@ describe("15. Database Migrations Single Source of Truth & Runner Hardening Test
   });
 });
 
+describe("16. Truth Audit Hardening Tests (Batch R1)", () => {
+  test("1) constants/site.ts contains no fake 10000+ bookings, 500+ pros, or fake testimonials", () => {
+    const siteFile = path.resolve(__dirname, "../../frontend/src/constants/site.ts");
+    assert.ok(fs.existsSync(siteFile), "site.ts must exist");
+    const siteCode = fs.readFileSync(siteFile, "utf-8");
+
+    assert.ok(!siteCode.includes("10000"), "Must not hardcode 10000+ bookings");
+    assert.ok(!siteCode.includes("value: 500"), "Must not hardcode 500+ professionals");
+    assert.ok(!siteCode.includes("Priya Sharma"), "Must not contain fake testimonial for Priya Sharma");
+    assert.ok(!siteCode.includes("Rahul Kulkarni"), "Must not contain fake testimonial for Rahul Kulkarni");
+    assert.ok(!siteCode.includes("CityConnect"), "Must not reference legacy brand CityConnect in testimonials");
+  });
+
+  test("2) services/[category]/page.tsx contains no hardcoded startingPrice: 199", () => {
+    const pageFile = path.resolve(__dirname, "../../frontend/src/app/services/[category]/page.tsx");
+    assert.ok(fs.existsSync(pageFile), "category page.tsx must exist");
+    const pageCode = fs.readFileSync(pageFile, "utf-8");
+
+    assert.ok(!pageCode.includes("startingPrice: 199"), "Must not contain hardcoded startingPrice: 199");
+    assert.ok(!pageCode.includes("startingPrice"), "Must not fabricate unverified startingPrice");
+  });
+
+  test("3) jobprovider mockData.ts contains empty mock arrays and zero fake applicants", () => {
+    const mockFile = path.resolve(__dirname, "../../frontend/src/components/jobprovider/mockData.ts");
+    assert.ok(fs.existsSync(mockFile), "mockData.ts must exist");
+    const mockCode = fs.readFileSync(mockFile, "utf-8");
+
+    assert.ok(!mockCode.includes("Ramesh Kumar"), "Must not contain fake applicant Ramesh Kumar");
+    assert.ok(!mockCode.includes("Priya Nair"), "Must not contain fake applicant Priya Nair");
+    assert.ok(!mockCode.includes("Suresh Patil"), "Must not contain fake applicant Suresh Patil");
+    assert.ok(mockCode.includes("export const MOCK_JOBS: Job[] = [];"), "MOCK_JOBS must be empty array");
+    assert.ok(mockCode.includes("export const MOCK_APPLICANTS: Applicant[] = [];"), "MOCK_APPLICANTS must be empty array");
+    assert.ok(mockCode.includes("export const MOCK_MESSAGES: Message[] = [];"), "MOCK_MESSAGES must be empty array");
+  });
+
+  test("4) TrustMetrics.tsx queries /api/platform/metrics and does not hardcode 10000+ or 500+", () => {
+    const trustFile = path.resolve(__dirname, "../../frontend/src/components/sections/TrustMetrics.tsx");
+    assert.ok(fs.existsSync(trustFile), "TrustMetrics.tsx must exist");
+    const trustCode = fs.readFileSync(trustFile, "utf-8");
+
+    assert.ok(!trustCode.includes("value: 10000"), "TrustMetrics must not hardcode 10000");
+    assert.ok(!trustCode.includes("value: 500"), "TrustMetrics must not hardcode 500");
+    assert.ok(trustCode.includes("/api/platform/metrics"), "TrustMetrics must fetch real DB metrics from /api/platform/metrics");
+  });
+
+  test("5) Testimonials.tsx returns null when no real customer reviews exist", () => {
+    const testFile = path.resolve(__dirname, "../../frontend/src/components/sections/Testimonials.tsx");
+    assert.ok(fs.existsSync(testFile), "Testimonials.tsx must exist");
+    const testCode = fs.readFileSync(testFile, "utf-8");
+
+    assert.ok(testCode.includes("if (reviews.length === 0)"), "Must check for zero real reviews");
+    assert.ok(testCode.includes("return null;"), "Must return null when no real reviews exist");
+  });
+
+  test("6) WhyChooseUs.tsx and translations contain factual claims without unverified 30-min or money-back guarantees", () => {
+    const whyFile = path.resolve(__dirname, "../../frontend/src/components/sections/WhyChooseUs.tsx");
+    assert.ok(fs.existsSync(whyFile), "WhyChooseUs.tsx must exist");
+    const whyCode = fs.readFileSync(whyFile, "utf-8");
+
+    assert.ok(!whyCode.includes("30 minutes"), "Must not claim unverified 30 minutes response time");
+    assert.ok(!whyCode.includes("refund your money"), "Must not make unbacked money-back refund guarantee");
+    assert.ok(whyCode.includes("Verified Identity"), "Must highlight truthful verified identity");
+
+    // All four translation files must be free of fake claims
+    for (const lang of ["en", "kn", "hi", "mr"]) {
+      const trans = JSON.parse(fs.readFileSync(path.resolve(__dirname, `../../frontend/src/lib/translations/${lang}.json`), "utf-8"));
+      assert.ok(trans.whyUs, `${lang} must have whyUs`);
+      assert.ok(!trans.whyUs.fastDesc.includes("30"), `${lang} must not claim unverified 30 minutes`);
+    }
+  });
+
+  test("7) api/platform/metrics route queries actual database tables", () => {
+    const routeFile = path.resolve(__dirname, "../../frontend/src/app/api/platform/metrics/route.ts");
+    assert.ok(fs.existsSync(routeFile), "metrics route must exist");
+    const routeCode = fs.readFileSync(routeFile, "utf-8");
+
+    assert.ok(routeCode.includes("SELECT COUNT(*) AS count FROM public.bookings WHERE status = 'Completed'"));
+    assert.ok(routeCode.includes("SELECT COUNT(*) AS count FROM public.service_providers WHERE verification_status = 'verified'"));
+    assert.ok(routeCode.includes("SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating"));
+  });
+});
+
+
