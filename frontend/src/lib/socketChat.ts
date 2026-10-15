@@ -47,14 +47,14 @@ export const getChatSocket = (userId?: string): Socket => {
         msg.includes("invalid token") ||
         msg.includes("missing authentication")
       ) {
-        console.warn("[ChatSocket] Authentication failed. Halting reconnect and triggering auth expiry.");
+        console.warn("[ChatSocket] Authentication failed. Halting reconnect and falling back to HTTP polling.");
         if (chatSocket) {
           try {
             chatSocket.io.opts.reconnection = false;
           } catch (e) {}
           chatSocket.disconnect();
         }
-        triggerAuthExpired();
+        // Do not triggerAuthExpired() here: chat socket auth failure should degrade to HTTP polling, not destroy web session
       }
     });
   } else if (userId && (chatSocket as any)._activeUserId !== userId) {

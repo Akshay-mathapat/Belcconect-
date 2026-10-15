@@ -103,18 +103,35 @@ io.use((socket, next) => {
     return next(new Error("Authentication failed: Missing authentication token"));
   }
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded && decoded.userId) {
-      socket.userId = decoded.userId;
-      socket.userRole = decoded.role;
-      return next();
+  const candidateSecrets = [
+    JWT_SECRET,
+    process.env.JWT_SECRET_FALLBACK ? normalizeSecret(process.env.JWT_SECRET_FALLBACK) : null,
+    INTERNAL_API_SECRET && INTERNAL_API_SECRET !== JWT_SECRET ? INTERNAL_API_SECRET : null,
+    SIGNALING_SECRET && SIGNALING_SECRET !== JWT_SECRET ? SIGNALING_SECRET : null
+  ].filter(Boolean);
+
+  let decoded = null;
+  let lastError = null;
+
+  for (const secret of candidateSecrets) {
+    try {
+      decoded = jwt.verify(token, secret);
+      if (decoded && decoded.userId) {
+        break;
+      }
+    } catch (err) {
+      lastError = err;
     }
-    return next(new Error("Authentication failed: Invalid token payload"));
-  } catch (err) {
-    console.warn(`[Signaling Server] Connection rejected: Token verification failed (${err.message})`);
-    return next(new Error("Authentication failed: Invalid or expired token"));
   }
+
+  if (decoded && decoded.userId) {
+    socket.userId = decoded.userId;
+    socket.userRole = decoded.role;
+    return next();
+  }
+
+  console.warn(`[Signaling Server] Connection rejected: Token verification failed (${lastError ? lastError.message : "invalid payload"})`);
+  return next(new Error("Authentication failed: Invalid or expired token"));
 });
 
 const { Pool } = require("pg");

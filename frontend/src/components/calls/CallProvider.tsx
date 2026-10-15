@@ -528,11 +528,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         msg.includes("authentication failed") ||
         msg.includes("invalid token")
       ) {
-        console.warn(`[SIGNALING] Socket authentication failed (${err.message}). Halting reconnection.`);
+        console.warn(`[SIGNALING] Socket authentication failed (${err.message}). Halting socket reconnection, falling back to HTTP polling.`);
         socket.disconnect();
         socketConnectedRef.current = false;
         try { socket.io.opts.reconnection = false; } catch (e) {}
-        triggerAuthExpired();
+        // Do not triggerAuthExpired() here: a signaling server auth mismatch or restart must never kick the user out of the main web application
         return;
       }
       console.warn(`[SIGNALING] Connection notice host=${host}:`, err.message);
