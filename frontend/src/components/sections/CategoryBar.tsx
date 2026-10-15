@@ -20,9 +20,6 @@ import {
   PawPrint,
   ArrowRight,
   TrendingUp,
-  Briefcase,
-  Building2,
-  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -42,13 +39,11 @@ export default function CategoryBar() {
     return null;
   }
   const [megaOpen, setMegaOpen] = useState(false);
-  const [jobsOpen, setJobsOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(SERVICE_TAXONOMY[0]?.items[0]?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const megaRef = useRef<HTMLDivElement>(null);
-  const jobsRef = useRef<HTMLDivElement>(null);
 
   // Scroll state management
   const updateScrollState = () => {
@@ -72,21 +67,18 @@ export default function CategoryBar() {
     }
   }, []);
 
-  // Close mega menu or jobs menu on outside click
+  // Close mega menu on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
         setMegaOpen(false);
       }
-      if (jobsRef.current && !jobsRef.current.contains(e.target as Node)) {
-        setJobsOpen(false);
-      }
     };
-    if (megaOpen || jobsOpen) {
+    if (megaOpen) {
       document.addEventListener("mousedown", handleClick);
       return () => document.removeEventListener("mousedown", handleClick);
     }
-  }, [megaOpen, jobsOpen]);
+  }, [megaOpen]);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -287,83 +279,6 @@ export default function CategoryBar() {
                 );
               })}
             </div>
-          </div>
-
-          {/* Divider */}
-          <div className="h-6 w-px bg-border flex-shrink-0" />
-
-          {/* Jobs & Careers Quick Dropdown with Arrow */}
-          <div ref={jobsRef} className="relative flex-shrink-0">
-            <button
-              onClick={() => setJobsOpen(!jobsOpen)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-200 border ${
-                jobsOpen
-                  ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
-                  : "bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-600 hover:text-white hover:border-blue-600"
-              }`}
-              suppressHydrationWarning
-            >
-              <Briefcase className="h-3.5 w-3.5" />
-              <span>Jobs</span>
-              <span className="rounded-full bg-blue-600 dark:bg-blue-500 text-white px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wider">
-                NEW
-              </span>
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${jobsOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {/* Jobs Dropdown Menu */}
-            <AnimatePresence>
-              {jobsOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute top-[calc(100%+0.5rem)] right-0 w-72 rounded-2xl border border-border bg-card p-2 shadow-2xl z-50 overflow-hidden"
-                >
-                  <div className="px-3 py-2 border-b border-border/50">
-                    <p className="text-xs font-bold text-foreground">Jobs & Career Portal</p>
-                    <p className="text-[11px] text-muted-foreground">Find local work or hire in Belagavi</p>
-                  </div>
-
-                  <div className="p-1 space-y-1 mt-1">
-                    <Link
-                      href="/jobs"
-                      onClick={() => setJobsOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted transition-colors group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Search className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-foreground group-hover:text-blue-600 transition-colors flex items-center justify-between">
-                          <span>Find Jobs</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-                        </p>
-                        <p className="text-[10px] text-muted-foreground truncate">Browse verified opportunities</p>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/job-provider"
-                      onClick={() => setJobsOpen(false)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted transition-colors group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Building2 className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-foreground group-hover:text-blue-600 transition-colors flex items-center justify-between">
-                          <span>Post a Job</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-                        </p>
-                        <p className="text-[10px] text-muted-foreground truncate">Employer workspace & hiring</p>
-                      </div>
-                    </Link>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
       </div>

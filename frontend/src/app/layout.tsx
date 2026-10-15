@@ -83,7 +83,7 @@ export const metadata: Metadata = {
     icon: "/belconnect.png",
     apple: "/apple-touch-icon.png",
   },
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -92,7 +92,6 @@ export const metadata: Metadata = {
 };
 
 import { AppTour } from "@/components/onboarding/AppTour";
-import { StickyJobsPill } from "@/components/layout/StickyJobsPill";
 
 export default function RootLayout({
   children,
@@ -115,7 +114,6 @@ export default function RootLayout({
               <Navigation />
               <AppTour />
               {children}
-              <StickyJobsPill />
             </CallProvider>
           </ThemeProvider>
         </I18nProvider>

@@ -1,15 +1,21 @@
 {
-  "name": "BelConnect",
+  "name": "BelConnect - Home Services & Jobs in Belagavi",
   "short_name": "BelConnect",
-  "description": "A trusted platform for discovering and booking verified local professionals.",
+  "description": "Book verified local home services and explore jobs in Belagavi, Karnataka.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#2563eb",
+  "background_color": "#0B0F19",
+  "theme_color": "#2563EB",
   "categories": ["business", "utilities", "lifestyle"],
   "icons": [
+    {
+      "src": "/belconnect.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
