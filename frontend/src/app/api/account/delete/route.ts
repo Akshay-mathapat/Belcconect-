@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { getAuthenticatedUser } from "@/lib/jwt";
 import { query } from "@/lib/db";
 import { checkIpRateLimit, checkUserRateLimit } from "@/lib/rateLimit";
-import { normalizeIndianPhoneNumber, isValidIndianPhone } from "@/lib/phoneUtils";
+import { normalizeIndianPhone } from "@/lib/phone";
 
 export async function POST(request: Request) {
   try {
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
     }
 
     const targetRole = role === "service_provider" ? "service_provider" : role === "job_provider" ? "job_provider" : "customer";
-    const normalizedPhone = phone ? normalizeIndianPhoneNumber(phone) : null;
+    const normalizedPhone = phone ? normalizeIndianPhone(phone) : null;
     const normalizedEmail = email ? email.trim().toLowerCase() : null;
 
     let targetUserId: string | null = null;
