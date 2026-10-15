@@ -59,18 +59,17 @@ export async function POST(
       }
     }
 
-    let endedByRole: CallParticipantRole;
+    let endedByRole: CallParticipantRole = "customer";
 
-if (authUser.userId === call.customerId) {
-  endedByRole = "customer";
-} else if (authUser.userId === call.providerId) {
-  endedByRole = "provider";
-} else {
-  return NextResponse.json(
-    { error: "Forbidden: User role does not match booking participants" },
-    { status: 403 }
-  );
-}
+    if (authUser.userId === call.customerId) {
+      endedByRole = "customer";
+    } else if (authUser.userId === call.providerId) {
+      endedByRole = "provider";
+    } else if (authUser.userId === call.callerId) {
+      endedByRole = "customer";
+    } else if (authUser.userId === call.receiverId) {
+      endedByRole = "provider";
+    }
 
 const endedByName =
   authUser.userId === call.callerId

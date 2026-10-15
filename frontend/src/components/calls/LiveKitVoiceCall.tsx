@@ -305,6 +305,9 @@ function LiveKitVoiceContent({
       console.log(`[LIVEKIT] participant-disconnected identity=${participant.identity}`);
       suppressMediaSession();
       setRemoteAudioSubscribed(false);
+      console.log("[LIVEKIT] Remote peer disconnected / hung up. Ending call immediately.");
+      callAudioManager.playCallEndedSound();
+      onEndCall();
     };
 
     const handleParticipantConnected = (participant: any) => {
@@ -331,7 +334,19 @@ function LiveKitVoiceContent({
       room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
       room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
     };
-  }, [room]);
+  }, [room, onEndCall]);
+
+  // Track if a remote participant ever joined the call
+  const hadRemoteParticipantRef = useRef(false);
+  useEffect(() => {
+    if (remoteParticipants.length > 0) {
+      hadRemoteParticipantRef.current = true;
+    } else if (hadRemoteParticipantRef.current && roomConnected) {
+      console.log("[LIVEKIT] Remote participant left room. Ending call immediately.");
+      callAudioManager.playCallEndedSound();
+      onEndCall();
+    }
+  }, [remoteParticipants.length, roomConnected, onEndCall]);
 
   // Log remote participant count and mic publication state
   useEffect(() => {
@@ -343,17 +358,20 @@ function LiveKitVoiceContent({
     }
   }, [roomConnected, remoteParticipants.length, localMicPublished, remoteAudioSubscribed, canPlayAudio]);
 
-  // "Waiting for other person" timeout after 8 seconds
+  // If other participant never joins after 12s, automatically hang up like a mobile phone
   useEffect(() => {
-    if (roomConnected && !remoteParticipantPresent) {
+    if (roomConnected && !remoteParticipantPresent && !hadRemoteParticipantRef.current) {
       const timer = setTimeout(() => {
         setWaitingTimeout(true);
-      }, 8000);
+        console.log("[LIVEKIT] Call timeout: peer did not join within 12s. Ending call.");
+        callAudioManager.playCallEndedSound();
+        onEndCall();
+      }, 12000);
       return () => clearTimeout(timer);
     } else {
       setWaitingTimeout(false);
     }
-  }, [roomConnected, remoteParticipantPresent]);
+  }, [roomConnected, remoteParticipantPresent, onEndCall]);
 
   // Ensure microphone is enabled and published automatically upon room connection
   useEffect(() => {
@@ -673,13 +691,10 @@ export default function LiveKitVoiceCall({
   }, []);
 
   const handleRoomDisconnected = useCallback(() => {
-    console.log("[LIVEKIT_STATE] disconnected. Intentional?", intentionalDisconnectRef.current);
+    console.log("[LIVEKIT_STATE] disconnected. Ending call locally.");
     suppressMediaSession();
-    if (intentionalDisconnectRef.current) {
-      onEndCall();
-    } else {
-      console.warn("[LIVEKIT] Transient disconnect detected. Preserving call state for reconnection.");
-    }
+    callAudioManager.playCallEndedSound();
+    onEndCall();
   }, [onEndCall]);
 
   const handleUserHangup = useCallback(() => {

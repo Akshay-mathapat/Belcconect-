@@ -206,8 +206,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (processedTerminalCallIdsRef.current.has(targetCallId)) {
-      console.log(`[CALL] Terminal call ${targetCallId} already handled. Skipping duplicate.`);
+    if (callStateRef.current === "IDLE" && !activeCallRef.current && processedTerminalCallIdsRef.current.has(targetCallId)) {
+      console.log(`[CALL] Terminal call ${targetCallId} already handled and UI is IDLE. Skipping duplicate.`);
       return;
     }
     processedTerminalCallIdsRef.current.add(targetCallId);
@@ -1166,8 +1166,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           const isTransientState = currentState === "CREATING" || currentState === "OUTGOING" || currentState === "INCOMING" || currentState === "ACCEPTING";
           const isTempCall = activeCallRef.current?.id?.startsWith("temp-");
           
-          if (!isTransientState && !isTempCall && currentState === "ACTIVE" && activeCallMissingCountRef.current >= 5) {
-            console.log("[CALL] 5 consecutive null responses during ACTIVE state. Clearing call.");
+          if (!isTransientState && !isTempCall && currentState === "ACTIVE" && activeCallMissingCountRef.current >= 2) {
+            console.log("[CALL] 2 consecutive null responses during ACTIVE state. Clearing call.");
             handleRemoteCallEnded({
               callId: activeCallRef.current?.id,
               reason: "ended"
