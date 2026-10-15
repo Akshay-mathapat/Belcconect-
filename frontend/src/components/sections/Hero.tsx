@@ -23,7 +23,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SERVICE_CATEGORIES, BELAGAVI_AREAS } from "@/constants/site";
 import { useTranslation } from "@/lib/i18n";
-import { JobPortalBanner } from "@/components/sections/JobPortalBanner";
 
 const iconMap: Record<string, any> = {
   Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
@@ -169,9 +168,6 @@ export function Hero() {
             </button>
           </form>
         </motion.div>
-
-        {/* ── JOB PORTAL PROMOTIONAL BANNER ── */}
-        <JobPortalBanner />
 
         {/* OLX-Style Category Tiles Grid — Immediate visual orientation */}
         <div data-tour="browse-services">
