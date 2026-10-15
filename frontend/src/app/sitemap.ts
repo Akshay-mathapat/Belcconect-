@@ -86,11 +86,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let dynamicJobRoutes: MetadataRoute.Sitemap = [];
 
   try {
-    // Only verified and currently available service providers (never private/unverified)
+    // Only verified and currently available service providers (never private/unverified/unavailable)
     const providersRes = await query(
       `SELECT id, created_at, verified_at 
        FROM service_providers 
-       WHERE (verification_status = 'verified' OR is_verified = true) 
+       WHERE verification_status = 'verified' 
          AND is_available = true 
        ORDER BY id ASC 
        LIMIT 5000`

@@ -1157,3 +1157,14 @@ describe("13. Dynamic Domain Configuration Hardening Tests", () => {
   });
 });
 
+describe("14. Sitemap Verification Hardening Tests", () => {
+  test("1) sitemap.ts uses strictly verification_status = 'verified' and excludes unverified or unavailable providers", () => {
+    const sitemapFile = path.resolve(__dirname, "../../frontend/src/app/sitemap.ts");
+    assert.ok(fs.existsSync(sitemapFile), "sitemap.ts must exist");
+    const sitemapCode = fs.readFileSync(sitemapFile, "utf-8");
+
+    assert.ok(sitemapCode.includes("verification_status = 'verified'"), "Sitemap must require verification_status = 'verified'");
+    assert.ok(!sitemapCode.includes("OR is_verified = true"), "Sitemap must NOT contain fallback 'OR is_verified = true'");
+    assert.ok(sitemapCode.includes("is_available = true"), "Sitemap must exclude unavailable providers");
+  });
+});
