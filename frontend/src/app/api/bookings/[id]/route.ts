@@ -94,61 +94,125 @@ export async function GET(
     // Lazy check: auto-expire if pending for > 10 minutes
     await lazyExpireBookingById(cleanId).catch(() => {});
 
-    const res = await query(
-      `SELECT
-        b.id,
-        b.customer_id,
-        b.provider_id,
-        b.provider_name,
-        b.service_name,
-        b.category,
-        b.date,
-        b.time,
-        b.status,
-        b.rating,
-        b.review_comment,
-        b.cancellation_reason,
-        b.cancellation_note,
-        b.cancelled_by,
-        b.cancelled_at,
-        b.destination_latitude,
-        b.destination_longitude,
-        b.destination_address,
-        b.destination_landmark,
-        b.destination_instructions,
-        b.provider_current_latitude,
-        b.provider_current_longitude,
-        b.provider_location_updated_at,
-        b.provider_location_accuracy,
-        b.customer_current_latitude,
-        b.customer_current_longitude,
-        b.customer_location_updated_at,
-        b.customer_location_accuracy,
-        b.accepted_at,
-        b.arrived_at,
-        b.started_at,
-        b.completed_at,
-        b.expired_at,
-        b.no_show_at,
-        b.no_show_type,
-        b.no_show_reason,
-        b.no_show_reported_by,
-        b.created_at,
-        c.name AS customer_name,
-        c.phone AS customer_phone,
-        c.avatar AS customer_photo,
-        COALESCE(b.destination_address, addr.text, 'No address provided') AS address
-      FROM bookings b
-      LEFT JOIN customers c ON b.customer_id = c.id
-      LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text
-        FROM addresses
-        ORDER BY user_id, created_at ASC
-      ) addr ON b.customer_id = addr.user_id
-      WHERE (b.id = $1 OR LOWER(b.id) = LOWER($1) OR b.id = $2 OR LOWER(b.id) = LOWER($2))
-      LIMIT 1`,
-      [cleanId, rawId]
-    );
+    let res;
+    try {
+      res = await query(
+        `SELECT
+          b.id,
+          b.customer_id,
+          b.provider_id,
+          b.provider_name,
+          b.service_name,
+          b.category,
+          b.date,
+          b.time,
+          b.status,
+          b.rating,
+          b.review_comment,
+          b.cancellation_reason,
+          b.cancellation_note,
+          b.cancelled_by,
+          b.cancelled_at,
+          b.destination_latitude,
+          b.destination_longitude,
+          b.destination_address,
+          b.destination_landmark,
+          b.destination_instructions,
+          b.provider_current_latitude,
+          b.provider_current_longitude,
+          b.provider_location_updated_at,
+          b.provider_location_accuracy,
+          b.customer_current_latitude,
+          b.customer_current_longitude,
+          b.customer_location_updated_at,
+          b.customer_location_accuracy,
+          b.accepted_at,
+          b.arrived_at,
+          b.started_at,
+          b.completed_at,
+          b.expired_at,
+          b.no_show_at,
+          b.no_show_type,
+          b.no_show_reason,
+          b.no_show_reported_by,
+          b.created_at,
+          c.name AS customer_name,
+          c.phone AS customer_phone,
+          c.avatar AS customer_photo,
+          COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+        FROM bookings b
+        LEFT JOIN customers c ON b.customer_id = c.id
+        LEFT JOIN (
+          SELECT DISTINCT ON (user_id) user_id, text
+          FROM addresses
+          ORDER BY user_id, created_at ASC
+        ) addr ON b.customer_id = addr.user_id
+        WHERE (b.id = $1 OR LOWER(b.id) = LOWER($1) OR b.id = $2 OR LOWER(b.id) = LOWER($2))
+        LIMIT 1`,
+        [cleanId, rawId]
+      );
+    } catch (queryErr: any) {
+      if (queryErr?.code === "42703" || queryErr?.message?.includes("accepted_at")) {
+        console.warn("[Bookings] Lifecycle columns missing, using fallback query with NULL lifecycle timestamps");
+        res = await query(
+          `SELECT
+            b.id,
+            b.customer_id,
+            b.provider_id,
+            b.provider_name,
+            b.service_name,
+            b.category,
+            b.date,
+            b.time,
+            b.status,
+            b.rating,
+            b.review_comment,
+            b.cancellation_reason,
+            b.cancellation_note,
+            b.cancelled_by,
+            b.cancelled_at,
+            b.destination_latitude,
+            b.destination_longitude,
+            b.destination_address,
+            b.destination_landmark,
+            b.destination_instructions,
+            b.provider_current_latitude,
+            b.provider_current_longitude,
+            b.provider_location_updated_at,
+            b.provider_location_accuracy,
+            b.customer_current_latitude,
+            b.customer_current_longitude,
+            b.customer_location_updated_at,
+            b.customer_location_accuracy,
+            NULL::timestamp with time zone AS accepted_at,
+            NULL::timestamp with time zone AS arrived_at,
+            NULL::timestamp with time zone AS started_at,
+            NULL::timestamp with time zone AS completed_at,
+            NULL::timestamp with time zone AS expired_at,
+            NULL::timestamp with time zone AS no_show_at,
+            NULL::character varying AS no_show_type,
+            NULL::text AS no_show_reason,
+            NULL::character varying AS no_show_reported_by,
+            b.created_at,
+            c.name AS customer_name,
+            c.phone AS customer_phone,
+            c.avatar AS customer_photo,
+            COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+          FROM bookings b
+          LEFT JOIN customers c ON b.customer_id = c.id
+          LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, text
+            FROM addresses
+            ORDER BY user_id, created_at ASC
+          ) addr ON b.customer_id = addr.user_id
+          WHERE (b.id = $1 OR LOWER(b.id) = LOWER($1) OR b.id = $2 OR LOWER(b.id) = LOWER($2))
+          LIMIT 1`,
+          [cleanId, rawId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
 
     if (res.rows.length === 0) {
       console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=GET rawId=${rawId} cleanId=${cleanId} userId=${authUser.userId} role=${authUser.role} found=false`);
@@ -558,60 +622,123 @@ export async function PATCH(
       })();
     }
 
-    const finalRes = await query(
-      `SELECT
-        b.id,
-        b.customer_id,
-        b.provider_id,
-        b.provider_name,
-        b.service_name,
-        b.category,
-        b.date,
-        b.time,
-        b.status,
-        b.rating,
-        b.review_comment,
-        b.cancellation_reason,
-        b.cancellation_note,
-        b.cancelled_by,
-        b.cancelled_at,
-        b.destination_latitude,
-        b.destination_longitude,
-        b.destination_address,
-        b.destination_landmark,
-        b.destination_instructions,
-        b.provider_current_latitude,
-        b.provider_current_longitude,
-        b.provider_location_updated_at,
-        b.provider_location_accuracy,
-        b.customer_current_latitude,
-        b.customer_current_longitude,
-        b.customer_location_updated_at,
-        b.customer_location_accuracy,
-        b.accepted_at,
-        b.arrived_at,
-        b.started_at,
-        b.completed_at,
-        b.expired_at,
-        b.no_show_at,
-        b.no_show_type,
-        b.no_show_reason,
-        b.no_show_reported_by,
-        b.created_at,
-        c.name AS customer_name,
-        c.phone AS customer_phone,
-        c.avatar AS customer_photo,
-        COALESCE(b.destination_address, addr.text, 'No address provided') AS address
-      FROM bookings b
-      LEFT JOIN customers c ON b.customer_id = c.id
-      LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text
-        FROM addresses
-        ORDER BY user_id, created_at ASC
-      ) addr ON b.customer_id = addr.user_id
-      WHERE b.id = $1`,
-      [canonicalId]
-    );
+    let finalRes;
+    try {
+      finalRes = await query(
+        `SELECT
+          b.id,
+          b.customer_id,
+          b.provider_id,
+          b.provider_name,
+          b.service_name,
+          b.category,
+          b.date,
+          b.time,
+          b.status,
+          b.rating,
+          b.review_comment,
+          b.cancellation_reason,
+          b.cancellation_note,
+          b.cancelled_by,
+          b.cancelled_at,
+          b.destination_latitude,
+          b.destination_longitude,
+          b.destination_address,
+          b.destination_landmark,
+          b.destination_instructions,
+          b.provider_current_latitude,
+          b.provider_current_longitude,
+          b.provider_location_updated_at,
+          b.provider_location_accuracy,
+          b.customer_current_latitude,
+          b.customer_current_longitude,
+          b.customer_location_updated_at,
+          b.customer_location_accuracy,
+          b.accepted_at,
+          b.arrived_at,
+          b.started_at,
+          b.completed_at,
+          b.expired_at,
+          b.no_show_at,
+          b.no_show_type,
+          b.no_show_reason,
+          b.no_show_reported_by,
+          b.created_at,
+          c.name AS customer_name,
+          c.phone AS customer_phone,
+          c.avatar AS customer_photo,
+          COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+        FROM bookings b
+        LEFT JOIN customers c ON b.customer_id = c.id
+        LEFT JOIN (
+          SELECT DISTINCT ON (user_id) user_id, text
+          FROM addresses
+          ORDER BY user_id, created_at ASC
+        ) addr ON b.customer_id = addr.user_id
+        WHERE b.id = $1`,
+        [canonicalId]
+      );
+    } catch (queryErr: any) {
+      if (queryErr?.code === "42703" || queryErr?.message?.includes("accepted_at")) {
+        console.warn("[Bookings] Lifecycle columns missing, using fallback query with NULL lifecycle timestamps in PATCH finalRes");
+        finalRes = await query(
+          `SELECT
+            b.id,
+            b.customer_id,
+            b.provider_id,
+            b.provider_name,
+            b.service_name,
+            b.category,
+            b.date,
+            b.time,
+            b.status,
+            b.rating,
+            b.review_comment,
+            b.cancellation_reason,
+            b.cancellation_note,
+            b.cancelled_by,
+            b.cancelled_at,
+            b.destination_latitude,
+            b.destination_longitude,
+            b.destination_address,
+            b.destination_landmark,
+            b.destination_instructions,
+            b.provider_current_latitude,
+            b.provider_current_longitude,
+            b.provider_location_updated_at,
+            b.provider_location_accuracy,
+            b.customer_current_latitude,
+            b.customer_current_longitude,
+            b.customer_location_updated_at,
+            b.customer_location_accuracy,
+            NULL::timestamp with time zone AS accepted_at,
+            NULL::timestamp with time zone AS arrived_at,
+            NULL::timestamp with time zone AS started_at,
+            NULL::timestamp with time zone AS completed_at,
+            NULL::timestamp with time zone AS expired_at,
+            NULL::timestamp with time zone AS no_show_at,
+            NULL::character varying AS no_show_type,
+            NULL::text AS no_show_reason,
+            NULL::character varying AS no_show_reported_by,
+            b.created_at,
+            c.name AS customer_name,
+            c.phone AS customer_phone,
+            c.avatar AS customer_photo,
+            COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+          FROM bookings b
+          LEFT JOIN customers c ON b.customer_id = c.id
+          LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, text
+            FROM addresses
+            ORDER BY user_id, created_at ASC
+          ) addr ON b.customer_id = addr.user_id
+          WHERE b.id = $1`,
+          [canonicalId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
 
     const updatedRow = finalRes.rows[0];
     const mappedBooking = mapRowToBooking(updatedRow);

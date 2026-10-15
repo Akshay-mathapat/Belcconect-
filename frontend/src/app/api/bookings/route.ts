@@ -62,58 +62,120 @@ export async function GET(request: Request) {
     await lazyExpireUserBookings(userId).catch(() => {});
 
     // Retrieve bookings strictly for this specific customer or provider
-    const bookingsRes = await query(
-      `SELECT 
-        b.id, 
-        b.customer_id, 
-        b.provider_id, 
-        b.provider_name,
-        b.service_name, 
-        b.category, 
-        b.date, 
-        b.time, 
-        b.status, 
-        b.rating,
-        b.review_comment,
-        b.cancellation_reason,
-        b.cancellation_note,
-        b.cancelled_by,
-        b.cancelled_at,
-        b.created_at,
-        b.service_address_id,
-        b.destination_latitude,
-        b.destination_longitude,
-        b.destination_place_id,
-        b.destination_address,
-        b.destination_landmark,
-        b.destination_instructions,
-        b.provider_current_latitude,
-        b.provider_current_longitude,
-        b.provider_location_updated_at,
-        b.accepted_at,
-        b.arrived_at,
-        b.started_at,
-        b.completed_at,
-        b.expired_at,
-        b.no_show_at,
-        b.no_show_type,
-        b.no_show_reason,
-        b.no_show_reported_by,
-        COALESCE(c.name, 'Customer') AS customer_name,
-        COALESCE(c.phone, '') AS customer_phone,
-        COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
-        COALESCE(b.destination_address, addr.text, 'No address provided') AS address
-      FROM bookings b
-      LEFT JOIN customers c ON b.customer_id = c.id
-      LEFT JOIN (
-        SELECT DISTINCT ON (user_id) user_id, text 
-        FROM addresses 
-        ORDER BY user_id, created_at ASC
-      ) addr ON b.customer_id = addr.user_id
-      WHERE b.customer_id = $1 OR b.provider_id = $1
-      ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
-      [userId]
-    );
+    let bookingsRes;
+    try {
+      bookingsRes = await query(
+        `SELECT 
+          b.id, 
+          b.customer_id, 
+          b.provider_id, 
+          b.provider_name,
+          b.service_name, 
+          b.category, 
+          b.date, 
+          b.time, 
+          b.status, 
+          b.rating,
+          b.review_comment,
+          b.cancellation_reason,
+          b.cancellation_note,
+          b.cancelled_by,
+          b.cancelled_at,
+          b.created_at,
+          b.service_address_id,
+          b.destination_latitude,
+          b.destination_longitude,
+          b.destination_place_id,
+          b.destination_address,
+          b.destination_landmark,
+          b.destination_instructions,
+          b.provider_current_latitude,
+          b.provider_current_longitude,
+          b.provider_location_updated_at,
+          b.accepted_at,
+          b.arrived_at,
+          b.started_at,
+          b.completed_at,
+          b.expired_at,
+          b.no_show_at,
+          b.no_show_type,
+          b.no_show_reason,
+          b.no_show_reported_by,
+          COALESCE(c.name, 'Customer') AS customer_name,
+          COALESCE(c.phone, '') AS customer_phone,
+          COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
+          COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+        FROM bookings b
+        LEFT JOIN customers c ON b.customer_id = c.id
+        LEFT JOIN (
+          SELECT DISTINCT ON (user_id) user_id, text 
+          FROM addresses 
+          ORDER BY user_id, created_at ASC
+        ) addr ON b.customer_id = addr.user_id
+        WHERE b.customer_id = $1 OR b.provider_id = $1
+        ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
+        [userId]
+      );
+    } catch (queryErr: any) {
+      // If lifecycle columns from migration 030 do not exist yet, safely fallback
+      if (queryErr?.code === "42703" || queryErr?.message?.includes("accepted_at")) {
+        console.warn("[Bookings] Lifecycle columns missing, using fallback query with NULL lifecycle timestamps");
+        bookingsRes = await query(
+          `SELECT 
+            b.id, 
+            b.customer_id, 
+            b.provider_id, 
+            b.provider_name,
+            b.service_name, 
+            b.category, 
+            b.date, 
+            b.time, 
+            b.status, 
+            b.rating,
+            b.review_comment,
+            b.cancellation_reason,
+            b.cancellation_note,
+            b.cancelled_by,
+            b.cancelled_at,
+            b.created_at,
+            b.service_address_id,
+            b.destination_latitude,
+            b.destination_longitude,
+            b.destination_place_id,
+            b.destination_address,
+            b.destination_landmark,
+            b.destination_instructions,
+            b.provider_current_latitude,
+            b.provider_current_longitude,
+            b.provider_location_updated_at,
+            NULL::timestamp with time zone AS accepted_at,
+            NULL::timestamp with time zone AS arrived_at,
+            NULL::timestamp with time zone AS started_at,
+            NULL::timestamp with time zone AS completed_at,
+            NULL::timestamp with time zone AS expired_at,
+            NULL::timestamp with time zone AS no_show_at,
+            NULL::character varying AS no_show_type,
+            NULL::text AS no_show_reason,
+            NULL::character varying AS no_show_reported_by,
+            COALESCE(c.name, 'Customer') AS customer_name,
+            COALESCE(c.phone, '') AS customer_phone,
+            COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
+            COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+          FROM bookings b
+          LEFT JOIN customers c ON b.customer_id = c.id
+          LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, text 
+            FROM addresses 
+            ORDER BY user_id, created_at ASC
+          ) addr ON b.customer_id = addr.user_id
+          WHERE b.customer_id = $1 OR b.provider_id = $1
+          ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
+          [userId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
 
     const bookings = bookingsRes.rows.map(mapRowToBooking);
     return NextResponse.json(bookings);
