@@ -98,20 +98,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Receiver not found for this booking" }, { status: 400 });
     }
 
-    // 5. Verify Booking Status
-    const activeStatuses = [
-      "Requested",
-      "Accepted",
-      "OnTheWay",
-      "Started",
-      "Completed",
-      "Upcoming",
-      "ReviewSubmitted"
-    ];
-
-    if (booking.status && !activeStatuses.includes(booking.status)) {
+    // 5. Verify Booking Status: Allow calls during any active engagement stage
+    const statusNorm = (booking.status || "").toLowerCase();
+    const disallowedStatuses = ["rejected", "cancelled", "expired", "providernoshow", "customernoshow"];
+    if (statusNorm && disallowedStatuses.includes(statusNorm)) {
       return NextResponse.json(
-        { error: `Calling unavailable: Booking status is '${booking.status}'` },
+        { error: `Calling unavailable: Booking is ${booking.status}` },
         { status: 400 }
       );
     }

@@ -1341,6 +1341,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         callAudioManager.stopAll();
         setCallState("IDLE"); setActiveCall(null);
         callStartInProgressRef.current = false;
+        showCallEndedNotice(data?.error || "Unable to start call");
       }
     } catch (err: any) {
       console.error("[CALL_ERROR] Error initiating call:", err);
@@ -1348,6 +1349,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       callAudioManager.stopAll();
       setCallState("IDLE"); setActiveCall(null);
       callStartInProgressRef.current = false;
+      showCallEndedNotice(err?.message || "Connection error starting call");
     }
   }, [getHeaders, ensureSocketConnected, currentUser?.name, clearOutgoingTimeout]);
 
