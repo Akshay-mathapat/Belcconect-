@@ -4,16 +4,11 @@ const TILE_SOURCES = {
   google: (z: string, x: string, y: string) =>
     `https://mt1.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`,
   carto: (z: string, x: string, y: string) =>
-    `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`,
+    `https://mt1.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`,
   esri: (z: string, x: string, y: string) =>
     `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
-  osm: (z: string, x: string, y: string) => {
-    // In production or when MAPS_PROVIDER is google, redirect away from tile.openstreetmap.org
-    if (process.env.NODE_ENV === "production" || getMapsProvider() === "google") {
-      return `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`;
-    }
-    return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-  }
+  osm: (z: string, x: string, y: string) =>
+    `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
 } as const;
 
 function isTileCoordinate(value: string) {
@@ -33,10 +28,19 @@ export async function GET(
   }
 
   try {
-    const upstream = await fetch(sourceBuilder(z, x, y), {
-      headers: { "User-Agent": "BelConnect/1.0 map tile proxy" },
+    const primaryUrl = sourceBuilder(z, x, y);
+    let upstream = await fetch(primaryUrl, {
+      headers: { "User-Agent": "BelConnect/1.0 (+https://belcconect.vercel.app; support@belconnect.in)" },
       next: { revalidate: 86400 },
     });
+
+    // If OSM tile is unavailable or rate-limited, gracefully fallback to Google tiles
+    if (!upstream.ok && provider === "osm") {
+      upstream = await fetch(`https://mt1.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`, {
+        headers: { "User-Agent": "BelConnect/1.0 map tile proxy" },
+        next: { revalidate: 86400 },
+      });
+    }
 
     if (!upstream.ok) {
       return new Response("Map tile unavailable", { status: upstream.status });
@@ -50,6 +54,19 @@ export async function GET(
       },
     });
   } catch {
+    // Network fallback to Google tiles on any error
+    try {
+      const fallback = await fetch(`https://mt1.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`);
+      if (fallback.ok) {
+        return new Response(await fallback.arrayBuffer(), {
+          status: 200,
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+          },
+        });
+      }
+    } catch (_) {}
     return new Response("Map tile unavailable", { status: 502 });
   }
 }
