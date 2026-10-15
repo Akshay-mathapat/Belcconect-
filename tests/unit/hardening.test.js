@@ -1480,4 +1480,43 @@ describe("16. Truth Audit Hardening Tests (Batch R1)", () => {
   });
 });
 
+describe("17. Batch R2 Review Leftovers - Task 1: Mock Data & Starting Price Hardening", () => {
+  test("1) No files in frontend/src/components/jobprovider import mockData", () => {
+    const jpDir = path.resolve(__dirname, "../../frontend/src/components/jobprovider");
+    function checkDir(dir) {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          checkDir(fullPath);
+        } else if (file.endsWith(".ts") || file.endsWith(".tsx")) {
+          if (file === "mockData.ts") continue; // mockData.ts itself defines the exports
+          const content = fs.readFileSync(fullPath, "utf-8");
+          assert.ok(
+            !content.includes('from "../mockData"') && !content.includes("from './mockData'") && !content.includes('from "./mockData"'),
+            `File ${file} must not import from mockData`
+          );
+        }
+      }
+    }
+    checkDir(jpDir);
+  });
+
+  test("2) mockData.ts throws error in production and declares empty arrays", () => {
+    const mockFile = path.resolve(__dirname, "../../frontend/src/components/jobprovider/mockData.ts");
+    const content = fs.readFileSync(mockFile, "utf-8");
+    assert.ok(content.includes('process.env.NODE_ENV === "production"'), "mockData.ts must check NODE_ENV === 'production'");
+    assert.ok(content.includes("throw new Error"), "mockData.ts must throw if mock data getters are called in production");
+    assert.ok(content.includes("export const MOCK_JOBS: Job[] = [];"), "MOCK_JOBS must be empty array");
+  });
+
+  test("3) constants/site.ts does not contain any hardcoded startingPrice", () => {
+    const siteFile = path.resolve(__dirname, "../../frontend/src/constants/site.ts");
+    const content = fs.readFileSync(siteFile, "utf-8");
+    assert.ok(!content.includes("startingPrice"), "constants/site.ts must not contain startingPrice");
+  });
+});
+
+
 

@@ -18,7 +18,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { statusColors, panelVariants } from "../mockData";
+import { statusColors, panelVariants } from "../uiTokens";
 import { getAuthToken } from "@/lib/jwt";
 
 export function MyJobsPanel() {

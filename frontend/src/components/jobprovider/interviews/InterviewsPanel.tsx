@@ -15,7 +15,7 @@ import {
   ExternalLink,
   ChevronRight,
 } from "lucide-react";
-import { panelVariants } from "../mockData";
+import { panelVariants } from "../uiTokens";
 import { getAuthToken } from "@/lib/jwt";
 
 interface InterviewItem {

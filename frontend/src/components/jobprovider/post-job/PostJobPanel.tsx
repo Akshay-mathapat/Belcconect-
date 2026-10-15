@@ -16,7 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { panelVariants } from "../mockData";
+import { panelVariants } from "../uiTokens";
 import { getAuthToken } from "@/lib/jwt";
 
 export function PostJobPanel() {

@@ -1,5 +1,5 @@
 export * from "./types";
-export * from "./mockData";
+export * from "./uiTokens";
 export * from "./common/AvatarCircle";
 export * from "./dashboard/OverviewPanel";
 export * from "./jobs/MyJobsPanel";

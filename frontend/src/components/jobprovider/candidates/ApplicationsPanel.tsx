@@ -27,7 +27,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { appStatusColors, panelVariants } from "../mockData";
+import { appStatusColors, panelVariants } from "../uiTokens";
 import { AvatarCircle } from "../common/AvatarCircle";
 import { getAuthToken } from "@/lib/jwt";
 

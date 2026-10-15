@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Sun, Moon, Laptop } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation } from "@/lib/i18n";
-import { panelVariants } from "../mockData";
+import { panelVariants } from "../uiTokens";
 
 export function SettingsPanel() {
   const { theme, setTheme, mounted } = useTheme();

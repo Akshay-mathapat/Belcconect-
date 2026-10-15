@@ -18,7 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { panelVariants } from "../mockData";
+import { panelVariants } from "../uiTokens";
 import { getAuthToken } from "@/lib/jwt";
 
 export function OverviewPanel() {

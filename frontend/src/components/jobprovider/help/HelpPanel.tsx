@@ -18,7 +18,7 @@ import {
   ExternalLink,
   CheckCircle2,
 } from "lucide-react";
-import { panelVariants } from "../mockData";
+import { panelVariants } from "../uiTokens";
 
 export function HelpPanel() {
   const [searchQuery, setSearchQuery] = useState("");

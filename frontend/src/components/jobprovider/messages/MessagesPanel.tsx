@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Mail, ExternalLink, ArrowLeft, Loader2, Inbox } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { panelVariants } from "../mockData";
+import { panelVariants } from "../uiTokens";
 import { AvatarCircle } from "../common/AvatarCircle";
 import { getAuthToken } from "@/lib/jwt";
 
