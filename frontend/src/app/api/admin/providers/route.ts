@@ -50,8 +50,12 @@ export async function GET(request: Request) {
     const params: any[] = [];
 
     if (statusFilter && ["pending", "verified", "rejected", "unverified"].includes(statusFilter)) {
-      sql += " WHERE verification_status = $1";
-      params.push(statusFilter);
+      if (statusFilter === "pending") {
+        sql += " WHERE (verification_status = 'pending' OR verification_status = 'unverified' OR verification_status IS NULL)";
+      } else {
+        sql += " WHERE verification_status = $1";
+        params.push(statusFilter);
+      }
     }
 
     sql += " ORDER BY created_at DESC NULLS LAST, id DESC";
