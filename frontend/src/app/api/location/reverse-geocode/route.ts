@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/jwt";
+import { checkIpRateLimit, checkUserRateLimit } from "@/lib/rateLimit";
 import { getMapsProvider } from "@/lib/maps/mapService";
 
 interface CacheEntry {
@@ -19,6 +21,43 @@ export async function GET(request: Request) {
   let lng = 0;
 
   try {
+    // 0. Authentication: Login is strictly required
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    // 0b. Rate Limiting: Per-IP and Per-User rate limits
+    const ipRate = await checkIpRateLimit(request, 120, 60);
+    if (!ipRate.isAllowed) {
+      return NextResponse.json(
+        { error: "Too many requests from this IP. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(ipRate.retryAfter || 60),
+            "X-RateLimit-Limit": "120",
+            "X-RateLimit-Remaining": "0"
+          }
+        }
+      );
+    }
+
+    const userRate = await checkUserRateLimit(authUser.userId, 60, 60);
+    if (!userRate.isAllowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(userRate.retryAfter || 60),
+            "X-RateLimit-Limit": "60",
+            "X-RateLimit-Remaining": "0"
+          }
+        }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const latStr = searchParams.get("lat");
     const lngStr = searchParams.get("lng");
@@ -40,7 +79,9 @@ export async function GET(request: Request) {
     // 1. Check in-memory cache
     const cached = geocodeCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return NextResponse.json(cached.data);
+      return NextResponse.json(cached.data, {
+        headers: { "Cache-Control": "private, max-age=3600" }
+      });
     }
 
     // 2. In-flight request deduplication
@@ -177,7 +218,9 @@ export async function GET(request: Request) {
       }
       geocodeCache.set(cacheKey, { data: resultData, timestamp: Date.now() });
 
-      return NextResponse.json(resultData);
+      return NextResponse.json(resultData, {
+        headers: { "Cache-Control": "private, max-age=3600" }
+      });
     } finally {
       inFlightRequests.delete(cacheKey);
     }

@@ -362,7 +362,7 @@ export default function CustomerTrackingMap({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-        const res = await fetch(url, { signal: controller.signal });
+        const res = await authFetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (!res.ok) throw new Error(`Directions API failed with status ${res.status}`);
@@ -477,10 +477,10 @@ export default function CustomerTrackingMap({
         // Position zoom controls at top-right to prevent collision with map pins and overlays
         L.control.zoom({ position: "topright" }).addTo(map);
 
-        // Fast, reliable OpenStreetMap tile layer (Carto Voyager styled map)
-        L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
+        // Default Google Maps tile layer
+        L.tileLayer("/api/map-tile/google/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution: '&copy; Google Maps'
         }).addTo(map);
 
         leafletMapRef.current = map;

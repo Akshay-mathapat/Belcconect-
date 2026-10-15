@@ -1053,6 +1053,70 @@ describe("10. Maps, Directions, Geocoding & Offline Fallback Hardening Tests", (
     // LocationPicker
     assert.ok(pickerCode.includes("BELAGAVI_CITY_CENTER"), "LocationPicker must use BELAGAVI_CITY_CENTER");
   });
+
+  test("12) checkUserRateLimit correctly throttles requests by user ID", async () => {
+    const { InMemoryStore, checkUserRateLimit } = await getRateLimitCore();
+    const store = new InMemoryStore();
+    const testUser = "user_map_test_123";
+    const limit = 3;
+    const windowSeconds = 60;
+
+    for (let i = 1; i <= 3; i++) {
+      const res = await checkUserRateLimit(testUser, limit, windowSeconds, store);
+      assert.strictEqual(res.isAllowed, true);
+      assert.strictEqual(res.remaining, limit - i);
+    }
+
+    const blocked = await checkUserRateLimit(testUser, limit, windowSeconds, store);
+    assert.strictEqual(blocked.isAllowed, false);
+    assert.strictEqual(blocked.remaining, 0);
+    assert.ok(blocked.retryAfter > 0);
+  });
+
+  test("13) location routes and map-tile route enforce authentication, rate limits, and default to Google", () => {
+    const dirRouteFile = path.resolve(__dirname, "../../frontend/src/app/api/location/directions/route.ts");
+    const revGeocodeFile = path.resolve(__dirname, "../../frontend/src/app/api/location/reverse-geocode/route.ts");
+    const mapTileFile = path.resolve(__dirname, "../../frontend/src/app/api/map-tile/[provider]/[z]/[x]/[y]/route.ts");
+
+    const dirCode = fs.readFileSync(dirRouteFile, "utf-8");
+    const revCode = fs.readFileSync(revGeocodeFile, "utf-8");
+    const tileCode = fs.readFileSync(mapTileFile, "utf-8");
+
+    // Directions Route
+    assert.ok(dirCode.includes("getAuthenticatedUser"), "Directions must require authentication");
+    assert.ok(dirCode.includes("checkIpRateLimit"), "Directions must check IP rate limit");
+    assert.ok(dirCode.includes("checkUserRateLimit"), "Directions must check User rate limit");
+    assert.ok(dirCode.includes('provider === "google"'), "Directions must default to Google");
+    assert.ok(dirCode.includes('provider === "osm"'), "Directions must only run OSRM if provider === osm");
+
+    // Reverse Geocode Route
+    assert.ok(revCode.includes("getAuthenticatedUser"), "Reverse-geocode must require authentication");
+    assert.ok(revCode.includes("checkIpRateLimit"), "Reverse-geocode must check IP rate limit");
+    assert.ok(revCode.includes("checkUserRateLimit"), "Reverse-geocode must check User rate limit");
+    assert.ok(revCode.includes('mapsProvider === "osm"'), "Reverse-geocode must only run Nominatim if mapsProvider === osm");
+
+    // Map Tile Route
+    assert.ok(tileCode.includes("getAuthenticatedUser"), "Map tile must require authentication");
+    assert.ok(tileCode.includes("checkIpRateLimit"), "Map tile must check IP rate limit");
+    assert.ok(tileCode.includes("checkUserRateLimit"), "Map tile must check User rate limit");
+    assert.ok(tileCode.includes('effectiveProvider === "osm" && activeMapsProvider !== "osm"'), "Map tile must prevent OSM in production");
+
+    // UI Components must use Google tiles and authFetch
+    const trackingFile = path.resolve(__dirname, "../../frontend/src/components/location/CustomerTrackingMap.tsx");
+    const providerMapFile = path.resolve(__dirname, "../../frontend/src/components/location/ProviderMapView.tsx");
+    const pickerFile = path.resolve(__dirname, "../../frontend/src/components/location/LocationPicker.tsx");
+
+    const trackingCode = fs.readFileSync(trackingFile, "utf-8");
+    const providerCode = fs.readFileSync(providerMapFile, "utf-8");
+    const pickerCode = fs.readFileSync(pickerFile, "utf-8");
+
+    assert.ok(trackingCode.includes("/api/map-tile/google/"), "CustomerTrackingMap must use Google tiles by default");
+    assert.ok(providerCode.includes("/api/map-tile/google/"), "ProviderMapView must use Google tiles by default");
+    assert.ok(pickerCode.includes("/api/map-tile/google/"), "LocationPicker must use Google tiles by default");
+    assert.ok(trackingCode.includes("authFetch"), "CustomerTrackingMap must use authFetch");
+    assert.ok(providerCode.includes("authFetch"), "ProviderMapView must use authFetch");
+    assert.ok(pickerCode.includes("authFetch"), "LocationPicker must use authFetch");
+  });
 });
 
 describe("11. Password Reset OTP Secret Hardening Tests", () => {

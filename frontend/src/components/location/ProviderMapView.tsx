@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Navigation, Compass, AlertCircle, Info, Radio, Clock, ExternalLink, ShieldCheck } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import { useTranslation } from "@/lib/i18n";
+import { authFetch } from "@/lib/authFetch";
 import { BELAGAVI_CITY_CENTER, shouldRefreshRoute, computeFallbackRoute } from "@/lib/maps/mapService";
 
 interface ProviderMapViewProps {
@@ -206,7 +207,7 @@ export default function ProviderMapView({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-        const res = await fetch(url, { signal: controller.signal });
+        const res = await authFetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (!res.ok) throw new Error(`Directions API failed with status ${res.status}`);
@@ -316,9 +317,9 @@ export default function ProviderMapView({
         // Position zoom controls at top-right to prevent collision
         L.control.zoom({ position: "topright" }).addTo(map);
 
-        L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
+        L.tileLayer("/api/map-tile/google/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution: '&copy; Google Maps'
         }).addTo(map);
 
         leafletMapRef.current = map;

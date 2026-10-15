@@ -358,6 +358,49 @@ export async function checkEmailRateLimit(
   }
 }
 
+export async function checkUserRateLimit(
+  userId: string,
+  limit: number = 60,
+  windowSeconds: number = 60,
+  storeOverride?: IRateLimitStore
+): Promise<RateLimitResult> {
+  const cleanUserId = (userId || "").trim();
+  if (!cleanUserId) {
+    return {
+      isAllowed: true,
+      remaining: 1,
+      retryAfter: 0,
+      totalPoints: 0,
+    };
+  }
+
+  const key = `rl:user:${cleanUserId}`;
+  const store = storeOverride || resolveStore();
+
+  try {
+    const { points, retryAfter } = await store.increment(key, windowSeconds);
+    const isAllowed = points <= limit;
+    return {
+      isAllowed,
+      remaining: Math.max(0, limit - points),
+      retryAfter: isAllowed ? 0 : retryAfter,
+      totalPoints: points,
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[RateLimit] Warning: Store (${store.name}) failed during user check for ${key}. Failing open:`,
+      msg
+    );
+    return {
+      isAllowed: true,
+      remaining: 1,
+      retryAfter: 0,
+      totalPoints: 0,
+    };
+  }
+}
+
 export async function recordLoginFailure(
   email: string,
   limit: number = 10,

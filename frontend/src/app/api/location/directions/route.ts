@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/jwt";
+import { checkIpRateLimit, checkUserRateLimit } from "@/lib/rateLimit";
 import {
   getMapsProvider,
   getRouteCacheKey,
@@ -18,6 +20,43 @@ function parseCoordinate(param: string | null): number | null {
 
 export async function GET(request: Request) {
   try {
+    // 0. Authentication: Login is strictly required
+    const authUser = getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    // 0b. Rate Limiting: Per-IP and Per-User rate limits
+    const ipRate = await checkIpRateLimit(request, 120, 60);
+    if (!ipRate.isAllowed) {
+      return NextResponse.json(
+        { error: "Too many requests from this IP. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(ipRate.retryAfter || 60),
+            "X-RateLimit-Limit": "120",
+            "X-RateLimit-Remaining": "0"
+          }
+        }
+      );
+    }
+
+    const userRate = await checkUserRateLimit(authUser.userId, 60, 60);
+    if (!userRate.isAllowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(userRate.retryAfter || 60),
+            "X-RateLimit-Limit": "60",
+            "X-RateLimit-Remaining": "0"
+          }
+        }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // Support both originLat/originLng and pLat/pLng or origin/dest query naming
@@ -49,13 +88,15 @@ export async function GET(request: Request) {
     const cacheKey = getRouteCacheKey(originLat, originLng, destLat, destLng);
     const cached = getCachedRoute(cacheKey);
     if (cached) {
-      return NextResponse.json(cached);
+      return NextResponse.json(cached, {
+        headers: { "Cache-Control": "private, max-age=30" }
+      });
     }
 
     const provider = getMapsProvider();
     const googleApiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-    // 2. Google Maps Platform Directions API
+    // 2. Google Maps Platform Directions API (Default provider)
     if (provider === "google" && googleApiKey) {
       try {
         const googleUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&key=${googleApiKey}`;
@@ -80,24 +121,22 @@ export async function GET(request: Request) {
             };
 
             setCachedRoute(cacheKey, result, 45 * 1000);
-            return NextResponse.json(result);
-          } else {
-            // Google Directions legacy API is not enabled or denied for this key; quietly fall through to OSRM
-            if (process.env.NODE_ENV !== "production") {
-              console.log(`[Directions API] Google Directions status: ${data.status} - falling back to OSRM`);
-            }
+            return NextResponse.json(result, {
+              headers: { "Cache-Control": "private, max-age=30" }
+            });
           }
         }
       } catch (err: any) {
-        // Fall back to OSRM without crashing
+        // Fall through to explicit OSM or graceful degraded fallback
       }
     }
 
-    // 3. Fallback routing via OSRM if Google Directions API is unavailable or denied
-    try {
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson`;
-      const res = await fetch(osrmUrl, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
+    // 3. OSRM routing ONLY when MAPS_PROVIDER explicitly says "osm" (never silent fallback in production)
+    if (provider === "osm") {
+      try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson`;
+        const res = await fetch(osrmUrl, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
           const data = await res.json();
           if (data.routes && data.routes.length > 0) {
             const r = data.routes[0];
@@ -115,10 +154,13 @@ export async function GET(request: Request) {
             };
 
             setCachedRoute(cacheKey, result, 45 * 1000);
-            return NextResponse.json(result);
+            return NextResponse.json(result, {
+              headers: { "Cache-Control": "private, max-age=30" }
+            });
           }
         }
       } catch {}
+    }
 
     // 4. Offline / Degraded Mode:
     // If upstream map APIs are unreachable, rate-limited, or failed, return straight-line
@@ -126,7 +168,9 @@ export async function GET(request: Request) {
     const fallbackResult = computeFallbackRoute(origin, dest);
     // Cache degraded response for a shorter window (15s) so service recovers quickly
     setCachedRoute(cacheKey, fallbackResult, 15 * 1000);
-    return NextResponse.json(fallbackResult);
+    return NextResponse.json(fallbackResult, {
+      headers: { "Cache-Control": "private, max-age=15" }
+    });
   } catch (error: any) {
     console.error("[Directions API] Fatal handler error:", error);
     // Even on uncaught exception, return clean fallback

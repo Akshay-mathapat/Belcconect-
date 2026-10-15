@@ -17,6 +17,7 @@ import {
   Loader2
 } from "lucide-react";
 import { BELAGAVI_CITY_CENTER } from "@/lib/maps/mapService";
+import { authFetch } from "@/lib/authFetch";
 
 export interface ConfirmedLocationData {
   type: string; // 'Home' | 'Office' | 'Other'
@@ -116,9 +117,9 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
       leafletMapRef.current = map;
 
       // Set initial Tile Layer
-      const streetLayer = L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
+      const streetLayer = L.tileLayer("/api/map-tile/google/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '&copy; Google Maps'
       });
 
       const satelliteLayer = L.tileLayer("/api/map-tile/esri/{z}/{x}/{y}", {
@@ -237,9 +238,9 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
           attribution: "Tiles &copy; Esri"
         }).addTo(map);
       } else {
-        L.tileLayer("/api/map-tile/osm/{z}/{x}/{y}.png", {
+        L.tileLayer("/api/map-tile/google/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution: '&copy; Google Maps'
         }).addTo(map);
       }
     });
@@ -259,7 +260,7 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
   const triggerReverseGeocode = async (targetLat: number, targetLng: number) => {
     setIsReverseGeocoding(true);
     try {
-      const res = await fetch(`/api/location/reverse-geocode?lat=${targetLat}&lng=${targetLng}`);
+      const res = await authFetch(`/api/location/reverse-geocode?lat=${targetLat}&lng=${targetLng}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
