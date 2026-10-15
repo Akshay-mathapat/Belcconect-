@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
 import { normalizeIndianPhone } from "@/lib/validations";
-import { lazyExpireUserBookings } from "@/lib/bookingExpiry";
+import { throttledExpireStaleBookings, lazyExpireUserBookings } from "@/lib/bookingExpiry";
 
 // Helper to map DB row to Frontend Booking type
 function mapRowToBooking(row: any) {
@@ -58,6 +58,8 @@ export async function GET(request: Request) {
     }
     const userId = authUser.userId;
 
+    // Trigger throttled lazy auto-expiry sweep across server instance (at most once per 60s)
+    await throttledExpireStaleBookings().catch(() => {});
     // Trigger lazy auto-expiry sweep on pending bookings for this user
     await lazyExpireUserBookings(userId).catch(() => {});
 

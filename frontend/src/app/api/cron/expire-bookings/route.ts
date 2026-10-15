@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { expireStaleBookings } from "@/lib/bookingExpiry";
+import { expireStaleBookings, checkCronSecretConfigured } from "@/lib/bookingExpiry";
 import crypto from "crypto";
+
+// Ensure loud warning logs if CRON_SECRET is missing at startup
+checkCronSecretConfigured();
 
 function safeCompare(a: string, b: string): boolean {
   if (typeof a !== "string" || typeof b !== "string") return false;

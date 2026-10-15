@@ -9,6 +9,31 @@ import { query } from "@/lib/db";
 import { sendPushToUser } from "@/lib/pushNotifications";
 import crypto from "crypto";
 
+/**
+ * Loud startup check for CRON_SECRET.
+ * Warns operators immediately if background cron endpoint security is unconfigured.
+ */
+export function checkCronSecretConfigured(): boolean {
+  const secret = (process.env.CRON_SECRET || "").trim();
+  if (!secret) {
+    console.warn(
+      "\x1b[33m\x1b[1m[CRON WARNING] CRON_SECRET is missing or empty! Automated cron routes (/api/cron/*) will reject all requests until CRON_SECRET is configured in environment variables.\x1b[0m"
+    );
+    return false;
+  }
+  return true;
+}
+
+// Evaluate loud warning at startup / module load
+checkCronSecretConfigured();
+
+let lastLazyExpirySweepTime = 0;
+export const LAZY_EXPIRY_THROTTLE_MS = 60 * 1000; // at most once per 60 seconds per server instance
+
+export function resetLazyExpiryThrottle(): void {
+  lastLazyExpirySweepTime = 0;
+}
+
 export interface SuggestedProvider {
   id: string;
   name: string;
@@ -137,7 +162,7 @@ export async function expireStaleBookings(): Promise<ExpiredBookingResult[]> {
       const category = row.category || "General";
       const providerId = row.provider_id;
 
-      // Fetch suggested alternative providers
+      // Fetch up to 3 suggested alternative providers
       const suggestions = await getSuggestedProviders(category, providerId);
 
       results.push({
@@ -153,7 +178,7 @@ export async function expireStaleBookings(): Promise<ExpiredBookingResult[]> {
 
       if (!customerId) continue;
 
-      // In-app Notification
+      // In-app Notification with 4-language support
       const notifId = `notif-${crypto.randomUUID()}`;
       const notifTitle = "Booking Expired";
       const notifBody = `Your request for ${serviceName} expired because the service provider was unavailable to respond within 10 minutes. Alternative providers are available for you.`;
@@ -164,14 +189,20 @@ export async function expireStaleBookings(): Promise<ExpiredBookingResult[]> {
         [notifId, customerId, "booking_expired", notifTitle, notifBody, bookingId]
       ).catch((e) => console.error(`[BookingExpiry] Failed inserting notification for booking ${bookingId}:`, e));
 
-      // Web Push Notification
+      // Web Push Notification with multi-language payload (en, kn, hi, mr)
       sendPushToUser(customerId, {
         title: notifTitle,
         body: notifBody,
         data: {
           type: "booking_expired",
           bookingId,
-          url: `/bookings/${bookingId}`
+          url: `/bookings/${bookingId}`,
+          translations: {
+            en: getExpiryNotificationText("en", serviceName),
+            kn: getExpiryNotificationText("kn", serviceName),
+            hi: getExpiryNotificationText("hi", serviceName),
+            mr: getExpiryNotificationText("mr", serviceName)
+          }
         }
       }).catch((e) => console.error(`[BookingExpiry] Push notification error for user ${customerId}:`, e));
     }
@@ -181,6 +212,18 @@ export async function expireStaleBookings(): Promise<ExpiredBookingResult[]> {
     console.error("[BookingExpiry] Critical error in expireStaleBookings:", error);
     return [];
   }
+}
+
+/**
+ * Lazy throttled expiry sweep for server instances:
+ * At most once per 60 seconds per server instance.
+ */
+export async function throttledExpireStaleBookings(now = Date.now()): Promise<ExpiredBookingResult[]> {
+  if (now - lastLazyExpirySweepTime < LAZY_EXPIRY_THROTTLE_MS) {
+    return [];
+  }
+  lastLazyExpirySweepTime = now;
+  return expireStaleBookings();
 }
 
 /**

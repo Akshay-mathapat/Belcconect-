@@ -873,6 +873,52 @@ describe("9. Booking Lifecycle State Machine, Expiry, No-Show & Role Authorizati
     assert.ok(code.includes("export async function GET"), "Must support GET method");
     assert.ok(code.includes("export async function POST"), "Must support POST method");
   });
+
+  test("12) throttledExpireStaleBookings throttles sweeps to at most once per 60 seconds per instance", () => {
+    const expiryFile = path.resolve(__dirname, "../../frontend/src/lib/bookingExpiry.ts");
+    assert.ok(fs.existsSync(expiryFile), "bookingExpiry.ts must exist");
+    const expiryCode = fs.readFileSync(expiryFile, "utf-8");
+
+    assert.ok(expiryCode.includes("LAZY_EXPIRY_THROTTLE_MS = 60 * 1000"), "Must define 60-second throttle window");
+    assert.ok(expiryCode.includes("export async function throttledExpireStaleBookings"), "Must export throttledExpireStaleBookings");
+    assert.ok(expiryCode.includes("now - lastLazyExpirySweepTime < LAZY_EXPIRY_THROTTLE_MS"), "Must check throttle window against last sweep time");
+    assert.ok(expiryCode.includes("lastLazyExpirySweepTime = now"), "Must update sweep time on run");
+  });
+
+  test("13) GET /api/bookings and GET /api/bookings/[id] wire throttledExpireStaleBookings lazy check", () => {
+    const listRoute = path.resolve(__dirname, "../../frontend/src/app/api/bookings/route.ts");
+    const detailRoute = path.resolve(__dirname, "../../frontend/src/app/api/bookings/[id]/route.ts");
+
+    const listCode = fs.readFileSync(listRoute, "utf-8");
+    const detailCode = fs.readFileSync(detailRoute, "utf-8");
+
+    assert.ok(listCode.includes("throttledExpireStaleBookings"), "GET /api/bookings must wire throttledExpireStaleBookings");
+    assert.ok(detailCode.includes("throttledExpireStaleBookings"), "GET /api/bookings/[id] must wire throttledExpireStaleBookings");
+  });
+
+  test("14) checkCronSecretConfigured warns loudly at startup if CRON_SECRET is missing", () => {
+    const expiryFile = path.resolve(__dirname, "../../frontend/src/lib/bookingExpiry.ts");
+    const expiryCode = fs.readFileSync(expiryFile, "utf-8");
+
+    assert.ok(expiryCode.includes("export function checkCronSecretConfigured"), "Must define checkCronSecretConfigured");
+    assert.ok(expiryCode.includes("[CRON WARNING] CRON_SECRET is missing or empty!"), "Must log loud warning when CRON_SECRET is missing");
+    assert.ok(expiryCode.includes("checkCronSecretConfigured();"), "Must evaluate checkCronSecretConfigured at startup / module load");
+  });
+
+  test("15) EXPIRY_TRANSLATIONS and getExpiryNotificationText support all 4 languages and suggestedProviders limit is 3", () => {
+    const expiryFile = path.resolve(__dirname, "../../frontend/src/lib/bookingExpiry.ts");
+    const expiryCode = fs.readFileSync(expiryFile, "utf-8");
+
+    for (const lang of ["en", "kn", "hi", "mr"]) {
+      assert.ok(expiryCode.includes(`${lang}: {`), `bookingExpiry must define ${lang} translation`);
+    }
+    assert.ok(expiryCode.includes("LIMIT 3"), "Suggested providers query must limit to 3 alternatives");
+
+    // Verify booking detail page renders suggested providers
+    const detailPage = path.resolve(__dirname, "../../frontend/src/app/bookings/[id]/page.tsx");
+    const pageCode = fs.readFileSync(detailPage, "utf-8");
+    assert.ok(pageCode.includes("suggestedProviders.slice(0, 3)"), "Detail page must show up to 3 suggested providers");
+  });
 });
 
 describe("10. Maps, Directions, Geocoding & Offline Fallback Hardening Tests", () => {

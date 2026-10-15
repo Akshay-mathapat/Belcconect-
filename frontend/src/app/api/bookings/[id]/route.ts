@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 import { sendPushToUser } from "@/lib/pushNotifications";
 import { sendBookingConfirmationSms } from "@/lib/sms/smsService";
 import { validateStatusTransition } from "@/lib/bookingLifecycle";
-import { lazyExpireBookingById, getSuggestedProviders } from "@/lib/bookingExpiry";
+import { throttledExpireStaleBookings, lazyExpireBookingById, getSuggestedProviders } from "@/lib/bookingExpiry";
 import crypto from "crypto";
 
 const parseCoord = (val: any): number | null => {
@@ -91,6 +91,8 @@ export async function GET(
       );
     }
 
+    // Lazy check: throttled sweep for stale bookings across server instance (at most once per 60s)
+    await throttledExpireStaleBookings().catch(() => {});
     // Lazy check: auto-expire if pending for > 10 minutes
     await lazyExpireBookingById(cleanId).catch(() => {});
 
