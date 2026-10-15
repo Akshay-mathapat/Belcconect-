@@ -330,8 +330,8 @@ export async function PATCH(
     }
 
     // Build update parameters dynamically
-    let updateFields: string[] = [];
-    let queryParams: any[] = [canonicalId];
+    const updateFields: string[] = [];
+    const queryParams: any[] = [canonicalId];
     let paramIndex = 2;
 
     if (status !== undefined && canonicalStatus !== previousStatus) {

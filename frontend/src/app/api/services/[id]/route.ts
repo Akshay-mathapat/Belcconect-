@@ -30,8 +30,8 @@ export async function PATCH(
       );
     }
 
-    let updateFields: string[] = [];
-    let queryParams: any[] = [id];
+    const updateFields: string[] = [];
+    const queryParams: any[] = [id];
     let paramIndex = 2;
 
     if (name !== undefined) {

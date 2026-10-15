@@ -17,3 +17,4 @@ CREATE TABLE IF NOT EXISTS public.account_deletion_requests (
 CREATE INDEX IF NOT EXISTS idx_account_deletion_user ON public.account_deletion_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_account_deletion_phone ON public.account_deletion_requests(phone);
 CREATE INDEX IF NOT EXISTS idx_account_deletion_created ON public.account_deletion_requests(created_at DESC);
+

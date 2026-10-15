@@ -259,7 +259,7 @@ export default function ProviderRegisterPage() {
                 
                 <div className="mt-8 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Didn't receive the code? <button className="font-semibold text-primary hover:text-primary/80 transition-colors">Resend OTP</button>
+                    Didn&apos;t receive the code? <button className="font-semibold text-primary hover:text-primary/80 transition-colors">Resend OTP</button>
                   </p>
                 </div>
               </>

@@ -177,7 +177,7 @@ export function ProviderNavbar({ collapsed }: ProviderNavbarProps) {
               </div>
             ) : !hasResults ? (
               <div className="py-6 text-center text-xs text-muted-foreground">
-                No matching bookings or dashboard services found for "<span className="font-bold text-foreground">{searchQuery}</span>".
+                No matching bookings or dashboard services found for &quot;<span className="font-bold text-foreground">{searchQuery}</span>&quot;.
               </div>
             ) : (
               <>

@@ -120,9 +120,9 @@ export async function updateCallStatus(
   let answeredAt = extra?.answeredAt ? extra.answeredAt.toISOString() : current.answeredAt;
   let endedAt = extra?.endedAt ? extra.endedAt.toISOString() : current.endedAt;
   let durationSeconds = extra?.durationSeconds ?? current.durationSeconds;
-  let endReason = extra?.endReason ?? current.endReason ?? null;
-  let endedByUserId = extra?.endedByUserId ?? current.endedByUserId ?? null;
-  let endedByRole = extra?.endedByRole ?? current.endedByRole ?? null;
+  const endReason = extra?.endReason ?? current.endReason ?? null;
+  const endedByUserId = extra?.endedByUserId ?? current.endedByUserId ?? null;
+  const endedByRole = extra?.endedByRole ?? current.endedByRole ?? null;
 
   if (status === "ACCEPTED" && !answeredAt) {
     answeredAt = new Date().toISOString();

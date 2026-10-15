@@ -127,7 +127,7 @@ export default function ReviewsPage() {
               </div>
 
               <p className="text-xs text-foreground leading-relaxed font-medium">
-                "{rev.comment}"
+                &quot;{rev.comment}&quot;
               </p>
             </div>
           ))

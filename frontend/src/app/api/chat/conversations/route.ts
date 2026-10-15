@@ -92,7 +92,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    let { customerId, providerId, bookingId } = body;
+    const { bookingId } = body;
+    let { customerId, providerId } = body;
 
     const cleanBookingId = typeof bookingId === "string" ? bookingId.trim() : "";
 

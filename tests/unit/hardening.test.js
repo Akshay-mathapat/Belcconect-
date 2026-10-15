@@ -1776,7 +1776,33 @@ describe("23. Batch R2 Review Leftovers - Task 8: Legal, Grievance Officer & Zer
     // Account Deletion Link
     assert.ok(privacyCode.includes("/delete-account"), "Privacy must link to /delete-account");
   });
+});describe("24. Batch R2 Review Leftovers - Task 9: CI, Audit & ESLint Hardening", () => {
+  test("1) security-ci.yml does not contain || true suppression on audit or lint", () => {
+    const ciFile = path.resolve(__dirname, "../../.github/workflows/security-ci.yml");
+    assert.ok(fs.existsSync(ciFile), "security-ci.yml must exist");
+    const ciCode = fs.readFileSync(ciFile, "utf-8");
+
+    assert.ok(!ciCode.includes("|| true"), "CI workflow must not suppress errors with || true");
+    assert.ok(ciCode.includes("audit --omit=dev --audit-level=high"), "CI workflow must audit production dependencies");
+    assert.ok(ciCode.includes("npm --prefix frontend run lint"), "CI workflow must execute linting directly");
+  });
+
+  test("2) CategoryBar.tsx obeys React Rules of Hooks and contains no early returns before hooks", () => {
+    const catBarFile = path.resolve(__dirname, "../../frontend/src/components/sections/CategoryBar.tsx");
+    assert.ok(fs.existsSync(catBarFile), "CategoryBar.tsx must exist");
+    const code = fs.readFileSync(catBarFile, "utf-8");
+
+    const hookIndex = code.indexOf("const [megaOpen, setMegaOpen]");
+    const earlyReturnIndex = code.indexOf("return null;");
+    assert.ok(hookIndex > 0, "CategoryBar must declare hooks");
+    assert.ok(earlyReturnIndex > hookIndex, "Early return must occur AFTER all hooks to obey Rules of Hooks");
+  });
+
+  test("3) provider profile page contains valid JSX without unescaped tokens or missing tags", () => {
+    const profileFile = path.resolve(__dirname, "../../frontend/src/app/provider/profile/page.tsx");
+    assert.ok(fs.existsSync(profileFile), "profile/page.tsx must exist");
+    const code = fs.readFileSync(profileFile, "utf-8");
+
+    assert.ok(!code.includes('"{profile.bio'), "Profile bio must escape double quotes");
+  });
 });
-
-
-

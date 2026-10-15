@@ -26,10 +26,10 @@ jobs:
         run: npm --prefix frontend ci
 
       - name: Run Dependency Vulnerability Audit
-        run: npm --prefix frontend audit --audit-level=high || true
+        run: npm --prefix frontend audit --omit=dev --audit-level=high
 
       - name: Run Security & Code Linting
-        run: npm --prefix frontend run lint || true
+        run: npm --prefix frontend run lint
 
       - name: Run Semgrep Static Security Scan
         uses: semgrep/semgrep-action@v1

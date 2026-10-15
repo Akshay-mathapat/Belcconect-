@@ -350,7 +350,7 @@ export function ForgotPasswordModal({ onBackToLogin }: ForgotPasswordModalProps)
 
             {/* Resend Countdown */}
             <div className="text-center text-xs text-muted-foreground pt-2">
-              Didn't receive the code?{" "}
+              Didn&apos;t receive the code?{" "}
               {isResendDisabled ? (
                 <span className="font-semibold text-foreground">
                   Resend in {resendCooldown}s

@@ -97,8 +97,8 @@ function getNext7Days() {
     const monthName = d.toLocaleDateString("en-US", { month: "short" });
     const dayNum = d.getDate();
 
-    let displayTitle = `${fullDayName}, ${monthName} ${dayNum}`;
-    let badge = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayName;
+    const displayTitle = `${fullDayName}, ${monthName} ${dayNum}`;
+    const badge = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayName;
 
     days.push({
       dateStr,

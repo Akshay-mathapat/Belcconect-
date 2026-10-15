@@ -514,7 +514,7 @@ export default function ProviderProfilePage() {
             <div>
               <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">{t("serviceProvider.aboutAndBio")}</span>
               <p className="text-foreground leading-relaxed font-medium bg-muted/30 p-4 rounded-2xl border border-border/50">
-                "{profile.bio || t("serviceProvider.defaultBio")}"
+                &quot;{profile.bio || t("serviceProvider.defaultBio")}&quot;
               </p>
             </div>
 
@@ -860,6 +860,7 @@ export default function ProviderProfilePage() {
 
               </form>
             </motion.div>
+          </div>
         )}
 
         {/* Delete Account Confirmation Modal */}

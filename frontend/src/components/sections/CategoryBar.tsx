@@ -37,10 +37,6 @@ export default function CategoryBar() {
   const pathname = usePathname();
   const { t } = useTranslation();
 
-  // Suppress category bar in Provider and JobProvider dashboards
-  if (pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider")) {
-    return null;
-  }
   const [megaOpen, setMegaOpen] = useState(false);
   const [jobsOpen, setJobsOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(SERVICE_TAXONOMY[0]?.items[0]?.id || null);
@@ -99,6 +95,11 @@ export default function CategoryBar() {
 
   // Popular / featured categories to show as quick pills
   const quickCategories = SERVICE_CATEGORIES;
+
+  // Suppress category bar in Provider and JobProvider dashboards
+  if (pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider")) {
+    return null;
+  }
 
   return (
     <div className="hidden lg:block w-full border-b border-border bg-card/80 backdrop-blur-sm relative z-40" id="tour-category-grid">

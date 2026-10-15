@@ -58,7 +58,7 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
       return 0;
     }
 
-    let timeStr = booking.time || "12:00 AM";
+    const timeStr = booking.time || "12:00 AM";
     const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
     let hours = 0;
     let minutes = 0;

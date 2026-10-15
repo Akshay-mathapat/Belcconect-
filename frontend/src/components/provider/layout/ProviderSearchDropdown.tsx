@@ -237,7 +237,7 @@ export function ProviderSearchDropdown({ query, isOpen, onClose }: ProviderSearc
 
         {queryTrimmed.length > 0 && matchingBookings.length === 0 && matchingServices.length === 0 && matchingPages.length === 0 && (
           <div className="py-8 text-center text-xs text-muted-foreground">
-            No dashboard bookings, services, or pages matched "<span className="font-bold text-foreground">{query}</span>".
+            No dashboard bookings, services, or pages matched &quot;<span className="font-bold text-foreground">{query}</span>&quot;.
           </div>
         )}
 

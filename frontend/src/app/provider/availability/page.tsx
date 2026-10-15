@@ -8,7 +8,7 @@ import { useProviderStore } from "@/store/useProviderStore";
 const TIME_OPTIONS: { label: string; value: string }[] = [];
 
 for (let hour = 6; hour <= 23; hour++) {
-  for (let min of [0, 30]) {
+  for (const min of [0, 30]) {
     const isPM = hour >= 12;
     const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
     const formattedHour = displayHour.toString().padStart(2, "0");
