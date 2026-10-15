@@ -22,13 +22,16 @@ const JWT_SECRET = normalizeSecret(process.env.JWT_SECRET);
 const SIGNALING_SECRET = normalizeSecret(process.env.SIGNALING_INTERNAL_SECRET);
 const INTERNAL_API_SECRET = normalizeSecret(process.env.INTERNAL_API_SECRET || process.env.SIGNALING_INTERNAL_SECRET);
 const DATABASE_URL = process.env.DATABASE_URL;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://belcconect.vercel.app";
+const ALLOWED_ORIGIN = (process.env.ALLOWED_ORIGIN || "").trim();
 const PORT = process.env.PORT || process.env.SIGNALING_PORT || 4001;
 const NODE_ENV = process.env.NODE_ENV || "development";
 const ALLOW_VERCEL_PREVIEWS = process.env.ALLOW_VERCEL_PREVIEWS === "true";
 const ALLOW_DEVTUNNELS = process.env.ALLOW_DEVTUNNELS === "true";
 
 // Validate essential environment variables on startup
+if (NODE_ENV === "production" && !ALLOWED_ORIGIN) {
+  throw new Error("FATAL: ALLOWED_ORIGIN environment variable is required in production (comma-separated list supported).");
+}
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   throw new Error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
 }
@@ -103,25 +106,13 @@ io.use((socket, next) => {
     return next(new Error("Authentication failed: Missing authentication token"));
   }
 
-  const candidateSecrets = [
-    JWT_SECRET,
-    process.env.JWT_SECRET_FALLBACK ? normalizeSecret(process.env.JWT_SECRET_FALLBACK) : null,
-    INTERNAL_API_SECRET && INTERNAL_API_SECRET !== JWT_SECRET ? INTERNAL_API_SECRET : null,
-    SIGNALING_SECRET && SIGNALING_SECRET !== JWT_SECRET ? SIGNALING_SECRET : null
-  ].filter(Boolean);
-
   let decoded = null;
   let lastError = null;
 
-  for (const secret of candidateSecrets) {
-    try {
-      decoded = jwt.verify(token, secret);
-      if (decoded && decoded.userId) {
-        break;
-      }
-    } catch (err) {
-      lastError = err;
-    }
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    lastError = err;
   }
 
   if (decoded && decoded.userId) {

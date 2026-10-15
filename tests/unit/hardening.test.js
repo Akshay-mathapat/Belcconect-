@@ -1096,3 +1096,23 @@ describe("11. Password Reset OTP Secret Hardening Tests", () => {
     }
   });
 });
+
+describe("12. Backend Secrets and CORS Hardening Tests", () => {
+  test("1) server.js verifies user JWTs strictly with JWT_SECRET", () => {
+    const serverFile = path.resolve(__dirname, "../../backend/src/server.js");
+    assert.ok(fs.existsSync(serverFile), "server.js must exist");
+    const serverCode = fs.readFileSync(serverFile, "utf-8");
+
+    assert.ok(!serverCode.includes("candidateSecrets"), "Must remove candidateSecrets from user authentication");
+    assert.ok(!serverCode.includes("JWT_SECRET_FALLBACK"), "Must remove JWT_SECRET_FALLBACK from user authentication");
+    assert.ok(serverCode.includes("jwt.verify(token, JWT_SECRET)"), "Must verify user JWTs strictly with JWT_SECRET");
+  });
+
+  test("2) server.js enforces ALLOWED_ORIGIN in production with no hardcoded fallback", () => {
+    const serverFile = path.resolve(__dirname, "../../backend/src/server.js");
+    const serverCode = fs.readFileSync(serverFile, "utf-8");
+
+    assert.ok(!serverCode.includes('ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://'), "Must not hardcode fallback for ALLOWED_ORIGIN");
+    assert.ok(serverCode.includes('FATAL: ALLOWED_ORIGIN environment variable is required in production'), "Must require ALLOWED_ORIGIN in production");
+  });
+});
