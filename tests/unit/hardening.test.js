@@ -136,6 +136,46 @@ describe("2. JWT Cross-Verification Tests (Frontend HMAC-SHA256 vs Backend jsonw
       jwt.verify(badToken, NORMALIZED_SECRET);
     }, /invalid signature/);
   });
+
+  test("jwt.ts uses constant-time comparison and restricts ?token= to download routes with short-lived tokens", () => {
+    const jwtFile = path.resolve(__dirname, "../../frontend/src/lib/jwt.ts");
+    assert.ok(fs.existsSync(jwtFile), "jwt.ts must exist");
+    const jwtCode = fs.readFileSync(jwtFile, "utf-8");
+
+    assert.ok(jwtCode.includes("crypto.timingSafeEqual"), "Must use crypto.timingSafeEqual for constant-time signature comparison");
+    assert.ok(jwtCode.includes("ALLOWED_URL_TOKEN_PREFIXES"), "Must define allowed route prefixes for URL tokens");
+    assert.ok(jwtCode.includes("/api/attachments/"), "Must include /api/attachments/ in allowed URL token prefixes");
+    assert.ok(jwtCode.includes("tokenLifetime <= 3600") || jwtCode.includes("remainingLifetime <= 3600"), "Must enforce short-lived expiry for URL tokens");
+  });
+
+  test("getAuthenticatedUser rejects ?token= on unauthorized routes and accepts on allowed download routes", async () => {
+    const { getAuthenticatedUser, signJwtToken } = await import("../../frontend/src/lib/jwt.ts");
+
+    const shortLivedToken = signJwtToken({ userId: "u123", email: "u@belconnect.in", role: "user" }, 300);
+    const longLivedToken = signJwtToken({ userId: "u123", email: "u@belconnect.in", role: "user" }, 7 * 86400);
+
+    // 1. Unauthorized route with ?token= must return null
+    const reqUnauthorized = new Request(`http://localhost/api/bookings?token=${shortLivedToken}`);
+    assert.strictEqual(getAuthenticatedUser(reqUnauthorized), null);
+
+    // 2. Allowed download route with long-lived ?token= must return null
+    const reqLongLived = new Request(`http://localhost/api/attachments/chat-attachments/img.png?token=${longLivedToken}`);
+    assert.strictEqual(getAuthenticatedUser(reqLongLived), null);
+
+    // 3. Allowed download route with short-lived ?token= must authenticate successfully
+    const reqAllowed = new Request(`http://localhost/api/attachments/chat-attachments/img.png?token=${shortLivedToken}`);
+    const authAllowed = getAuthenticatedUser(reqAllowed);
+    assert.ok(authAllowed, "Should authenticate short-lived token on allowed route");
+    assert.strictEqual(authAllowed.userId, "u123");
+
+    // 4. Authorization: Bearer header still works unconditionally on any route
+    const reqBearer = new Request("http://localhost/api/bookings", {
+      headers: { Authorization: `Bearer ${longLivedToken}` }
+    });
+    const authBearer = getAuthenticatedUser(reqBearer);
+    assert.ok(authBearer, "Should authenticate Bearer token on any route");
+    assert.strictEqual(authBearer.userId, "u123");
+  });
 });
 
 describe("3. Real Rate Limiter Module & Store Interface Tests", () => {

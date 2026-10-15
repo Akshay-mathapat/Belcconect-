@@ -1,5 +1,16 @@
 import crypto from "crypto";
-import { normalizeSecret } from "./secretNormalizer";
+
+function normalizeSecret(val?: string | null): string {
+  if (!val || typeof val !== "string") return "";
+  let s = val.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
+    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
 
 export function getJwtSecret(): string {
   const secret = normalizeSecret(process.env.JWT_SECRET);
@@ -76,7 +87,12 @@ export function verifyJwtToken(token: string): SessionPayload | null {
       .replace(/\+/g, "-")
       .replace(/\//g, "_");
 
-    if (signature !== expected) return null;
+    // Constant-time signature comparison to prevent timing attacks
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
 
     const payload: SessionPayload = JSON.parse(base64UrlDecode(encodedPayload));
     if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
@@ -87,6 +103,17 @@ export function verifyJwtToken(token: string): SessionPayload | null {
   } catch (e) {
     return null;
   }
+}
+
+// Allowed route prefixes for URL query token fallback (strictly limited to direct file/media download endpoints)
+export const ALLOWED_URL_TOKEN_PREFIXES = [
+  "/api/attachments/",
+  "/api/jobs/resumes/",
+  "/api/jobs/applications/"
+] as const;
+
+export function isUrlTokenPermittedForPath(pathname: string): boolean {
+  return ALLOWED_URL_TOKEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 export function getAuthenticatedUser(request: Request): SessionPayload | null {
@@ -111,13 +138,23 @@ export function getAuthenticatedUser(request: Request): SessionPayload | null {
       }
     }
 
-    // 3. Check Query parameter: ?token=<token>
+    // 3. URL query parameter (?token=) strictly restricted to direct download routes with short-lived tokens
     try {
       const url = new URL(request.url);
       const queryToken = url.searchParams.get("token");
       if (queryToken && queryToken.trim()) {
-        const verified = verifyJwtToken(queryToken.trim());
-        if (verified) return verified;
+        const pathname = url.pathname;
+        if (isUrlTokenPermittedForPath(pathname)) {
+          const verified = verifyJwtToken(queryToken.trim());
+          if (verified) {
+            // Must be a short-lived token (total lifetime <= 1 hour or remaining lifetime <= 1 hour)
+            const tokenLifetime = (verified.exp || 0) - (verified.iat || 0);
+            const remainingLifetime = (verified.exp || 0) - Math.floor(Date.now() / 1000);
+            if (tokenLifetime <= 3600 || remainingLifetime <= 3600) {
+              return verified;
+            }
+          }
+        }
       }
     } catch (_) {}
 
