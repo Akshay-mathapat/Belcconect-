@@ -440,6 +440,48 @@ describe("6. KYC Privacy & Last-4 Digit Hardening Tests", () => {
     const code = fs.readFileSync(profilePagePath, "utf-8");
     assert.ok(code.includes("Only the last 4 digits"), "Must contain last 4 digits privacy disclosure");
   });
+
+  test("5) migration 031 exists in both folders and defines DROP COLUMN for legacy plaintext columns", () => {
+    const m1 = path.resolve(__dirname, "../../migrations/031_drop_legacy_kyc_columns.sql");
+    const m2 = path.resolve(__dirname, "../../database/migrations/031_drop_legacy_kyc_columns.sql");
+    assert.ok(fs.existsSync(m1), "Migration 031 must exist in /migrations");
+    assert.ok(fs.existsSync(m2), "Migration 031 must exist in /database/migrations");
+
+    const sql1 = fs.readFileSync(m1, "utf-8");
+    const sql2 = fs.readFileSync(m2, "utf-8");
+    assert.strictEqual(sql1, sql2, "Migration 031 files must be identical");
+    assert.ok(sql1.includes("DROP COLUMN IF EXISTS aadhaar_number"), "Must drop aadhaar_number");
+    assert.ok(sql1.includes("DROP COLUMN IF EXISTS pan_number"), "Must drop pan_number");
+    assert.ok(sql1.includes("DROP COLUMN IF EXISTS kyc_document_number"), "Must drop kyc_document_number");
+  });
+
+  test("6) database/schema.sql does not contain aadhaar_number, pan_number, or kyc_document_number", () => {
+    const schemaFile = path.resolve(__dirname, "../../database/schema.sql");
+    assert.ok(fs.existsSync(schemaFile), "database/schema.sql must exist");
+    const schemaSql = fs.readFileSync(schemaFile, "utf-8");
+
+    assert.ok(!schemaSql.includes("aadhaar_number"), "schema.sql must not contain aadhaar_number");
+    assert.ok(!schemaSql.includes("pan_number"), "schema.sql must not contain pan_number");
+    assert.ok(!schemaSql.includes("kyc_document_number"), "schema.sql must not contain kyc_document_number");
+    assert.ok(schemaSql.includes("kyc_document_last4"), "schema.sql must contain kyc_document_last4");
+  });
+
+  test("7) admin page shows 'no document' and provider pages show 'please re-upload your KYC document' notice", () => {
+    const adminPage = path.resolve(__dirname, "../../frontend/src/app/admin/page.tsx");
+    const providerProfile = path.resolve(__dirname, "../../frontend/src/app/provider/profile/page.tsx");
+    const providerDashboard = path.resolve(__dirname, "../../frontend/src/app/provider/page.tsx");
+    const kycApi = path.resolve(__dirname, "../../frontend/src/app/api/provider/kyc/route.ts");
+
+    const adminCode = fs.readFileSync(adminPage, "utf-8");
+    const profileCode = fs.readFileSync(providerProfile, "utf-8");
+    const dashboardCode = fs.readFileSync(providerDashboard, "utf-8");
+    const kycApiCode = fs.readFileSync(kycApi, "utf-8");
+
+    assert.ok(adminCode.includes("no document"), "Admin page must show 'no document'");
+    assert.ok(profileCode.includes("please re-upload your KYC document"), "Provider profile must show 'please re-upload your KYC document'");
+    assert.ok(dashboardCode.includes("please re-upload your KYC document"), "Provider dashboard must show 'please re-upload your KYC document'");
+    assert.ok(kycApiCode.includes("please re-upload your KYC document"), "KYC API must return 'please re-upload your KYC document' status for affected providers");
+  });
 });
 
 describe("7. Provider Approval & Admin System Hardening Tests", () => {

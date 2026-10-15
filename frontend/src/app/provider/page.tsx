@@ -260,6 +260,15 @@ export default function ProviderDashboardPage() {
                 <CheckCircle className="w-3 h-3 text-emerald-400" />
                 {t("serviceProvider.verifiedExpert")}
               </span>
+            ) : (!profile.kycDocumentPhoto && (profile.kycDocumentType || profile.kycDocumentNumber || profile.verificationStatus === "pending" || profile.kycStatus === "please re-upload your KYC document")) ? (
+              <Link
+                href="/provider/profile"
+                className="text-[11px] font-bold uppercase tracking-widest text-amber-200 bg-amber-500/30 px-3 py-1 rounded-full border border-amber-400/40 flex items-center gap-1.5 animate-pulse"
+                title="please re-upload your KYC document"
+              >
+                <AlertCircle className="w-3 h-3 text-amber-300" />
+                please re-upload your KYC document
+              </Link>
             ) : profile.verificationStatus === "pending" || profile.kycStatus === "Pending" ? (
               <span className="text-[11px] font-bold uppercase tracking-widest text-amber-200 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-400/30 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />

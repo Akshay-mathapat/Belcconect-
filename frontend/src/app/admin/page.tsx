@@ -535,7 +535,7 @@ export default function AdminPage() {
                             <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
                           </a>
                         ) : (
-                          <span className="text-slate-400 text-[11px]">No upload</span>
+                          <span className="text-slate-400 text-[11px] font-medium">no document</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -668,7 +668,7 @@ export default function AdminPage() {
                 </p>
               </div>
 
-              {detailProvider.kycDocumentPhoto && (
+              {detailProvider.kycDocumentPhoto ? (
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <span className="text-slate-400 block text-[10px] mb-1.5">KYC Document Upload</span>
                   <a
@@ -681,6 +681,11 @@ export default function AdminPage() {
                     <span>Open Uploaded Document Photo</span>
                     <ExternalLink className="w-3 h-3 ml-1" />
                   </a>
+                </div>
+              ) : (
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <span className="text-slate-400 block text-[10px] mb-1">KYC Document Upload</span>
+                  <span className="text-xs text-slate-500 font-medium">no document</span>
                 </div>
               )}
 

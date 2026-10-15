@@ -337,17 +337,18 @@ CREATE TABLE IF NOT EXISTS public.service_providers (
     password_hash CHARACTER VARYING,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     kyc_document_type CHARACTER VARYING,
-    kyc_document_number CHARACTER VARYING,
+    kyc_document_last4 CHARACTER VARYING(4),
+    aadhaar_last4 CHARACTER VARYING(4),
+    pan_last4 CHARACTER VARYING(4),
     kyc_document_photo TEXT,
     kyc_status CHARACTER VARYING DEFAULT 'Unverified'::character varying,
     is_verified BOOLEAN DEFAULT false,
-    pan_number CHARACTER VARYING,
-    aadhaar_number CHARACTER VARYING,
     google_id CHARACTER VARYING,
     is_available BOOLEAN DEFAULT false NOT NULL,
     verification_status CHARACTER VARYING DEFAULT 'unverified'::character varying NOT NULL,
     verified_at TIMESTAMP WITHOUT TIME ZONE,
-    verified_by CHARACTER VARYING
+    verified_by CHARACTER VARYING,
+    rejection_reason TEXT
 );
 
 -- Table: public.services

@@ -60,6 +60,20 @@ export async function GET(request: Request) {
     const maskedAadhaar = row.aadhaar_last4 ? `XXXX-XXXX-${row.aadhaar_last4}` : null;
     const maskedPan = row.pan_last4 ? `XXXXXX${row.pan_last4}` : null;
 
+    // Detect providers whose base64 KYC photo was cleared by Migration 027 or is missing
+    const isKycPhotoMissing = !row.kyc_document_photo && !isVerified && Boolean(
+      row.kyc_document_type || 
+      row.kyc_document_last4 || 
+      row.aadhaar_last4 || 
+      row.pan_last4 || 
+      row.verification_status === "pending" || 
+      row.kyc_status === "Pending"
+    );
+
+    const effectiveKycStatus = isKycPhotoMissing
+      ? "please re-upload your KYC document"
+      : (row.kyc_status || "Unverified");
+
     return NextResponse.json({
       success: true,
       kyc: {
@@ -71,9 +85,11 @@ export async function GET(request: Request) {
         kycDocumentNumber: maskedDocNumber,
         kycDocumentLast4: row.kyc_document_last4 || null,
         kycDocumentPhoto: row.kyc_document_photo || null,
-        kycStatus: row.kyc_status || "Unverified",
+        kycStatus: effectiveKycStatus,
         isVerified,
         verificationStatus: row.verification_status || "unverified",
+        isKycPhotoMissing,
+        reuploadNotice: isKycPhotoMissing ? "please re-upload your KYC document" : null,
         panLast4: row.pan_last4 || null,
         aadhaarLast4: row.aadhaar_last4 || null,
         panNumber: maskedPan,
@@ -179,7 +195,7 @@ export async function POST(request: Request) {
       processedPhotoUrl = documentPhoto.trim();
     }
 
-    // Update service_providers table storing ONLY last-4 digits; raw full numbers are set to NULL
+    // Update service_providers table storing ONLY last-4 digits
     const res = await query(
       `UPDATE service_providers
        SET 
@@ -188,9 +204,6 @@ export async function POST(request: Request) {
          kyc_document_last4 = $3,
          aadhaar_last4 = COALESCE($4, aadhaar_last4),
          pan_last4 = COALESCE($5, pan_last4),
-         kyc_document_number = NULL,
-         aadhaar_number = NULL,
-         pan_number = NULL,
          kyc_document_photo = COALESCE($6, kyc_document_photo),
          kyc_status = 'Pending',
          verification_status = 'pending',

@@ -509,6 +509,30 @@ export default function ProviderProfilePage() {
             </div>
 
 
+            {/* In-app Notice for Providers Affected by Migration 027 Base64 Cleanup */}
+            {(!profile.kycDocumentPhoto && (profile.kycDocumentType || profile.kycDocumentNumber || profile.verificationStatus === "pending" || profile.kycStatus === "please re-upload your KYC document")) && (
+              <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                    <FileCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs uppercase tracking-wide text-amber-800 dark:text-amber-300">Action Required: KYC Document Photo Missing</h5>
+                    <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-200">
+                      Migration 027 security update cleared raw base64 photos. <strong>please re-upload your KYC document</strong> to complete your verification and start receiving bookings.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsKycModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition-colors shadow-xs"
+                >
+                  Upload Document
+                </button>
+              </div>
+            )}
+
             {/* Government ID KYC Verification Interactive Banner */}
             <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-emerald-500/10 border border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
@@ -521,19 +545,25 @@ export default function ProviderProfilePage() {
                     <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
                       profile.verificationStatus === "verified"
                         ? "bg-emerald-500/20 text-emerald-600 border-emerald-500/30"
+                        : (!profile.kycDocumentPhoto && (profile.kycDocumentType || profile.kycDocumentNumber || profile.verificationStatus === "pending" || profile.kycStatus === "please re-upload your KYC document"))
+                        ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30"
                         : profile.verificationStatus === "pending" || profile.kycStatus === "Pending"
-                        ? "bg-amber-500/20 text-amber-600 border-amber-500/30"
+                        ? "bg-blue-500/20 text-blue-600 border-blue-500/30"
                         : "bg-zinc-500/20 text-zinc-600 border-zinc-500/30"
                     }`}>
                       {profile.verificationStatus === "verified"
                         ? t("serviceProvider.verifiedBadge")
+                        : (!profile.kycDocumentPhoto && (profile.kycDocumentType || profile.kycDocumentNumber || profile.verificationStatus === "pending" || profile.kycStatus === "please re-upload your KYC document"))
+                        ? "please re-upload your KYC document"
                         : profile.verificationStatus === "pending" || profile.kycStatus === "Pending"
                         ? "Pending Verification"
                         : t("serviceProvider.actionRequiredBadge")}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {profile.kycDocumentType
+                    {(!profile.kycDocumentPhoto && (profile.kycDocumentType || profile.kycDocumentNumber || profile.verificationStatus === "pending" || profile.kycStatus === "please re-upload your KYC document"))
+                      ? "please re-upload your KYC document (document photo is missing or cleared by security updates)"
+                      : profile.kycDocumentType
                       ? `${profile.kycDocumentType}: ${profile.kycDocumentNumber}`
                       : t("serviceProvider.kycDesc")}
                   </p>
