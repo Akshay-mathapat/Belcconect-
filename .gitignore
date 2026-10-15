@@ -73,3 +73,14 @@ android/app/*.iml
 android/**/build/
 *.hprof
 
+# User uploaded photos and attachments (never commit personal data)
+frontend/public/uploads/*
+!frontend/public/uploads/.gitkeep
+android/app/src/main/assets/public/uploads/*
+!android/app/src/main/assets/public/uploads/.gitkeep
+
+# Keystores & Signing credentials
+*.jks
+*.keystore
+
+

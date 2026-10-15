@@ -1592,6 +1592,45 @@ describe("19. Batch R2 Review Leftovers - Task 3: Maps Rate Limiting Hardening",
   });
 });
 
+describe("20. Batch R2 Review Leftovers - Task 5: Android Build Hardening & Uploads Privacy", () => {
+  test("1) android/app/build.gradle enables minifyEnabled, shrinkResources, env versioning, and gradle properties signing", () => {
+    const gradleFile = path.resolve(__dirname, "../../android/app/build.gradle");
+    assert.ok(fs.existsSync(gradleFile), "build.gradle must exist");
+    const gradleCode = fs.readFileSync(gradleFile, "utf-8");
+
+    assert.ok(gradleCode.includes("minifyEnabled true"), "Must enable minifyEnabled in release");
+    assert.ok(gradleCode.includes("shrinkResources true"), "Must enable shrinkResources in release");
+    assert.ok(gradleCode.includes("System.getenv(\"ANDROID_VERSION_CODE\")"), "Must read versionCode from env");
+    assert.ok(gradleCode.includes("System.getenv(\"ANDROID_VERSION_NAME\")"), "Must read versionName from env");
+    assert.ok(gradleCode.includes("RELEASE_STORE_FILE"), "Must configure release signing config from gradle properties");
+    assert.ok(!gradleCode.includes(".jks\"") && !gradleCode.includes(".keystore\""), "Must not hardcode keystore path in build.gradle");
+  });
+
+  test("2) personal photos are removed from android and frontend uploads and directories are gitignored", () => {
+    const gitignoreFile = path.resolve(__dirname, "../../.gitignore");
+    const gitignoreCode = fs.readFileSync(gitignoreFile, "utf-8");
+
+    assert.ok(gitignoreCode.includes("frontend/public/uploads/*"), "Must ignore frontend uploads");
+    assert.ok(gitignoreCode.includes("android/app/src/main/assets/public/uploads/*"), "Must ignore android uploads");
+    assert.ok(gitignoreCode.includes("*.keystore"), "Must ignore keystores");
+    assert.ok(gitignoreCode.includes("*.jks"), "Must ignore jks files");
+
+    const androidUploads = path.resolve(__dirname, "../../android/app/src/main/assets/public/uploads");
+    const frontendUploads = path.resolve(__dirname, "../../frontend/public/uploads");
+
+    if (fs.existsSync(androidUploads)) {
+      const files = fs.readdirSync(androidUploads).filter(f => f !== ".gitkeep");
+      assert.strictEqual(files.length, 0, "Android uploads must have 0 personal files");
+    }
+
+    if (fs.existsSync(frontendUploads)) {
+      const files = fs.readdirSync(frontendUploads).filter(f => f !== ".gitkeep" && f !== "job-resumes");
+      assert.strictEqual(files.length, 0, "Frontend uploads must have 0 personal files");
+    }
+  });
+});
+
+
 
 
 
