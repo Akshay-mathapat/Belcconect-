@@ -73,7 +73,8 @@ self.addEventListener("fetch", (event) => {
         .catch(async () => {
           const cachedResponse = await caches.match(request);
           if (cachedResponse) return cachedResponse;
-          return caches.match("/");
+          const fallback = await caches.match("/");
+          return fallback || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
         })
     );
     return;
@@ -90,7 +91,7 @@ self.addEventListener("fetch", (event) => {
           }
           return networkResponse;
         })
-        .catch(() => cachedResponse);
+        .catch(() => cachedResponse || new Response(null, { status: 404 }));
 
       return cachedResponse || fetchPromise;
     })
