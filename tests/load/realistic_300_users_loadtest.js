@@ -7,7 +7,7 @@
  *   3. Measures p50, p90, p95 response times, error rates, and token validities.
  *
  * Usage:
- *   node tests/load/realistic_300_users_loadtest.js [--base-url https://belcconect.vercel.app]
+ *   node tests/load/realistic_300_users_loadtest.js [--base-url https://belconnect.in]
  */
 
 const fs = require("fs");
@@ -15,7 +15,7 @@ const path = require("path");
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-let baseUrl = "https://belcconect.vercel.app";
+let baseUrl = process.env.BASE_URL || "https://belconnect.in";
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--base-url" && args[i + 1]) {
     baseUrl = args[i + 1].replace(/\/+$/, "");

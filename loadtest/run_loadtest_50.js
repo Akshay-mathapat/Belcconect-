@@ -10,7 +10,7 @@ const failedRequests = new Rate("failed_requests");
 const responseTime = new Trend("response_time_ms", true);
 
 // ─── Target Configuration ────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || "https://belcconect.vercel.app";
+const BASE_URL = __ENV.BASE_URL || "https://belconnect.in";
 
 // ─── 50 Concurrent Users Real-Traffic Simulation ──────────────────────────────
 export const options = {

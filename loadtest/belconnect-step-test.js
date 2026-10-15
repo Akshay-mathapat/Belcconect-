@@ -3,7 +3,7 @@ import { check, sleep } from "k6";
 import { Counter } from "k6/metrics";
 
 const BASE_URL =
-  __ENV.BASE_URL || "https://belcconect.vercel.app";
+  __ENV.BASE_URL || "https://belconnect.in";
 
 const VUS = Number(__ENV.VUS || 5);
 const DURATION = __ENV.DURATION || "30s";

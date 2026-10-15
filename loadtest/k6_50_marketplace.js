@@ -12,7 +12,7 @@ const bookingDuration = new Trend("booking_creation_duration", true);
 const requestDuration = new Trend("response_time_ms", true);
 
 // ─── Target Configuration ────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || "https://belcconect.vercel.app";
+const BASE_URL = __ENV.BASE_URL || "https://belconnect.in";
 
 // ─── 50 Concurrent Users Configuration (Calibrated for Render DB Pool) ──────
 export const options = {

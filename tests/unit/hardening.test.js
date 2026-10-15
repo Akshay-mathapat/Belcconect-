@@ -1518,5 +1518,40 @@ describe("17. Batch R2 Review Leftovers - Task 1: Mock Data & Starting Price Har
   });
 });
 
+describe("18. Batch R2 Review Leftovers - Task 2: Domain Hardening", () => {
+  test("1) frontend/.env.example and root .env.example do not contain vercel.app URLs", () => {
+    const frontendEnv = fs.readFileSync(path.resolve(__dirname, "../../frontend/.env.example"), "utf-8");
+    const rootEnv = fs.readFileSync(path.resolve(__dirname, "../../.env.example"), "utf-8");
+
+    assert.ok(!frontendEnv.includes("belconnect.vercel.app"), "frontend/.env.example must not contain belconnect.vercel.app");
+    assert.ok(!frontendEnv.includes("belcconect.vercel.app"), "frontend/.env.example must not contain belcconect.vercel.app");
+    assert.ok(!rootEnv.includes("belconnect.vercel.app"), "root .env.example must not contain belconnect.vercel.app");
+    assert.ok(!rootEnv.includes("belcconect.vercel.app"), "root .env.example must not contain belcconect.vercel.app");
+  });
+
+  test("2) Load test scripts do not contain vercel.app URLs and use BASE_URL / real domain", () => {
+    const loadTestFiles = [
+      "../../loadtest/belconnect-step-test.js",
+      "../../loadtest/k6_300_marketplace.js",
+      "../../loadtest/k6_50_live_users.js",
+      "../../loadtest/k6_50_marketplace.js",
+      "../../loadtest/loadtest.js",
+      "../../loadtest/run_loadtest_50.js",
+      "../../tests/load/customer_loadtest.js",
+      "../../tests/load/realistic_300_users_loadtest.js"
+    ];
+
+    for (const relPath of loadTestFiles) {
+      const fullPath = path.resolve(__dirname, relPath);
+      if (fs.existsSync(fullPath)) {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        assert.ok(!content.includes("belconnect.vercel.app"), `${relPath} must not contain belconnect.vercel.app`);
+        assert.ok(!content.includes("belcconect.vercel.app"), `${relPath} must not contain belcconect.vercel.app`);
+      }
+    }
+  });
+});
+
+
 
 

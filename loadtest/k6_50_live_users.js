@@ -10,7 +10,7 @@ const failedRequests = new Rate("failed_requests");
 const requestDuration = new Trend("response_time_ms", true);
 
 // ─── Target Configuration ────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || "https://belcconect.vercel.app";
+const BASE_URL = __ENV.BASE_URL || "https://belconnect.in";
 
 // ─── 50 Users: Exactly 1 Complete E2E Creation Flow Per User ─────────────────
 export const options = {

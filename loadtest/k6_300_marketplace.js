@@ -11,7 +11,7 @@ const bookingDuration = new Trend("booking_creation_duration", true);
 const registrationDuration = new Trend("registration_duration", true);
 
 // ─── Target Configuration ────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || "https://belcconect.vercel.app";
+const BASE_URL = __ENV.BASE_URL || "https://belconnect.in";
 
 // ─── 300-User Ramp-up Stages (Total: 300 Virtual Users) ───────────────────────
 export const options = {

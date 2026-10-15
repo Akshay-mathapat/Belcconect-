@@ -6,7 +6,7 @@ import { Counter, Rate, Trend } from "k6/metrics";
 const pool = JSON.parse(open("./customer_tokens.json"));
 const customers = pool.customers || [];
 
-const BASE_URL = __ENV.BASE_URL || "https://belcconect.vercel.app/";
+const BASE_URL = __ENV.BASE_URL || "https://belconnect.in";
 const TARGET_STAGE = parseInt(__ENV.TARGET_STAGE || "50", 10);
 const TEST_MODE = __ENV.TEST_MODE || "smoke"; // "smoke", "validation", "long_validation"
 
