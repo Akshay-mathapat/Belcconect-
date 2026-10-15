@@ -720,7 +720,11 @@
       "Rejected": "ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
       "ReviewSubmitted": "ವಿಮರ್ಶೆ ಸಲ್ಲಿಸಲಾಗಿದೆ",
       "PaymentReceived": "ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
-      "Declined": "ನಿರಾಕರಿಸಲಾಗಿದೆ"
+      "Declined": "ನಿರಾಕರಿಸಲಾಗಿದೆ",
+      "Arrived": "ತಲುಪಿದ್ದಾರೆ",
+      "Expired": "ಅವಧಿ ಮುಗಿದಿದೆ",
+      "CustomerNoShow": "ಗ್ರಾಹಕರು ಗೈರುಹಾಜರಿ",
+      "ProviderNoShow": "ಸೇವಾ ಪೂರೈಕೆದಾರರು ಗೈರುಹಾಜರಿ"
     }
   },
   "tour": {

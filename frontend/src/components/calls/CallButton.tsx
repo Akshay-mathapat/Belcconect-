@@ -28,7 +28,18 @@ export default function CallButton({
   const { requireAuth, authDialogProps } = useRequireAuth();
   const [loading, setLoading] = useState(false);
 
-  const isInactive = ["Rejected", "Cancelled", "Declined"].includes(bookingStatus || "");
+  const INACTIVE_STATUSES = [
+    "rejected",
+    "cancelled",
+    "declined",
+    "expired",
+    "customernoshow",
+    "providernoshow",
+    "completed"
+  ];
+  const isInactive = INACTIVE_STATUSES.includes((bookingStatus || "").toLowerCase());
+  const statusLabel = (bookingStatus ? t(`account.statuses.${bookingStatus}`) : "") || bookingStatus || "closed";
+
   const displayTitle = title
     ? (t(title) !== title
         ? t(title)
@@ -36,7 +47,7 @@ export default function CallButton({
           ? t(`common.${title.toLowerCase()}`)
           : title)
     : isInactive
-      ? `Calling unavailable: Booking is ${t(`account.statuses.${bookingStatus}`) || bookingStatus}`
+      ? `Calling unavailable: Booking is ${statusLabel}`
       : t("common.call");
 
   const initiateCall = () => {
@@ -54,7 +65,7 @@ export default function CallButton({
     e.stopPropagation();
 
     if (isInactive) {
-      alert(`Calling is unavailable because this booking has been ${bookingStatus?.toLowerCase() || "cancelled"}.`);
+      alert(`Calling is unavailable because this booking is ${statusLabel}.`);
       return;
     }
 

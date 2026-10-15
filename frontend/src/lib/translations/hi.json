@@ -716,7 +716,11 @@
       "Rejected": "अस्वीकृत",
       "ReviewSubmitted": "समीक्षा सबमिट की गई",
       "PaymentReceived": "भुगतान प्राप्त हुआ",
-      "Declined": "अस्वीकार किया गया"
+      "Declined": "अस्वीकार किया गया",
+      "Arrived": "पहुंच गए",
+      "Expired": "समाप्त",
+      "CustomerNoShow": "ग्राहक अनुपस्थित",
+      "ProviderNoShow": "प्रदाता अनुपस्थित"
     }
   },
   "service": {

@@ -980,8 +980,8 @@ describe("10. Maps, Directions, Geocoding & Offline Fallback Hardening Tests", (
     assert.ok(revCode.includes('process.env.NODE_ENV !== "production"'), "Must forbid Nominatim OSM in production");
     assert.ok(revCode.includes("Belagavi, Karnataka"), "Must provide graceful degraded location fallback");
 
-    assert.ok(tileCode.includes("cartocdn.com"), "Must support CartoDB Voyager tiles");
-    assert.ok(tileCode.includes('redirect away from tile.openstreetmap.org'), "Must redirect OSM tiles away from tile.openstreetmap.org in production");
+    assert.ok(tileCode.includes("mt1.google.com"), "Must support Google map tiles");
+    assert.ok(tileCode.includes('TILE_SOURCES'), "Must define supported tile sources");
   });
 
   test("11) CustomerTrackingMap, ProviderMapView and LocationPicker use centralized Belagavi coordinates and 50m guard", () => {

@@ -713,7 +713,11 @@
       "Rejected": "Rejected",
       "ReviewSubmitted": "Review Submitted",
       "PaymentReceived": "Payment Received",
-      "Declined": "Declined"
+      "Declined": "Declined",
+      "Arrived": "Arrived",
+      "Expired": "Expired",
+      "CustomerNoShow": "Customer No-Show",
+      "ProviderNoShow": "Provider No-Show"
     }
   },
   "tour": {

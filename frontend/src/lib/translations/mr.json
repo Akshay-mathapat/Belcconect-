@@ -720,7 +720,11 @@
       "Rejected": "नाकारलेले",
       "ReviewSubmitted": "पुनरावलोकन सबमिट केले",
       "PaymentReceived": "पेमेंट मिळाले",
-      "Declined": "नाकारले"
+      "Declined": "नाकारले",
+      "Arrived": "पोहोचले",
+      "Expired": "कालबाह्य झाले",
+      "CustomerNoShow": "ग्राहक गैरहजर",
+      "ProviderNoShow": "सेवा प्रदाता गैरहजर"
     }
   },
   "tour": {
