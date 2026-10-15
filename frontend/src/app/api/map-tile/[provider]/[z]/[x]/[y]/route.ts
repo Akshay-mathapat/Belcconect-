@@ -28,9 +28,15 @@ export async function GET(
   }
 
   try {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").trim().replace(/\/+$/, "");
+    if (!appUrl && process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: NEXT_PUBLIC_APP_URL or APP_URL environment variable is required.");
+    }
+    const domain = appUrl || "http://localhost:3000";
+
     const primaryUrl = sourceBuilder(z, x, y);
     let upstream = await fetch(primaryUrl, {
-      headers: { "User-Agent": "BelConnect/1.0 (+https://belcconect.vercel.app; support@belconnect.in)" },
+      headers: { "User-Agent": `BelConnect/1.0 (+${domain}; support@belconnect.in)` },
       next: { revalidate: 86400 },
     });
 

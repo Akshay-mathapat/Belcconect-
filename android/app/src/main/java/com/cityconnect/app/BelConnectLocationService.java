@@ -258,7 +258,12 @@ public class BelConnectLocationService extends Service {
 
             RequestBody body = RequestBody.create(jsonBody.toString(), MediaType.parse("application/json; charset=utf-8"));
             
-            String base = (apiUrl != null && !apiUrl.trim().isEmpty()) ? apiUrl.trim() : "https://belcconect.vercel.app/api";
+            if (apiUrl == null || apiUrl.trim().isEmpty()) {
+                Log.e(TAG, "LOCATION_NATIVE: apiUrl is missing from configuration");
+                isRequestPending = false;
+                return;
+            }
+            String base = apiUrl.trim();
             while (base.endsWith("/")) {
                 base = base.substring(0, base.length() - 1);
             }

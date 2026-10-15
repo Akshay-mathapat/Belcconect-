@@ -19,7 +19,6 @@ import okhttp3.Response;
 
 public class CallActionReceiver extends BroadcastReceiver {
     private static final String TAG = "CallActionReceiver";
-    public static final String DEFAULT_PRODUCTION_URL = "https://belcconect.vercel.app";
 
     private static final OkHttpClient httpClient = new OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -66,9 +65,10 @@ public class CallActionReceiver extends BroadcastReceiver {
     public static void sendCallStatusUpdate(Context context, String callId, String actionEndpoint) {
         SharedPreferences prefs = context.getSharedPreferences("belconnect_auth_prefs", Context.MODE_PRIVATE);
         String token = prefs.getString("auth_token", null);
-        String apiUrl = prefs.getString("api_url", DEFAULT_PRODUCTION_URL);
+        String apiUrl = prefs.getString("api_url", null);
         if (apiUrl == null || apiUrl.trim().isEmpty()) {
-            apiUrl = DEFAULT_PRODUCTION_URL;
+            Log.w(TAG, "CallActionReceiver: api_url preference missing, skipping call status update");
+            return;
         }
 
         try {

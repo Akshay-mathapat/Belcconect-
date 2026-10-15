@@ -1116,3 +1116,44 @@ describe("12. Backend Secrets and CORS Hardening Tests", () => {
     assert.ok(serverCode.includes('FATAL: ALLOWED_ORIGIN environment variable is required in production'), "Must require ALLOWED_ORIGIN in production");
   });
 });
+
+describe("13. Dynamic Domain Configuration Hardening Tests", () => {
+  test("1) BelConnectLocationService.java and CallActionReceiver.java contain no hardcoded vercel domains", () => {
+    const locServiceFile = path.resolve(__dirname, "../../android/app/src/main/java/com/cityconnect/app/BelConnectLocationService.java");
+    const callReceiverFile = path.resolve(__dirname, "../../android/app/src/main/java/com/cityconnect/app/CallActionReceiver.java");
+    const locCode = fs.readFileSync(locServiceFile, "utf-8");
+    const callCode = fs.readFileSync(callReceiverFile, "utf-8");
+
+    assert.ok(!locCode.includes("belcconect.vercel.app"), "LocationService must not hardcode belcconect.vercel.app");
+    assert.ok(!locCode.includes("belconnect.vercel.app"), "LocationService must not hardcode belconnect.vercel.app");
+    assert.ok(!callCode.includes("belcconect.vercel.app"), "CallActionReceiver must not hardcode belcconect.vercel.app");
+    assert.ok(!callCode.includes("belconnect.vercel.app"), "CallActionReceiver must not hardcode belconnect.vercel.app");
+  });
+
+  test("2) map-tile route, capacitor config, and android assets contain no hardcoded vercel domains and fail if missing", () => {
+    const tileRouteFile = path.resolve(__dirname, "../../frontend/src/app/api/map-tile/[provider]/[z]/[x]/[y]/route.ts");
+    const capConfigFile = path.resolve(__dirname, "../../frontend/capacitor.config.ts");
+    const androidCapConfigFile = path.resolve(__dirname, "../../android/app/src/main/assets/capacitor.config.json");
+    const serverFile = path.resolve(__dirname, "../../backend/src/server.js");
+
+    const tileCode = fs.readFileSync(tileRouteFile, "utf-8");
+    const capCode = fs.readFileSync(capConfigFile, "utf-8");
+    const androidCapCode = fs.readFileSync(androidCapConfigFile, "utf-8");
+    const serverCode = fs.readFileSync(serverFile, "utf-8");
+
+    assert.ok(!tileCode.includes("belcconect.vercel.app"), "Map-tile proxy must not hardcode belcconect.vercel.app");
+    assert.ok(!tileCode.includes("belconnect.vercel.app"), "Map-tile proxy must not hardcode belconnect.vercel.app");
+    assert.ok(tileCode.includes("NEXT_PUBLIC_APP_URL or APP_URL environment variable is required"), "Map-tile must fail if URL is missing in production");
+
+    assert.ok(!capCode.includes("belcconect.vercel.app"), "Capacitor config must not hardcode belcconect.vercel.app");
+    assert.ok(!capCode.includes("belconnect.vercel.app"), "Capacitor config must not hardcode belconnect.vercel.app");
+    assert.ok(capCode.includes("FATAL: CAPACITOR_SERVER_URL"), "Capacitor config must fail if URL is missing");
+
+    assert.ok(!androidCapCode.includes("belcconect.vercel.app"), "Android capacitor config must not hardcode belcconect.vercel.app");
+    assert.ok(!androidCapCode.includes("belconnect.vercel.app"), "Android capacitor config must not hardcode belconnect.vercel.app");
+
+    assert.ok(!serverCode.includes("belcconect.vercel.app"), "Backend server must not hardcode belcconect.vercel.app");
+    assert.ok(!serverCode.includes("belconnect.vercel.app"), "Backend server must not hardcode belconnect.vercel.app");
+  });
+});
+
