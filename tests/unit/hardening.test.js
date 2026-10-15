@@ -1696,6 +1696,51 @@ describe("21. Batch R2 Review Leftovers - Task 6: Multi-Role Account Deletion & 
   });
 });
 
+describe("22. Batch R2 Review Leftovers - Task 7: Prominent Location Disclosure", () => {
+  test("1) ProviderLocationPlugin.java shows prominent disclosure before Android permission dialog", () => {
+    const pluginFile = path.resolve(__dirname, "../../android/app/src/main/java/com/cityconnect/app/ProviderLocationPlugin.java");
+    assert.ok(fs.existsSync(pluginFile), "ProviderLocationPlugin.java must exist");
+    const pluginCode = fs.readFileSync(pluginFile, "utf-8");
+
+    assert.ok(pluginCode.includes("showProminentDisclosureAndRequest"), "Must call showProminentDisclosureAndRequest");
+    assert.ok(pluginCode.includes("AlertDialog.Builder"), "Must display native AlertDialog");
+    assert.ok(pluginCode.includes("Location Permission Disclosure"), "Must have Location Permission Disclosure title");
+    assert.ok(pluginCode.includes("Agree & Continue"), "Must provide Agree & Continue action");
+    assert.ok(pluginCode.includes("Not Now"), "Must provide Not Now action");
+    assert.ok(pluginCode.includes("disclosure_declined"), "Must handle declined disclosure gracefully");
+  });
+
+  test("2) LocationDisclosureModal.tsx exists and provides explicit data collection details", () => {
+    const modalFile = path.resolve(__dirname, "../../frontend/src/components/location/LocationDisclosureModal.tsx");
+    assert.ok(fs.existsSync(modalFile), "LocationDisclosureModal.tsx must exist");
+    const modalCode = fs.readFileSync(modalFile, "utf-8");
+
+    assert.ok(modalCode.includes("Location Access Disclosure"), "Must display prominent title");
+    assert.ok(modalCode.includes("Accurate Navigation & ETAs"), "Must explain purpose of navigation & ETAs");
+    assert.ok(modalCode.includes("Local Service Matching"), "Must explain local matching");
+    assert.ok(modalCode.includes("Active Job Background Tracking"), "Must disclose background tracking for active bookings");
+  });
+
+  test("3) LocationPicker.tsx gates geolocation requests behind prominent disclosure", () => {
+    const pickerFile = path.resolve(__dirname, "../../frontend/src/components/location/LocationPicker.tsx");
+    assert.ok(fs.existsSync(pickerFile), "LocationPicker.tsx must exist");
+    const pickerCode = fs.readFileSync(pickerFile, "utf-8");
+
+    assert.ok(pickerCode.includes("LocationDisclosureModal"), "Must import LocationDisclosureModal");
+    assert.ok(pickerCode.includes("location_disclosure_acknowledged"), "Must check location_disclosure_acknowledged");
+    assert.ok(pickerCode.includes("showDisclosureModal"), "Must control disclosure modal state");
+  });
+
+  test("4) useLiveLocationBroadcast.ts handles disclosure_declined from native plugin", () => {
+    const hookFile = path.resolve(__dirname, "../../frontend/src/hooks/useLiveLocationBroadcast.ts");
+    assert.ok(fs.existsSync(hookFile), "useLiveLocationBroadcast.ts must exist");
+    const hookCode = fs.readFileSync(hookFile, "utf-8");
+
+    assert.ok(hookCode.includes("disclosure_declined"), "Must handle disclosure_declined status");
+  });
+});
+
+
 
 
 

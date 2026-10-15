@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { BELAGAVI_CITY_CENTER } from "@/lib/maps/mapService";
 import { authFetch } from "@/lib/authFetch";
+import { LocationDisclosureModal } from "./LocationDisclosureModal";
 
 export interface ConfirmedLocationData {
   type: string; // 'Home' | 'Office' | 'Other'
@@ -72,6 +73,7 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [mapTileType, setMapTileType] = useState<"street" | "satellite">("street");
   const [placeId, setPlaceId] = useState<string | null>(initialLocation?.placeId || null);
+  const [showDisclosureModal, setShowDisclosureModal] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
@@ -280,8 +282,7 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
     }
   };
 
-  // Request HTML5 Geolocation
-  const handleGetCurrentLocation = () => {
+  const executeGpsRequest = () => {
     if (!navigator.geolocation) {
       setGpsError("Geolocation is not supported by your browser");
       return;
@@ -320,6 +321,21 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
         maximumAge: 0
       }
     );
+  };
+
+  // Request HTML5 Geolocation with Prominent In-App Disclosure
+  const handleGetCurrentLocation = () => {
+    let alreadyDisclosed = false;
+    try {
+      alreadyDisclosed = localStorage.getItem("location_disclosure_acknowledged") === "true";
+    } catch (_) {}
+
+    if (!alreadyDisclosed) {
+      setShowDisclosureModal(true);
+      return;
+    }
+
+    executeGpsRequest();
   };
 
   // Form Submission
@@ -621,6 +637,21 @@ export default function LocationPicker({ onConfirm, onCancel, initialLocation }:
           </button>
         </div>
       </form>
+
+      <LocationDisclosureModal
+        isOpen={showDisclosureModal}
+        onAgree={() => {
+          try {
+            localStorage.setItem("location_disclosure_acknowledged", "true");
+          } catch (_) {}
+          setShowDisclosureModal(false);
+          executeGpsRequest();
+        }}
+        onDeny={() => {
+          setShowDisclosureModal(false);
+          setGpsError("Location access declined. You can type your address or drag the map pin to select your location.");
+        }}
+      />
     </div>
   );
 }

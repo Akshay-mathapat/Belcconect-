@@ -36,11 +36,34 @@ public class ProviderLocationPlugin extends Plugin {
     @PluginMethod
     public void startTracking(PluginCall call) {
         if (getPermissionState("location") != PermissionState.GRANTED) {
-            requestPermissionForAlias("location", call, "locationPermsCallback");
+            showProminentDisclosureAndRequest(call);
             return;
         }
 
         checkGpsAndStart(call);
+    }
+
+    private void showProminentDisclosureAndRequest(PluginCall call) {
+        if (getActivity() == null) {
+            requestPermissionForAlias("location", call, "locationPermsCallback");
+            return;
+        }
+
+        getActivity().runOnUiThread(() -> {
+            new androidx.appcompat.app.AlertDialog.Builder(getActivity())
+                .setTitle("Location Permission Disclosure")
+                .setMessage("BelConnect collects location data to enable real-time arrival tracking and turn-by-turn navigation between customers and service providers during active bookings, even when the app is running in the background or closed.\n\nBackground tracking starts only when you accept a job and ends immediately when the booking is completed or cancelled.\n\nYour location data is never sold or used for advertising.")
+                .setPositiveButton("Agree & Continue", (dialog, which) -> {
+                    requestPermissionForAlias("location", call, "locationPermsCallback");
+                })
+                .setNegativeButton("Not Now", (dialog, which) -> {
+                    JSObject ret = new JSObject();
+                    ret.put("status", "disclosure_declined");
+                    call.resolve(ret);
+                })
+                .setCancelable(false)
+                .show();
+        });
     }
 
     @PermissionCallback

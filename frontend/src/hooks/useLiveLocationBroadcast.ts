@@ -205,6 +205,10 @@ export function useLiveLocationBroadcast(
         apiUrl
       }).then((res: any) => {
         console.log("[Native Location] startTracking result:", res);
+        if (res?.status === "disclosure_declined") {
+          setIsTracking(false);
+          setError("Location disclosure declined. Live location tracking is disabled.");
+        }
       }).catch((err: any) => {
         console.error("[Native Location] Tracking failed to start", err);
         setError("Native background location service failed to start.");
