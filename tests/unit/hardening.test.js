@@ -1630,6 +1630,73 @@ describe("20. Batch R2 Review Leftovers - Task 5: Android Build Hardening & Uplo
   });
 });
 
+describe("21. Batch R2 Review Leftovers - Task 6: Multi-Role Account Deletion & Play Store Compliance", () => {
+  test("1) /api/account/delete handles customers, providers, job providers, and public web requests", () => {
+    const routeFile = path.resolve(__dirname, "../../frontend/src/app/api/account/delete/route.ts");
+    assert.ok(fs.existsSync(routeFile), "delete route must exist");
+    const routeCode = fs.readFileSync(routeFile, "utf-8");
+
+    // All 3 roles handled
+    assert.ok(routeCode.includes("role === \"user\"") || routeCode.includes("customer"), "Must handle customer deletion");
+    assert.ok(routeCode.includes("role === \"provider\""), "Must handle provider deletion");
+    assert.ok(routeCode.includes("role === \"job_provider\""), "Must handle job provider deletion");
+
+    // Active booking protection
+    assert.ok(routeCode.includes("Cannot delete account while you have active bookings"), "Must block deletion when active bookings exist");
+
+    // Personal data, resumes, KYC, and address removal
+    assert.ok(routeCode.includes("DELETE FROM public.job_resumes"), "Must delete resumes");
+    assert.ok(routeCode.includes("DELETE FROM public.job_applications"), "Must delete applications");
+    assert.ok(routeCode.includes("DELETE FROM public.service_providers"), "Must delete service providers");
+    assert.ok(routeCode.includes("DELETE FROM public.customers"), "Must delete customers");
+    assert.ok(routeCode.includes("DELETE FROM public.job_providers"), "Must delete job providers");
+
+    // Legal audit preservation (anonymizing bookings)
+    assert.ok(routeCode.includes("UPDATE public.bookings SET customer_name = 'Deleted Customer'"), "Must anonymize customer bookings for legal compliance");
+    assert.ok(routeCode.includes("UPDATE public.bookings SET provider_name = 'Former Provider'"), "Must anonymize provider bookings for legal compliance");
+
+    // Public Play Store web portal request handling
+    assert.ok(routeCode.includes("DEL-PUB-"), "Must support public web portal deletion requests");
+  });
+
+  test("2) migration 032 exists in both folders and defines account_deletion_requests", () => {
+    const m1 = path.resolve(__dirname, "../../database/migrations/032_account_deletion_requests.sql");
+    const m2 = path.resolve(__dirname, "../../migrations/032_account_deletion_requests.sql");
+    const schemaFile = path.resolve(__dirname, "../../database/schema.sql");
+
+    assert.ok(fs.existsSync(m1), "database/migrations/032 must exist");
+    assert.ok(fs.existsSync(m2), "migrations/032 must exist");
+    const c1 = fs.readFileSync(m1, "utf-8");
+    const c2 = fs.readFileSync(m2, "utf-8");
+    assert.strictEqual(c1, c2, "Migration 032 must be identical in both folders");
+
+    const schema = fs.readFileSync(schemaFile, "utf-8");
+    assert.ok(schema.includes("public.account_deletion_requests"), "schema.sql must define account_deletion_requests");
+  });
+
+  test("3) /delete-account public web page exists with Play Store required disclosures", () => {
+    const pageFile = path.resolve(__dirname, "../../frontend/src/app/delete-account/page.tsx");
+    assert.ok(fs.existsSync(pageFile), "delete-account page must exist");
+    const pageCode = fs.readFileSync(pageFile, "utf-8");
+
+    assert.ok(pageCode.includes("What is Permanently Deleted"), "Must disclose deleted data types");
+    assert.ok(pageCode.includes("What is Retained by Law"), "Must disclose retained data types");
+    assert.ok(pageCode.includes("48 hours"), "Must disclose 48-hour SLA");
+    assert.ok(pageCode.includes("/api/account/delete"), "Must submit to /api/account/delete");
+  });
+
+  test("4) in-app deletion UI exists for Customer, Service Provider, and Job Provider", () => {
+    const custPage = fs.readFileSync(path.resolve(__dirname, "../../frontend/src/app/account/page.tsx"), "utf-8");
+    const provPage = fs.readFileSync(path.resolve(__dirname, "../../frontend/src/app/provider/profile/page.tsx"), "utf-8");
+    const jpPanel = fs.readFileSync(path.resolve(__dirname, "../../frontend/src/components/jobprovider/settings/SettingsPanel.tsx"), "utf-8");
+
+    assert.ok(custPage.includes("Delete Account & Personal Data") && custPage.includes("/api/account/delete"), "Customer page must include Delete Account flow");
+    assert.ok(provPage.includes("Delete Service Provider Account") && provPage.includes("/api/account/delete"), "Provider profile must include Delete Account flow");
+    assert.ok(jpPanel.includes("Delete Employer Account") && jpPanel.includes("/api/account/delete"), "Job provider panel must include Delete Account flow");
+  });
+});
+
+
 
 
 

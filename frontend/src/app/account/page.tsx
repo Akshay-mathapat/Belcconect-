@@ -178,6 +178,37 @@ export default function AccountPage() {
   const [cancellationNote, setCancellationNote] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Account Deletion State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeletingAccount(true);
+      setDeleteError(null);
+      const token = getStoredAuthToken();
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ reason: "Customer requested in-app account deletion" })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete account");
+      }
+      logout();
+      router.push("/?deleted=true");
+    } catch (err: any) {
+      setDeleteError(err.message || "Failed to delete account. Please try again.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   // Sync state if currentUser changes
   const activeUser = currentUser || {
     id: "guest",
@@ -980,6 +1011,27 @@ export default function AccountPage() {
                           {t("common.signOut")}
                         </button>
                       </div>
+
+                      {/* Danger Zone: Delete Account */}
+                      <div className="mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete Account & Personal Data</span>
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Permanently purge your profile, saved addresses, resumes, and personal information.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsDeleteModalOpen(true)}
+                          className="px-4 py-2.5 rounded-xl border border-red-500 bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete Account</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1433,6 +1485,68 @@ export default function AccountPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Delete Account Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md rounded-2xl border border-red-500/30 bg-card p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3 text-red-600">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Permanently Delete Account?</h3>
+                  <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border text-xs text-muted-foreground space-y-2 leading-relaxed">
+                <p>
+                  By confirming, all your profile details, uploaded resumes, saved addresses, and personal identity records will be permanently erased.
+                </p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  Any completed bookings will be anonymized for statutory accounting compliance.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={handleDeleteAccount}
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isDeletingAccount ? "Deleting..." : "Yes, Delete Permanently"}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

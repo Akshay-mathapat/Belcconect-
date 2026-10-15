@@ -454,3 +454,20 @@ CREATE UNIQUE INDEX service_providers_email_key ON public.service_providers USIN
 CREATE UNIQUE INDEX service_providers_google_id_key ON public.service_providers USING btree (google_id);
 CREATE UNIQUE INDEX service_providers_pkey ON public.service_providers USING btree (id);
 CREATE UNIQUE INDEX services_pkey ON public.services USING btree (id);
+
+-- Table: public.account_deletion_requests
+CREATE TABLE IF NOT EXISTS public.account_deletion_requests (
+    id CHARACTER VARYING(64) NOT NULL PRIMARY KEY,
+    user_id CHARACTER VARYING(64),
+    role CHARACTER VARYING(32) NOT NULL,
+    email CHARACTER VARYING(255),
+    phone CHARACTER VARYING(32),
+    reason TEXT,
+    status CHARACTER VARYING(32) DEFAULT 'completed'::character varying NOT NULL,
+    requested_via CHARACTER VARYING(32) DEFAULT 'in_app'::character varying NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_account_deletion_user ON public.account_deletion_requests USING btree (user_id);
+CREATE INDEX IF NOT EXISTS idx_account_deletion_phone ON public.account_deletion_requests USING btree (phone);
+CREATE INDEX IF NOT EXISTS idx_account_deletion_created ON public.account_deletion_requests USING btree (created_at DESC);

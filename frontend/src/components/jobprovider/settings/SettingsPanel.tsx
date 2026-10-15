@@ -1,16 +1,55 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Sun, Moon, Laptop } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sun, Moon, Laptop, Trash2, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation } from "@/lib/i18n";
+import { getAuthToken } from "@/lib/jwt";
 import { panelVariants } from "../uiTokens";
 
 export function SettingsPanel() {
+  const router = useRouter();
   const { theme, setTheme, mounted } = useTheme();
   const { t } = useTranslation();
   const inputCls = "block w-full px-3 py-3 border border-border rounded-xl bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm text-foreground placeholder-muted-foreground";
   const labelCls = "block text-sm font-medium text-foreground mb-2";
+
+  // Account Deletion State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeletingAccount(true);
+      setDeleteError(null);
+      const token = getAuthToken();
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ reason: "Job provider requested in-app account deletion" })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete account");
+      }
+      try {
+        localStorage.removeItem("auth-storage");
+        localStorage.removeItem("belconnect_auth_token");
+        sessionStorage.clear();
+      } catch (_) {}
+      router.push("/?deleted=true");
+    } catch (err: any) {
+      setDeleteError(err.message || "Failed to delete account. Please try again.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   const themeOptions = [
     { id: "light" as const, label: t("jobprovider.lightMode"), subtitle: t("jobprovider.highContrast"), icon: Sun, color: "text-amber-500 bg-amber-500/10 border-amber-500/30" },
@@ -110,14 +149,33 @@ export function SettingsPanel() {
         {
           title: t("jobprovider.dangerZone"),
           content: (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">{t("jobprovider.deactivateAccount")}</p>
-                <p className="text-xs text-muted-foreground">Temporarily hide your profile and listings</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-border/50">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{t("jobprovider.deactivateAccount")}</p>
+                  <p className="text-xs text-muted-foreground">Temporarily hide your profile and listings</p>
+                </div>
+                <button className="px-4 py-2 text-sm font-semibold rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors">
+                  {t("jobprovider.deactivate")}
+                </button>
               </div>
-              <button className="px-4 py-2 text-sm font-semibold rounded-xl border border-red-500/30 bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-colors">
-                {t("jobprovider.deactivate")}
-              </button>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete Employer Account</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Permanently remove business profile, job listings, and company data</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="px-4 py-2 text-sm font-bold rounded-xl border border-red-500 bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer shadow-sm"
+                >
+                  Delete Account
+                </button>
+              </div>
             </div>
           ),
         },
@@ -127,6 +185,62 @@ export function SettingsPanel() {
           {section.content}
         </div>
       ))}
+
+      {/* Delete Account Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md rounded-2xl border border-red-500/30 bg-card p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3 text-red-600">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Delete Employer Account?</h3>
+                  <p className="text-xs text-muted-foreground">Permanent and irreversible</p>
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border text-xs text-muted-foreground space-y-2 leading-relaxed">
+                <p>
+                  This will permanently delete your employer profile, company details, active and closed job postings, and applicant tracking records.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={handleDeleteAccount}
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-md flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isDeletingAccount ? "Deleting..." : "Yes, Delete Employer Account"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
