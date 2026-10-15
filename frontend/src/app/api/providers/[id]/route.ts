@@ -20,10 +20,14 @@ export async function GET(
 
     const provider = providerRes.rows[0];
 
+    // Authenticate requester: only the provider themselves or admins may see phone and email
+    const authUser = getAuthenticatedUser(request);
+    const isOwner = Boolean(authUser && authUser.userId === id);
+    const isAdmin = Boolean(authUser && authUser.role === "admin");
+    const isOwnerOrAdmin = isOwner || isAdmin;
+
     // Enforce that unverified providers are not publicly accessible
     if (provider.verification_status !== "verified") {
-      const authUser = getAuthenticatedUser(request);
-      const isOwnerOrAdmin = authUser && (authUser.userId === id || authUser.role === "admin");
       if (!isOwnerOrAdmin) {
         return NextResponse.json(
           { error: "This service provider profile is pending verification and not yet publicly listed." },
@@ -108,15 +112,20 @@ export async function GET(
 
     const isVerified = provider.verification_status === "verified";
 
+    // Privacy rule: Only the provider themselves or admins may see email and phone.
+    // Public callers and general customers receive null so contact stays inside the app (chat / in-app call).
+    const sanitizedPhone = isOwnerOrAdmin ? (provider.phone || null) : null;
+    const sanitizedEmail = isOwnerOrAdmin ? (provider.email || null) : null;
+
     return NextResponse.json({
       provider: {
         id: provider.id,
         name: provider.name,
-        phone: provider.phone || "",
-        email: provider.email,
-        avatar: provider.avatar || "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=200&q=80",
-        experience: 4,
-        bio: "Certified service professional registered in Belagavi.",
+        phone: sanitizedPhone,
+        email: sanitizedEmail,
+        avatar: provider.avatar || null,
+        experience: null,
+        bio: null,
         isAvailable: Boolean(provider.is_available),
         isVerified,
         verificationStatus: provider.verification_status || "unverified",

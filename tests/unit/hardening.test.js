@@ -471,6 +471,9 @@ describe("7. Provider Approval & Admin System Hardening Tests", () => {
 
     assert.ok(srvCode.includes("u.verification_status = 'verified'"), "Services route must filter verified providers");
     assert.ok(proCode.includes("verification_status !== \"verified\""), "Provider profile route must block unverified access");
+    assert.ok(!proCode.includes("experience: 4"), "Provider profile route must not hardcode experience");
+    assert.ok(!proCode.includes("photo-1621905251189"), "Provider profile route must not hardcode Unsplash avatar");
+    assert.ok(proCode.includes("sanitizedPhone") && proCode.includes("sanitizedEmail"), "Provider profile route must sanitize phone and email for owner/admin only");
     assert.ok(bkgCode.includes("verification_status !== \"verified\""), "Bookings route must reject unverified providers");
   });
 

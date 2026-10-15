@@ -29,11 +29,11 @@ interface ProviderData {
   provider: {
     id: string;
     name: string;
-    phone: string;
-    email: string;
-    avatar: string;
-    experience: number;
-    bio: string;
+    phone?: string | null;
+    email?: string | null;
+    avatar?: string | null;
+    experience?: number | null;
+    bio?: string | null;
     isAvailable?: boolean;
     isVerified?: boolean;
     verificationStatus?: string;
@@ -220,11 +220,17 @@ export default function ProviderProfilePage() {
                 <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-500 to-teal-500" />
                 
                 {/* Avatar */}
-                <img 
-                  src={provider.avatar} 
-                  alt={provider.name} 
-                  className="w-24 h-24 rounded-full object-cover border-2 border-border shadow-md mt-2"
-                />
+                {provider.avatar ? (
+                  <img 
+                    src={provider.avatar} 
+                    alt={provider.name} 
+                    className="w-24 h-24 rounded-full object-cover border-2 border-border shadow-md mt-2"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-extrabold text-3xl flex items-center justify-center border-2 border-border shadow-md mt-2">
+                    {provider.name ? provider.name.trim().charAt(0).toUpperCase() : "P"}
+                  </div>
+                )}
 
                 {/* Verification Badge */}
                 {provider.verificationStatus === "verified" && (
@@ -243,24 +249,24 @@ export default function ProviderProfilePage() {
                 </div>
 
                 <h1 className="text-xl font-heading font-extrabold text-foreground mt-3">{provider.name}</h1>
-                <p className="text-xs text-muted-foreground mt-1">Belagavi Service Partner</p>
-
-
+                <p className="text-xs text-muted-foreground mt-1">{provider.bio || "Belagavi Service Partner"}</p>
 
                 {/* Divider */}
                 <div className="w-full border-t border-border my-6" />
 
                 {/* Details list */}
                 <div className="w-full space-y-4 text-left">
-                  <div className="flex items-center gap-3 text-xs">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
-                      <Briefcase className="h-4 w-4" />
+                  {provider.experience != null && (
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                        <Briefcase className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Experience</span>
+                        <span className="font-bold text-foreground">{provider.experience} Years</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Experience</span>
-                      <span className="font-bold text-foreground">{provider.experience} Years</span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Safety & Support */}
                   {!isSelf && (
