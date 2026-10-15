@@ -1320,3 +1320,81 @@ describe("14. Sitemap Verification Hardening Tests", () => {
     assert.ok(sitemapCode.includes("is_available = true"), "Sitemap must exclude unavailable providers");
   });
 });
+
+describe("15. Database Migrations Single Source of Truth & Runner Hardening Tests", () => {
+  const runner = require("../../scripts/run-migrations.js");
+
+  test("1) database/migrations and /migrations have identical file sets and matching content", () => {
+    const files1 = fs.readdirSync(runner.PRIMARY_MIGRATIONS_DIR);
+    const files2 = fs.readdirSync(runner.SECONDARY_MIGRATIONS_DIR);
+
+    assert.strictEqual(files1.length, files2.length, "Both directories must contain the same number of migration files");
+    for (const file of files1) {
+      assert.ok(files2.includes(file), `/migrations must contain ${file}`);
+      const c1 = fs.readFileSync(path.join(runner.PRIMARY_MIGRATIONS_DIR, file), "utf-8");
+      const c2 = fs.readFileSync(path.join(runner.SECONDARY_MIGRATIONS_DIR, file), "utf-8");
+      assert.strictEqual(c1, c2, `Content of ${file} must be identical between database/migrations and /migrations`);
+    }
+  });
+
+  test("2) getMigrationFiles returns files in strictly ascending numerical order", () => {
+    const files = runner.getMigrationFiles();
+    assert.ok(files.length >= 28, "Must discover at least 28 migrations");
+
+    let prevNum = -1;
+    for (const f of files) {
+      const num = parseInt(f.slice(0, 3), 10);
+      assert.ok(num > prevNum, `Migration numbers must be strictly increasing: ${f}`);
+      prevNum = num;
+    }
+  });
+
+  test("3) migrations 026 to 030 are ordered, valid, and match expected lifecycle specifications", () => {
+    const files = runner.getMigrationFiles();
+    const files026to030 = files.filter((f) => {
+      const n = parseInt(f.slice(0, 3), 10);
+      return n >= 26 && n <= 30;
+    });
+
+    assert.deepStrictEqual(files026to030, [
+      "026_job_resumes_storage.sql",
+      "027_kyc_last4_and_privacy.sql",
+      "028_admin_approval_system.sql",
+      "029_unique_phone_numbers.sql",
+      "030_booking_lifecycle_hardening.sql"
+    ]);
+
+    // 026: job_resumes
+    const sql026 = fs.readFileSync(path.join(runner.PRIMARY_MIGRATIONS_DIR, "026_job_resumes_storage.sql"), "utf-8");
+    assert.ok(sql026.includes("CREATE TABLE IF NOT EXISTS public.job_resumes"));
+    assert.ok(sql026.includes("file_data BYTEA NOT NULL"));
+
+    // 027: kyc privacy
+    const sql027 = fs.readFileSync(path.join(runner.PRIMARY_MIGRATIONS_DIR, "027_kyc_last4_and_privacy.sql"), "utf-8");
+    assert.ok(sql027.includes("aadhaar_last4 VARCHAR(4)"));
+    assert.ok(sql027.includes("pan_last4 VARCHAR(4)"));
+    assert.ok(sql027.includes("aadhaar_number = NULL"));
+
+    // 028: admin approval
+    const sql028 = fs.readFileSync(path.join(runner.PRIMARY_MIGRATIONS_DIR, "028_admin_approval_system.sql"), "utf-8");
+    assert.ok(sql028.includes("CREATE TABLE IF NOT EXISTS public.admins"));
+    assert.ok(sql028.includes("CREATE TABLE IF NOT EXISTS public.admin_audit_logs"));
+    assert.ok(sql028.includes("rejection_reason TEXT NULL"));
+
+    // 029: unique phones
+    const sql029 = fs.readFileSync(path.join(runner.PRIMARY_MIGRATIONS_DIR, "029_unique_phone_numbers.sql"), "utf-8");
+    assert.ok(sql029.includes("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_phone_unique"));
+    assert.ok(sql029.includes("CREATE UNIQUE INDEX IF NOT EXISTS idx_service_providers_phone_unique"));
+
+    // 030: booking lifecycle
+    const sql030 = fs.readFileSync(path.join(runner.PRIMARY_MIGRATIONS_DIR, "030_booking_lifecycle_hardening.sql"), "utf-8");
+    assert.ok(sql030.includes("accepted_at TIMESTAMP WITH TIME ZONE"));
+    assert.ok(sql030.includes("arrived_at TIMESTAMP WITH TIME ZONE"));
+    assert.ok(sql030.includes("no_show_count INTEGER DEFAULT 0 NOT NULL"));
+  });
+
+  test("4) migration 031 is excluded from automatic execution per Task 8 rules", () => {
+    assert.ok(runner.EXCLUDED_FROM_AUTO_RUN.has("031_drop_legacy_kyc_columns.sql"));
+  });
+});
+

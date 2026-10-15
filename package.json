@@ -9,6 +9,8 @@
     "build:frontend": "npm --prefix frontend run build",
     "test:e2e": "cd frontend && npx playwright test",
     "test:e2e:ui": "cd frontend && npx playwright test --ui",
-    "test:e2e:report": "cd frontend && npx playwright show-report"
+    "test:e2e:report": "cd frontend && npx playwright show-report",
+    "migrate": "node scripts/run-migrations.js",
+    "migrate:status": "node scripts/run-migrations.js --status"
   }
 }
