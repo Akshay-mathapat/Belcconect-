@@ -160,7 +160,6 @@ export async function GET(request: Request) {
           }
         }
       } catch {}
-    }
 
     // 4. Offline / Degraded Mode:
     // If upstream map APIs are unreachable, rate-limited, or failed, return straight-line
