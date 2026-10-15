@@ -5,7 +5,7 @@ import { authFetch, getClientToken, triggerAuthExpired } from "@/lib/authFetch";
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, getStoredUserId } from "@/store/useAuthStore";
 import { CallRecord } from "@/lib/calls";
 import IncomingCall from "./IncomingCall";
 import OutgoingCall from "./OutgoingCall";
@@ -53,6 +53,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const isDemo = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true";
     const isProviderPortal = pathname?.startsWith("/provider") || pathname?.startsWith("/jobprovider");
     if (currentUser?.id) return currentUser.id;
+    const storedId = getStoredUserId();
+    if (storedId) return storedId;
     return isDemo ? (isProviderPortal ? "provider-1" : "customer-1") : "";
   }, [pathname, currentUser]);
 
@@ -99,6 +101,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const activeCallRef = useRef(activeCall);
   useEffect(() => { activeCallRef.current = activeCall; }, [activeCall]);
 
+  const syncCallStatusRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const callStartInProgressRef = useRef(false);
   const acceptInProgressRef = useRef(false);
   const endInProgressRef = useRef(false);
@@ -122,7 +125,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const matchesMe = useCallback((id: string) => {
-    const uid = currentUserIdRef.current;
+    const uid = currentUserIdRef.current || getStoredUserId();
     if (!id || !uid) return false;
     if (id === uid) return true;
     if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
@@ -496,7 +499,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       auth: { token, userId: uid },
       transports,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 10000,
@@ -543,6 +546,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       socketConnectedRef.current = false;
       connectPromiseRef.current = null;
       callAudioManager.stopAll();
+      if (reason !== "io client disconnect") {
+        setTimeout(() => {
+          if (!socketConnectedRef.current && (currentUserIdRef.current || getStoredUserId())) {
+            console.log("[SIGNALING] Attempting auto-reconnection after disconnect...");
+            try { socket.connect(); } catch (e) {}
+          }
+        }, 1500);
+      }
     });
 
     // Real-time signal listener dispatcher
@@ -877,9 +888,31 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
   }, [clearOutgoingTimeout, ensureSocketConnected, getHeaders, fetchMyLiveKitToken, handleAcceptTransientFailure, matchesMe]);
 
-  // Proactively check native call action on mount & app resume/foreground transition
+  // Proactively check native call action on mount & app resume/foreground transition (Web + Native)
   useEffect(() => {
     handleNativeCallAction();
+
+    const handleForeground = () => {
+      console.log("[CALL] App foreground / visible event. Checking socket & call status...");
+      ensureSocketConnected().catch(() => {});
+      handleNativeCallAction();
+      if (syncCallStatusRef.current) {
+        syncCallStatusRef.current().catch(() => {});
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        handleForeground();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("focus", handleForeground);
+      window.addEventListener("pageshow", handleForeground);
+      window.addEventListener("online", handleForeground);
+    }
 
     let resumeListener: any = null;
     let appStateListener: any = null;
@@ -887,20 +920,24 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined" && nativeCallBridge.isNative()) {
       App.addListener("resume", () => {
         console.log("[CALL] App resumed from background. Reconnecting socket & checking call actions...");
-        ensureSocketConnected().catch(() => {});
-        handleNativeCallAction();
+        handleForeground();
       }).then((l) => { resumeListener = l; }).catch(() => {});
 
       App.addListener("appStateChange", ({ isActive }) => {
         if (isActive) {
           console.log("[CALL] App active state changed to foreground.");
-          ensureSocketConnected().catch(() => {});
-          handleNativeCallAction();
+          handleForeground();
         }
       }).then((l) => { appStateListener = l; }).catch(() => {});
     }
 
     return () => {
+      if (typeof window !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("focus", handleForeground);
+        window.removeEventListener("pageshow", handleForeground);
+        window.removeEventListener("online", handleForeground);
+      }
       if (resumeListener) resumeListener.remove();
       if (appStateListener) appStateListener.remove();
     };
@@ -1140,19 +1177,45 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     };
 
-    // Single initial call status check on authenticated mount (PART 8)
+    syncCallStatusRef.current = syncCallStatus;
+
+    // Single initial call status check on authenticated mount
     syncCallStatus();
 
-    // Fallback polling ONLY when signaling socket is disconnected, interval >= 60 seconds
-    const fallbackPollInterval = 60000;
-    const interval = setInterval(() => {
-      if (!socketConnectedRef.current && getClientToken()) {
-        syncCallStatus();
-      }
-    }, fallbackPollInterval);
+    // Adaptive rapid polling:
+    // When signaling socket is disconnected, poll every 3 seconds so incoming calls ring within 3s.
+    // When on an active booking page (/bookings/[id] or /provider/bookings/[id]), poll every 3.5 seconds.
+    // When in active, outgoing, or incoming call, poll every 2.5 seconds to synchronize terminal states.
+    // Otherwise, light heartbeat poll every 15 seconds.
+    const isBookingPage = pathname?.includes("/bookings") || pathname?.includes("/provider/bookings");
+    const getPollInterval = () => {
+      if (!socketConnectedRef.current) return 3000;
+      if (isBookingPage) return 3500;
+      if (callStateRef.current !== "IDLE") return 2500;
+      return 15000;
+    };
 
-    return () => clearInterval(interval);
-  }, [currentUserId, getHeaders, fetchMyLiveKitToken, clearOutgoingTimeout, handleRemoteCallEnded]);
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
+
+    const scheduleNextPoll = () => {
+      if (isCancelled) return;
+      const delay = getPollInterval();
+      pollTimer = setTimeout(async () => {
+        if (!isCancelled && (getClientToken() || currentUserIdRef.current)) {
+          await syncCallStatus();
+        }
+        scheduleNextPoll();
+      }, delay);
+    };
+
+    scheduleNextPoll();
+
+    return () => {
+      isCancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [currentUserId, getHeaders, fetchMyLiveKitToken, clearOutgoingTimeout, handleRemoteCallEnded, pathname]);
 
   // ─── startCall ────────────────────────────────────────────────────────────
   const startCall = useCallback(async (bookingId: string) => {

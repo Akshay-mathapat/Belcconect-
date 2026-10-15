@@ -372,6 +372,10 @@ if (receiverId) {
 
 if (targetRooms.length > 0) {
   io.to(targetRooms).emit("call:ended", payload);
+  io.to(targetRooms).emit("call:signal", payload);
+  if (event && event !== "call:ended") {
+    io.to(targetRooms).emit(event, payload);
+  }
 }
   };
 
@@ -449,8 +453,47 @@ if (receiverId) {
 
 if (targetRooms.length > 0) {
   io.to(targetRooms).emit("call:signal", payload);
+  io.to(targetRooms).emit("call:accept", payload);
 }
   });
+
+  // Client-initiated call invite relay (dual redundancy with /api/signal)
+  const handleClientCallInitiate = async (event, data) => {
+    if (!data) return;
+    const rawCall = data.call || {};
+    const callId = rawCall.id || data.callId;
+    if (!callId) return;
+
+    const authorizedCall = await getAuthorizedCall(callId, userId);
+    if (!authorizedCall) {
+      console.warn(`[Call Auth] Unauthorized ${event} rejected for user=${userId}`);
+      return;
+    }
+
+    const callerId = authorizedCall.caller_id;
+    const receiverId = authorizedCall.receiver_id;
+
+    console.log(`[CALL_INITIATE] forwarding ${event} callId=${callId} caller=${callerId} receiver=${receiverId}`);
+
+    const payload = {
+      ...data,
+      type: "call:ring",
+      call: {
+        ...rawCall,
+        id: callId,
+        callerId,
+        receiverId
+      }
+    };
+
+    if (receiverId) {
+      io.to(`user:${receiverId}`).emit("call:signal", payload);
+      io.to(`user:${receiverId}`).emit("call:ring", payload);
+    }
+  };
+
+  socket.on("call:initiate", (data) => void handleClientCallInitiate("call:initiate", data));
+  socket.on("call:ring", (data) => void handleClientCallInitiate("call:ring", data));
 
   // ═══════ Live Location Tracking Room Handlers (Authorized by Booking Ownership) ═══════
   socket.on("booking:subscribe", async (data) => {
@@ -921,23 +964,27 @@ if (call.receiverId) {
   }
 
   if (targetUserIds && Array.isArray(targetUserIds)) {
-  targetUserIds.forEach((uid) => {
-    if (uid) {
-      io.to(`user:${uid}`).emit("call:signal", payload);
+    targetUserIds.forEach((uid) => {
+      if (uid) {
+        io.to(`user:${uid}`).emit("call:signal", payload);
+        io.to(`user:${uid}`).emit(type, payload);
+      }
+    });
+  } else if (targetUserId) {
+    io.to(`user:${targetUserId}`).emit("call:signal", payload);
+    io.to(`user:${targetUserId}`).emit(type, payload);
+  } else {
+    // Fallback: emit to both caller and receiver
+    if (call.callerId) {
+      io.to(`user:${call.callerId}`).emit("call:signal", payload);
+      io.to(`user:${call.callerId}`).emit(type, payload);
     }
-  });
-} else if (targetUserId) {
-  io.to(`user:${targetUserId}`).emit("call:signal", payload);
-} else {
-  // Fallback: emit to both caller and receiver
-  if (call.callerId) {
-    io.to(`user:${call.callerId}`).emit("call:signal", payload);
-  }
 
-  if (call.receiverId) {
-    io.to(`user:${call.receiverId}`).emit("call:signal", payload);
+    if (call.receiverId) {
+      io.to(`user:${call.receiverId}`).emit("call:signal", payload);
+      io.to(`user:${call.receiverId}`).emit(type, payload);
+    }
   }
-}
 
   return res.json({ success: true, delivered: true });
 });
