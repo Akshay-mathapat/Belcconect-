@@ -130,7 +130,12 @@ io.use((socket, next) => {
     return next();
   }
 
-  console.warn(`[Signaling Server] Connection rejected: Token verification failed (${lastError ? lastError.message : "invalid payload"})`);
+  try {
+    const unverified = jwt.decode(token);
+    console.warn(`[Signaling Server] Connection rejected (user: ${unverified?.userId || "unknown"}, issued: ${unverified?.iat ? new Date(unverified.iat * 1000).toISOString() : "?"}): Token verification failed (${lastError ? lastError.message : "invalid payload"})`);
+  } catch (_) {
+    console.warn(`[Signaling Server] Connection rejected: Token verification failed (${lastError ? lastError.message : "invalid payload"})`);
+  }
   return next(new Error("Authentication failed: Invalid or expired token"));
 });
 
