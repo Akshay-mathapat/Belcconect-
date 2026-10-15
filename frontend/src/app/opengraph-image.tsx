@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 export const alt = "BelConnect - Trusted Local Services & Jobs in Belagavi";
 export const size = {
@@ -57,6 +57,7 @@ export default function OpenGraphImage() {
             alignItems: "center",
             justifyContent: "space-between",
             width: "100%",
+            zIndex: 10,
           }}
         >
           {/* Logo + Brand Name */}
@@ -135,6 +136,7 @@ export default function OpenGraphImage() {
             flexDirection: "column",
             gap: "16px",
             maxWidth: "960px",
+            zIndex: 10,
           }}
         >
           <div
@@ -170,6 +172,7 @@ export default function OpenGraphImage() {
             width: "100%",
             borderTop: "1.5px solid rgba(255, 255, 255, 0.1)",
             paddingTop: "24px",
+            zIndex: 10,
           }}
         >
           {/* Quick Categories */}
