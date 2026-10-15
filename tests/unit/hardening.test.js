@@ -1739,11 +1739,44 @@ describe("22. Batch R2 Review Leftovers - Task 7: Prominent Location Disclosure"
     assert.ok(hookCode.includes("disclosure_declined"), "Must handle disclosure_declined status");
   });
 });
+describe("23. Batch R2 Review Leftovers - Task 8: Legal, Grievance Officer & Zero-Payment Hardening", () => {
+  test("1) Terms of Service includes Grievance Officer, 48h SLA, and zero in-app payments disclosure", () => {
+    const termsFile = path.resolve(__dirname, "../../frontend/src/app/terms/page.tsx");
+    assert.ok(fs.existsSync(termsFile), "terms/page.tsx must exist");
+    const termsCode = fs.readFileSync(termsFile, "utf-8");
 
+    // Grievance Officer
+    assert.ok(termsCode.includes("Akshay Mathapati"), "Terms must state Grievance Officer name Akshay Mathapati");
+    assert.ok(termsCode.includes("grievance@belconnect.in"), "Terms must provide grievance@belconnect.in");
+    assert.ok(termsCode.includes("48 hours"), "Terms must state 48-hour response/resolution SLA");
 
+    // Zero In-App Payments
+    assert.ok(termsCode.includes("Zero Platform Commission") || termsCode.includes("NO in-app payments"), "Terms must clearly state zero in-app payments");
+    assert.ok(termsCode.includes("offline"), "Terms must state offline settlement");
+    assert.ok(!termsCode.includes("billing address"), "Terms must not include legacy billing/payment wording");
+  });
 
+  test("2) Privacy Policy includes Grievance Officer, 48h SLA, zero payments, and no third-party analytics", () => {
+    const privacyFile = path.resolve(__dirname, "../../frontend/src/app/privacy/page.tsx");
+    assert.ok(fs.existsSync(privacyFile), "privacy/page.tsx must exist");
+    const privacyCode = fs.readFileSync(privacyFile, "utf-8");
 
+    // Grievance Officer
+    assert.ok(privacyCode.includes("Akshay Mathapati"), "Privacy must state Grievance Officer name Akshay Mathapati");
+    assert.ok(privacyCode.includes("grievance@belconnect.in"), "Privacy must provide grievance@belconnect.in");
+    assert.ok(privacyCode.includes("48 hours"), "Privacy must state 48-hour SLA");
 
+    // Zero In-App Payments & No Financial Data
+    assert.ok(privacyCode.includes("Zero Payment Data Collection") || privacyCode.includes("NO in-app payments") || privacyCode.includes("does NOT collect, store, or process any payment"), "Privacy must state no payment data collected");
+    assert.ok(!privacyCode.includes("Transaction Data includes details about payments"), "Must remove legacy payment transaction data wording");
+
+    // Analytics
+    assert.ok(privacyCode.includes("do not utilize third-party analytics trackers") || privacyCode.includes("No Third-Party Analytics Trackers"), "Privacy must accurately state no third-party analytics");
+
+    // Account Deletion Link
+    assert.ok(privacyCode.includes("/delete-account"), "Privacy must link to /delete-account");
+  });
+});
 
 
 

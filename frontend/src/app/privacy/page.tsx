@@ -1,4 +1,6 @@
+import Link from "next/link";
 import Footer from "@/components/sections/Footer";
+import { SITE_NAME } from "@/constants/site";
 
 export default function PrivacyPage() {
   return (
@@ -7,51 +9,85 @@ export default function PrivacyPage() {
         <div className="mx-auto max-w-3xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-heading font-bold tracking-tight mb-4">Privacy Policy</h1>
-            <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            <p className="text-muted-foreground">Last updated: October 2026</p>
           </div>
           
-          <div className="rounded-[2rem] border border-border bg-card p-8 sm:p-12 shadow-sm prose prose-slate dark:prose-invert max-w-none">
-            <h2>1. Introduction</h2>
-            <p>
-              Welcome to CityConnect. We respect your privacy and are committed to protecting your personal data. 
-              This privacy policy will inform you as to how we look after your personal data when you visit our website 
-              (regardless of where you visit it from) and tell you about your privacy rights and how the law protects you.
-            </p>
+          <div className="rounded-[2rem] border border-border bg-card p-8 sm:p-12 shadow-sm prose prose-slate dark:prose-invert max-w-none space-y-6">
+            <section>
+              <h2 className="text-xl font-bold text-foreground">1. Introduction</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+                Welcome to {SITE_NAME}. We respect your privacy and are committed to protecting your personal data. 
+                This privacy policy informs you about how we handle your personal data when you use our platform, 
+                your privacy rights, and the legal protections afforded to you under applicable laws, including the 
+                Information Technology Act, 2000 and Digital Personal Data Protection Act.
+              </p>
+            </section>
 
-            <h2>2. The data we collect about you</h2>
-            <p>We may collect, use, store and transfer different kinds of personal data about you which we have grouped together follows:</p>
-            <ul>
-              <li><strong>Identity Data</strong> includes first name, last name, username or similar identifier.</li>
-              <li><strong>Contact Data</strong> includes billing address, delivery address, email address and telephone numbers.</li>
-              <li><strong>Transaction Data</strong> includes details about payments to and from you and other details of services you have purchased from us.</li>
-              <li><strong>Technical Data</strong> includes internet protocol (IP) address, your login data, browser type and version, time zone setting and location.</li>
-            </ul>
+            <section>
+              <h2 className="text-xl font-bold text-foreground">2. Data We Collect</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+                We only collect minimal personal data strictly necessary to facilitate local service discovery and job connections:
+              </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5 mt-2">
+                <li><strong>Identity & Account Data:</strong> Mobile phone number, full name, profile photo, and password credentials.</li>
+                <li><strong>Service & Booking Data:</strong> Service categories requested, booking descriptions, preferred time slots, and general service locality.</li>
+                <li><strong>Location Data:</strong> Device geographic coordinates (only collected with your explicit in-app consent for matching nearby providers or during active booking execution).</li>
+                <li><strong>Provider Verification Data:</strong> Government ID details (masked to the last 4 digits) strictly for KYC safety verification.</li>
+              </ul>
+            </section>
 
-            <h2>3. How we use your personal data</h2>
-            <p>
-              We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances:
-            </p>
-            <ul>
-              <li>Where we need to perform the contract we are about to enter into or have entered into with you.</li>
-              <li>Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests.</li>
-              <li>Where we need to comply with a legal or regulatory obligation.</li>
-            </ul>
+            <section>
+              <h2 className="text-xl font-bold text-foreground">3. No In-App Payments & No Financial Data</h2>
+              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-foreground space-y-2 mt-2">
+                <p className="font-bold text-blue-600 dark:text-blue-400">
+                  Zero Payment Data Collection:
+                </p>
+                <p>
+                  <strong>{SITE_NAME} does NOT collect, store, or process any payment, banking, or financial data.</strong>
+                </p>
+                <p className="text-muted-foreground">
+                  There are no digital payment gateways, wallets, credit card processors, or UPI collection mechanisms on {SITE_NAME}. 
+                  All remuneration and service charges are settled directly between customer and provider offline (via cash or direct peer-to-peer UPI) upon satisfactory job completion.
+                </p>
+              </div>
+            </section>
 
-            <h2>4. Data Security</h2>
-            <p>
-              We have put in place appropriate security measures to prevent your personal data from being accidentally lost, 
-              used or accessed in an unauthorised way, altered or disclosed. In addition, we limit access to your personal 
-              data to those employees, agents, contractors and other third parties who have a business need to know.
-            </p>
+            <section>
+              <h2 className="text-xl font-bold text-foreground">4. Analytics & Tracking Policy</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+                {SITE_NAME} prioritizes user privacy. <strong>We do not utilize third-party analytics trackers, advertising pixels, or behavioral profiling tools</strong> (such as Google Analytics or Facebook Pixel). 
+                Essential system logs are maintained solely for platform stability, rate limiting, and security compliance.
+              </p>
+            </section>
 
-            <h2>5. Contact Us</h2>
-            <p>
-              If you have any questions about this privacy policy or our privacy practices, please contact us at:
-              <br />
-              Email: privacy@cityconnect.in
-              <br />
-              Address: Belagavi, Karnataka, India
-            </p>
+            <section>
+              <h2 className="text-xl font-bold text-foreground">5. Data Retention & Account Deletion</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+                You retain full ownership and control over your personal data. You may request permanent deletion of your account and all associated personal data at any time directly through the app settings or via our public{" "}
+                <Link href="/delete-account" className="text-primary font-medium underline">
+                  Account Deletion Portal
+                </Link>.
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+                Upon submitting a deletion request, your profile, contact details, KYC documents, and personal identifiers are expunged within 48 hours, retaining only non-identifiable audit logs required by statutory law.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-bold text-foreground">6. Grievance Redressal & Contact Officer</h2>
+              <div className="p-4 rounded-xl bg-muted/50 border border-border text-xs text-foreground space-y-2 mt-2">
+                <p className="font-bold text-foreground">
+                  Grievance Redressal Mechanism (Rule 3(2) of Information Technology Rules, 2021):
+                </p>
+                <div className="space-y-1 text-muted-foreground">
+                  <p><strong>Grievance Officer:</strong> Akshay Mathapati</p>
+                  <p><strong>Email:</strong> <a href="mailto:grievance@belconnect.in" className="text-primary underline">grievance@belconnect.in</a></p>
+                  <p><strong>Support Email:</strong> <a href="mailto:support@belconnect.in" className="text-primary underline">support@belconnect.in</a></p>
+                  <p><strong>Postal Address:</strong> Belagavi, Karnataka, India - 590001</p>
+                  <p><strong>Response & Resolution SLA:</strong> Initial acknowledgement within 24 hours; complete dispute/inquiry resolution within 48 hours of receipt.</p>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
