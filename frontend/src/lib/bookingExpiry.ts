@@ -74,8 +74,11 @@ export const EXPIRY_TRANSLATIONS: Record<string, { title: string; body: (service
 };
 
 export function getExpiryNotificationText(lang: string = "en", serviceName: string = "Service") {
-  const normalized = ["en", "kn", "hi", "mr"].includes(lang?.toLowerCase()) ? lang.toLowerCase() : "en";
-  const item = EXPIRY_TRANSLATIONS[normalized] || EXPIRY_TRANSLATIONS.en;
+  const l = (lang || "").toLowerCase();
+  const item = l === "kn" ? EXPIRY_TRANSLATIONS.kn
+    : l === "hi" ? EXPIRY_TRANSLATIONS.hi
+    : l === "mr" ? EXPIRY_TRANSLATIONS.mr
+    : EXPIRY_TRANSLATIONS.en;
   return {
     title: item.title,
     body: item.body(serviceName)
@@ -117,13 +120,13 @@ export async function getSuggestedProviders(
     `;
 
     const res = await query(sql, params);
-    return res.rows.map((r: any) => ({
-      id: r.id,
-      name: r.name || "Verified Professional",
-      avatar: r.avatar || null,
+    return res.rows.map((r: Record<string, unknown>) => ({
+      id: String(r.id),
+      name: typeof r.name === "string" ? r.name : "Verified Professional",
+      avatar: typeof r.avatar === "string" ? r.avatar : null,
       rating: typeof r.rating === "number" ? r.rating : 5.0,
-      phone: r.phone || null,
-      serviceTitle: r.service_title || null
+      phone: typeof r.phone === "string" ? r.phone : null,
+      serviceTitle: typeof r.service_title === "string" ? r.service_title : null
     }));
   } catch (err) {
     console.error("[BookingExpiry] Error fetching alternative suggested providers:", err);

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
-import { TESTIMONIALS } from "@/constants/site";
 
 interface ReviewItem {
   id: string;
@@ -58,13 +57,13 @@ export function Testimonials() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          const formatted = data.map((r: any) => ({
-            id: r.id || String(Math.random()),
-            name: r.customerName || "Verified Customer",
-            service: r.serviceName || "Home Service",
-            rating: Number(r.rating) || 5,
-            quote: r.comment || "",
-            avatar: (r.customerName || "C").slice(0, 2).toUpperCase(),
+          const formatted = data.map((r: Record<string, unknown>) => ({
+            id: typeof r.id === "string" ? r.id : String(Math.random()),
+            name: typeof r.customerName === "string" ? r.customerName : "Verified Customer",
+            service: typeof r.serviceName === "string" ? r.serviceName : "Home Service",
+            rating: typeof r.rating === "number" ? r.rating : 5,
+            quote: typeof r.comment === "string" ? r.comment : "",
+            avatar: (typeof r.customerName === "string" ? r.customerName : "C").slice(0, 2).toUpperCase(),
           })).filter((r: ReviewItem) => r.quote.trim().length > 0);
           setReviews(formatted);
         }

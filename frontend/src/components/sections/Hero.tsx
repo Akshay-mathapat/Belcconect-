@@ -17,14 +17,15 @@ import {
   GraduationCap, 
   Monitor, 
   PawPrint,
-  ArrowRight
+  ArrowRight,
+  LucideIcon
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SERVICE_CATEGORIES, BELAGAVI_AREAS } from "@/constants/site";
 import { useTranslation } from "@/lib/i18n";
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
 };
 

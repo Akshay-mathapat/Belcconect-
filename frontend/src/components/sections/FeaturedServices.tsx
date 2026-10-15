@@ -14,7 +14,6 @@ import {
   CreditCard,
   ThumbsUp
 } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
 
 const featuredPackages = [
   {
@@ -107,8 +106,6 @@ const userBenefits = [
 ];
 
 export function FeaturedServices() {
-  const { t } = useTranslation();
-
   return (
     <section className="py-20 sm:py-28 bg-gradient-to-b from-background via-muted/30 to-background border-y border-border/40">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

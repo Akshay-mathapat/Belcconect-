@@ -30,8 +30,9 @@ export async function GET() {
       reviewCount,
       categoryCount
     });
-  } catch (err: any) {
-    console.error("Platform metrics retrieval error:", err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Platform metrics retrieval error:", msg);
     return NextResponse.json({
       completedBookings: 0,
       verifiedProviders: 0,
