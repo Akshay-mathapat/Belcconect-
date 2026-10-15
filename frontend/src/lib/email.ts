@@ -1,4 +1,17 @@
 import nodemailer from "nodemailer";
+import crypto from "crypto";
+
+function normalizeSecret(val?: string | null): string {
+  if (!val || typeof val !== "string") return "";
+  let s = val.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"') && s.length >= 2) ||
+    (s.startsWith("'") && s.endsWith("'") && s.length >= 2)
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
 
 export interface SendPasswordResetOtpEmailParams {
   to: string;
@@ -72,11 +85,26 @@ export async function verifySmtpConnection(): Promise<boolean> {
 }
 
 /**
- * Helper to compute HMAC SHA-256 hash for OTP storage and verification
+ * Helper to compute HMAC SHA-256 hash for OTP storage and verification.
+ * Requires PASSWORD_RESET_OTP_SECRET (min 32 characters) with no hardcoded fallback.
  */
+export function getPasswordResetOtpSecret(): string {
+  const secret = normalizeSecret(process.env.PASSWORD_RESET_OTP_SECRET);
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "FATAL: PASSWORD_RESET_OTP_SECRET environment variable is missing or shorter than 32 characters."
+    );
+  }
+  return secret;
+}
+
+// Require PASSWORD_RESET_OTP_SECRET (min 32 chars) and throw at startup if missing
+if (typeof window === "undefined" && process.env.NODE_ENV !== "test") {
+  getPasswordResetOtpSecret();
+}
+
 export function hashOtpWithHmac(userId: string, otp: string): string {
-  const crypto = require("crypto");
-  const secret = process.env.PASSWORD_RESET_OTP_SECRET || "default_belconnect_otp_hmac_secret";
+  const secret = getPasswordResetOtpSecret();
   return crypto
     .createHmac("sha256", secret)
     .update(`${userId}:${otp}`)

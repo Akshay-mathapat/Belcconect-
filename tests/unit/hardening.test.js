@@ -1015,6 +1015,44 @@ describe("10. Maps, Directions, Geocoding & Offline Fallback Hardening Tests", (
   });
 });
 
+describe("11. Password Reset OTP Secret Hardening Tests", () => {
+  test("1) email.ts contains no hardcoded fallback for PASSWORD_RESET_OTP_SECRET", () => {
+    const emailFile = path.resolve(__dirname, "../../frontend/src/lib/email.ts");
+    assert.ok(fs.existsSync(emailFile), "email.ts must exist");
+    const emailCode = fs.readFileSync(emailFile, "utf-8");
+    assert.ok(!emailCode.includes("default_belconnect_otp_hmac_secret"), "Must not contain hardcoded default secret");
+    assert.ok(emailCode.includes("PASSWORD_RESET_OTP_SECRET"), "Must reference PASSWORD_RESET_OTP_SECRET");
+    assert.ok(emailCode.includes("secret.length < 32"), "Must enforce minimum 32 characters requirement");
+    assert.ok(emailCode.includes("getPasswordResetOtpSecret"), "Must validate secret with helper");
+  });
 
+  test("2) getPasswordResetOtpSecret throws if missing or shorter than 32 characters", async () => {
+    const { getPasswordResetOtpSecret, hashOtpWithHmac } = await import("../../frontend/src/lib/email.ts");
+    const originalSecret = process.env.PASSWORD_RESET_OTP_SECRET;
 
+    try {
+      // Test missing
+      delete process.env.PASSWORD_RESET_OTP_SECRET;
+      assert.throws(() => getPasswordResetOtpSecret(), /FATAL: PASSWORD_RESET_OTP_SECRET/);
+      assert.throws(() => hashOtpWithHmac("user123", "123456"), /FATAL: PASSWORD_RESET_OTP_SECRET/);
 
+      // Test too short
+      process.env.PASSWORD_RESET_OTP_SECRET = "too_short_secret";
+      assert.throws(() => getPasswordResetOtpSecret(), /shorter than 32 characters/);
+
+      // Test valid >= 32 characters
+      process.env.PASSWORD_RESET_OTP_SECRET = "valid_secure_secret_with_more_than_32_characters_12345";
+      const secret = getPasswordResetOtpSecret();
+      assert.strictEqual(secret, "valid_secure_secret_with_more_than_32_characters_12345");
+      const hash = hashOtpWithHmac("user123", "123456");
+      assert.strictEqual(typeof hash, "string");
+      assert.strictEqual(hash.length, 64);
+    } finally {
+      if (originalSecret !== undefined) {
+        process.env.PASSWORD_RESET_OTP_SECRET = originalSecret;
+      } else {
+        delete process.env.PASSWORD_RESET_OTP_SECRET;
+      }
+    }
+  });
+});
