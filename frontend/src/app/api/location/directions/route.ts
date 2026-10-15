@@ -82,55 +82,14 @@ export async function GET(request: Request) {
             setCachedRoute(cacheKey, result, 45 * 1000);
             return NextResponse.json(result);
           } else {
-            console.warn(`[Directions API] Google Directions non-OK status: ${data.status} - ${data.error_message || ""}`);
-
-            // If Directions API is not enabled, try Google Routes API (v2)
-            try {
-              const routesRes = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Goog-Api-Key": googleApiKey,
-                  "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
-                },
-                body: JSON.stringify({
-                  origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
-                  destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
-                  travelMode: "DRIVE"
-                }),
-                signal: AbortSignal.timeout(5000)
-              });
-
-              if (routesRes.ok) {
-                const rData = await routesRes.json();
-                if (rData.routes && rData.routes.length > 0) {
-                  const r = rData.routes[0];
-                  const dist = r.distanceMeters || 0;
-                  const durSec = parseInt((r.duration || "0s").replace("s", ""), 10) || 0;
-                  const durMin = Math.max(1, Math.ceil(durSec / 60));
-                  const poly = r.polyline?.encodedPolyline || "";
-                  const coordinates = decodeGooglePolyline(poly);
-
-                  const result: RouteResult = {
-                    success: true,
-                    distanceMeters: dist,
-                    durationMinutes: durMin,
-                    coordinates: coordinates.length > 0 ? coordinates : [origin, dest],
-                    provider: "google",
-                    fallback: false
-                  };
-
-                  setCachedRoute(cacheKey, result, 45 * 1000);
-                  return NextResponse.json(result);
-                }
-              }
-            } catch (routesErr) {
-              console.warn("[Directions API] Google Routes API fallback failed:", routesErr);
+            // Google Directions legacy API is not enabled or denied for this key; quietly fall through to OSRM
+            if (process.env.NODE_ENV !== "production") {
+              console.log(`[Directions API] Google Directions status: ${data.status} - falling back to OSRM`);
             }
           }
         }
       } catch (err: any) {
-        console.warn("[Directions API] Google Directions fetch error, falling back:", err?.message || err);
+        // Fall back to OSRM without crashing
       }
     }
 
