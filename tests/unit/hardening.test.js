@@ -1806,3 +1806,40 @@ describe("23. Batch R2 Review Leftovers - Task 8: Legal, Grievance Officer & Zer
     assert.ok(!code.includes('"{profile.bio'), "Profile bio must escape double quotes");
   });
 });
+
+describe("25. Batch R2 Review Leftovers - Task 10: Repo Cleanup & Gitignore Hardening", () => {
+  test("1) target cleanup files and directories are completely removed from repo", () => {
+    const root = path.resolve(__dirname, "../..");
+    const targets = [
+      "CityConnect-Latest.zip",
+      "archive",
+      "scratch",
+      "playwright-report",
+      "test-results",
+      "frontend/playwright-report",
+      "frontend/test-results",
+      "tests/load/customer_tokens.json",
+      "tests/load/tokens.json",
+      "tests/load/staging_users.json"
+    ];
+
+    for (const t of targets) {
+      const fullPath = path.join(root, t);
+      assert.ok(!fs.existsSync(fullPath), `Target ${t} must not exist in repo`);
+    }
+  });
+
+  test("2) .gitignore contains exclusions for all cleanup patterns", () => {
+    const gitignorePath = path.resolve(__dirname, "../../.gitignore");
+    const code = fs.readFileSync(gitignorePath, "utf-8");
+
+    assert.ok(code.includes("archive/"), ".gitignore must include archive/");
+    assert.ok(code.includes("scratch/"), ".gitignore must include scratch/");
+    assert.ok(code.includes("CityConnect-Latest.zip"), ".gitignore must include CityConnect-Latest.zip");
+    assert.ok(code.includes("tests/load/*token*.json"), ".gitignore must include tests/load tokens");
+    assert.ok(code.includes("staging_users.json"), ".gitignore must include staging_users.json");
+    assert.ok(code.includes("playwright-report/"), ".gitignore must include playwright-report/");
+    assert.ok(code.includes("test-results/"), ".gitignore must include test-results/");
+  });
+});
+

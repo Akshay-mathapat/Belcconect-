@@ -83,4 +83,20 @@ android/app/src/main/assets/public/uploads/*
 *.jks
 *.keystore
 
+# Temporary & Archive Directories
+archive/
+**/archive/
+scratch/
+**/scratch/
+
+# Release archives
+*.zip
+CityConnect-Latest.zip
+
+# Load test credentials & staging data
+tests/load/*token*.json
+tests/load/staging_users.json
+staging_users.json
+loadtest/*token*.json
+
 
