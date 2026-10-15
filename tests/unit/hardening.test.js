@@ -1552,6 +1552,47 @@ describe("18. Batch R2 Review Leftovers - Task 2: Domain Hardening", () => {
   });
 });
 
+describe("19. Batch R2 Review Leftovers - Task 3: Maps Rate Limiting Hardening", () => {
+  test("1) /api/location routes enforce both per-IP and per-user rate limits", () => {
+    const directionsFile = path.resolve(__dirname, "../../frontend/src/app/api/location/directions/route.ts");
+    const routeAliasFile = path.resolve(__dirname, "../../frontend/src/app/api/location/route/route.ts");
+    const rootRouteFile = path.resolve(__dirname, "../../frontend/src/app/api/location/route.ts");
+
+    assert.ok(fs.existsSync(directionsFile), "directions route must exist");
+    assert.ok(fs.existsSync(routeAliasFile), "location/route alias must exist");
+    assert.ok(fs.existsSync(rootRouteFile), "location/route root entry must exist");
+
+    const directionsCode = fs.readFileSync(directionsFile, "utf-8");
+    assert.ok(directionsCode.includes("checkIpRateLimit"), "directions route must call checkIpRateLimit");
+    assert.ok(directionsCode.includes("checkUserRateLimit"), "directions route must call checkUserRateLimit");
+
+    const aliasCode = fs.readFileSync(routeAliasFile, "utf-8");
+    assert.ok(aliasCode.includes('from "../directions/route"'), "alias must delegate to directions route");
+
+    const rootCode = fs.readFileSync(rootRouteFile, "utf-8");
+    assert.ok(rootCode.includes('from "./directions/route"'), "root route must delegate to directions route");
+  });
+
+  test("2) /api/location/reverse-geocode enforces both per-IP and per-user rate limits", () => {
+    const revFile = path.resolve(__dirname, "../../frontend/src/app/api/location/reverse-geocode/route.ts");
+    assert.ok(fs.existsSync(revFile), "reverse-geocode route must exist");
+    const revCode = fs.readFileSync(revFile, "utf-8");
+
+    assert.ok(revCode.includes("checkIpRateLimit"), "reverse-geocode must call checkIpRateLimit");
+    assert.ok(revCode.includes("checkUserRateLimit"), "reverse-geocode must call checkUserRateLimit");
+  });
+
+  test("3) /api/map-tile/[provider]/[z]/[x]/[y] enforces both per-IP and per-user rate limits", () => {
+    const tileFile = path.resolve(__dirname, "../../frontend/src/app/api/map-tile/[provider]/[z]/[x]/[y]/route.ts");
+    assert.ok(fs.existsSync(tileFile), "map tile route must exist");
+    const tileCode = fs.readFileSync(tileFile, "utf-8");
+
+    assert.ok(tileCode.includes("checkIpRateLimit"), "map tile route must call checkIpRateLimit");
+    assert.ok(tileCode.includes("checkUserRateLimit"), "map tile route must call checkUserRateLimit");
+  });
+});
+
+
 
 
 
