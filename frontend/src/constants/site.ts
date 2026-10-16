@@ -45,7 +45,7 @@ export const NAV_LINKS = [
   { i18nKey: "nav.home", href: "/", label: "Home" },
   { i18nKey: "nav.services", href: "/services", label: "Services" },
   { i18nKey: "nav.jobs", href: "/jobs", label: "Jobs" },
-  { i18nKey: "nav.providers", href: "/register/provider", label: "Join as Provider" },
+  { i18nKey: "nav.providers", href: "/auth?mode=signup&role=provider", label: "Join as Provider" },
 ] as const;
 
 /* ═══════ Search Placeholder Suggestions ═══════ */

@@ -35,7 +35,7 @@ export default function Footer() {
     {
       title: t("footer.providersTitle") !== "footer.providersTitle" ? t("footer.providersTitle") : "For Providers",
       links: [
-        { label: t("footer.registerPro") !== "footer.registerPro" ? t("footer.registerPro") : "Register as a Pro", href: "/register/provider" },
+        { label: t("footer.registerPro") !== "footer.registerPro" ? t("footer.registerPro") : "Register as a Pro", href: "/auth?mode=signup&role=provider" },
         { label: t("footer.dashboard") !== "footer.dashboard" ? t("footer.dashboard") : "Provider Dashboard", href: "/provider" },
       ],
     },

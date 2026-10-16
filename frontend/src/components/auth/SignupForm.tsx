@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight, Briefcase, Building2, Check, Eye, EyeOff, Lock, Mail, Phone, User, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,8 +22,20 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const rawReturnTo = searchParams?.get("returnTo") || searchParams?.get("redirect");
   const safeReturnTo = getSafeReturnUrl(rawReturnTo);
 
+  const getRoleFromParams = (): UserRole => {
+    const raw = (searchParams?.get("role") || searchParams?.get("accountType") || "").toLowerCase().trim();
+    if (raw === "provider" || raw === "service_provider") return "provider";
+    if (raw === "job_provider" || raw === "employer") return "job_provider";
+    return "user";
+  };
+
   const { registerUser } = useAuthStore();
-  const [signupRole, setSignupRole] = useState<UserRole>("user");
+  const [signupRole, setSignupRole] = useState<UserRole>(getRoleFromParams);
+
+  useEffect(() => {
+    const matchedRole = getRoleFromParams();
+    setSignupRole(matchedRole);
+  }, [searchParams]);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
