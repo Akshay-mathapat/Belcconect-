@@ -52,6 +52,7 @@ self.addEventListener("fetch", (event) => {
   // STRICT BYPASS RULE: Do not call event.respondWith(), do not cache, do not synthesize fallback
   if (
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/admin") ||
     url.pathname.includes("socket.io") ||
     url.pathname.includes("/auth/") ||
     url.pathname.includes("/livekit")
