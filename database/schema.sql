@@ -466,7 +466,9 @@ CREATE TABLE IF NOT EXISTS public.account_deletion_requests (
     status CHARACTER VARYING(32) DEFAULT 'completed'::character varying NOT NULL,
     requested_via CHARACTER VARYING(32) DEFAULT 'in_app'::character varying NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    completed_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    rejection_reason TEXT,
+    processed_by CHARACTER VARYING(255)
 );
 CREATE INDEX IF NOT EXISTS idx_account_deletion_user ON public.account_deletion_requests USING btree (user_id);
 CREATE INDEX IF NOT EXISTS idx_account_deletion_phone ON public.account_deletion_requests USING btree (phone);

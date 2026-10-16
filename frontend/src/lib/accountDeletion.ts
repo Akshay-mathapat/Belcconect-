@@ -213,3 +213,4 @@ export async function performAccountDeletionTx(
 
   throw new Error(`Unsupported account role for deletion: ${role}`);
 }
+

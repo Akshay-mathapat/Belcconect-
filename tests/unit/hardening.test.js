@@ -1633,8 +1633,9 @@ describe("20. Batch R2 Review Leftovers - Task 5: Android Build Hardening & Uplo
 describe("21. Batch R2 Review Leftovers - Task 6: Multi-Role Account Deletion & Play Store Compliance", () => {
   test("1) /api/account/delete handles customers, providers, job providers, and public web requests", () => {
     const routeFile = path.resolve(__dirname, "../../frontend/src/app/api/account/delete/route.ts");
+    const libFile = path.resolve(__dirname, "../../frontend/src/lib/accountDeletion.ts");
     assert.ok(fs.existsSync(routeFile), "delete route must exist");
-    const routeCode = fs.readFileSync(routeFile, "utf-8");
+    const routeCode = fs.readFileSync(routeFile, "utf-8") + (fs.existsSync(libFile) ? "\n" + fs.readFileSync(libFile, "utf-8") : "");
 
     // All 3 roles handled
     assert.ok(routeCode.includes("role === \"user\"") || routeCode.includes("customer"), "Must handle customer deletion");
