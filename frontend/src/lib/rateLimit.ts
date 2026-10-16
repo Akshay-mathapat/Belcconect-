@@ -52,7 +52,8 @@ export {
 export async function checkRateLimit(
   request: Request,
   limit: number = 120,
-  windowMs: number = 60 * 1000
+  windowMs: number = 60 * 1000,
+  prefix?: string
 ): Promise<{
   isAllowed: boolean;
   remaining: number;
@@ -61,7 +62,18 @@ export async function checkRateLimit(
   response?: NextResponse;
 }> {
   const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
-  const result = await checkIpRateLimit(request, limit, windowSeconds);
+  
+  let routePrefix = prefix;
+  if (!routePrefix && request && typeof request.url === "string") {
+    try {
+      const url = new URL(request.url);
+      routePrefix = url.pathname.replace(/^\/api\//, "").replace(/[^a-zA-Z0-9_\-]/g, "_");
+    } catch {
+      // Fallback if URL parsing is unavailable
+    }
+  }
+
+  const result = await checkIpRateLimit(request, limit, windowSeconds, undefined, routePrefix);
 
   if (!result.isAllowed) {
     const response = NextResponse.json(

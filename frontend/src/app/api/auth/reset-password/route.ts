@@ -5,8 +5,8 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, resetPasswordSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  // 1. Rate Limiting Check (Max 3 attempts per 5 minutes per IP)
-  const rateLimit = await checkRateLimit(request, 3, 5 * 60 * 1000);
+  // 1. Rate Limiting Check (Max 10 attempts per 5 minutes per IP)
+  const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
     return rateLimit.response;
   }

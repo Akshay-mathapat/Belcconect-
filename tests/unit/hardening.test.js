@@ -1843,3 +1843,31 @@ describe("25. Batch R2 Review Leftovers - Task 10: Repo Cleanup & Gitignore Hard
   });
 });
 
+describe("26. Rate Limiting Namespace Isolation & Reset-Password Usability Tests", () => {
+  test("1) checkIpRateLimit isolates buckets by prefix namespace", async () => {
+    const { InMemoryStore, checkIpRateLimit } = await getRateLimitCore();
+    const testStore = new InMemoryStore();
+    const testIp = "198.51.100.42";
+
+    // Make 3 requests to forgot-password prefix
+    for (let i = 0; i < 3; i++) {
+      await checkIpRateLimit(testIp, 5, 60, testStore, "auth_forgot_password");
+    }
+
+    // A request to reset-password prefix must NOT be blocked by forgot-password requests
+    const resetResult = await checkIpRateLimit(testIp, 10, 60, testStore, "auth_reset_password");
+    assert.strictEqual(resetResult.isAllowed, true);
+    assert.strictEqual(resetResult.totalPoints, 1, "Reset password bucket must start at 1, independent of forgot-password");
+    assert.strictEqual(resetResult.remaining, 9);
+  });
+
+  test("2) reset-password route allocates at least 10 attempts and does not block legitimate users", () => {
+    const resetRouteFile = path.resolve(__dirname, "../../frontend/src/app/api/auth/reset-password/route.ts");
+    assert.ok(fs.existsSync(resetRouteFile), "reset-password route must exist");
+    const code = fs.readFileSync(resetRouteFile, "utf-8");
+
+    assert.ok(code.includes("checkRateLimit(request, 10,"), "reset-password must allocate at least 10 attempts per window");
+  });
+});
+
+

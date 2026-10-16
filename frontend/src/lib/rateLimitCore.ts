@@ -276,18 +276,20 @@ export async function checkIpRateLimit(
   requestOrIp: Request | string,
   limit: number = 120,
   windowSeconds: number = 60,
-  storeOverride?: IRateLimitStore
+  storeOverride?: IRateLimitStore,
+  prefix?: string
 ): Promise<RateLimitResult> {
+  const pfx = prefix ? `rl:${prefix}:` : "rl:ip:";
   let ipKey: string;
   if (typeof requestOrIp === "string") {
     ipKey = requestOrIp.startsWith("anon_req_")
       ? requestOrIp
-      : `rl:ip:${requestOrIp}`;
+      : `${pfx}${requestOrIp}`;
   } else {
     const clientIp = getClientIp(requestOrIp);
     ipKey = clientIp.startsWith("anon_req_")
       ? clientIp
-      : `rl:ip:${clientIp}`;
+      : `${pfx}${clientIp}`;
   }
 
   if (ipKey.startsWith("anon_req_")) {
