@@ -182,6 +182,7 @@ export default function AccountPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
 
   const handleDeleteAccount = async () => {
     try {
@@ -194,7 +195,10 @@ export default function AccountPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ reason: "Customer requested in-app account deletion" })
+        body: JSON.stringify({
+          password: deletePassword,
+          reason: "Customer requested in-app account deletion"
+        })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1527,6 +1531,19 @@ export default function AccountPage() {
                 <p className="text-[11px] text-muted-foreground/80">
                   Any completed bookings will be anonymized for statutory accounting compliance.
                 </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  Enter password to confirm deletion:
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter current password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
