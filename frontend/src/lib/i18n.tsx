@@ -30,7 +30,7 @@ export const LOCALES: LanguageOption[] = [
   { code: "en", label: "English", nativeLabel: "English", regionCode: "en-IN" },
   { code: "kn", label: "Kannada", nativeLabel: "ಕನ್ನಡ", regionCode: "kn-IN" },
   { code: "hi", label: "Hindi", nativeLabel: "हिन्दी", regionCode: "hi-IN" },
-  { code: "mr", label: "Marathi", nativeLabel: "ಮರಾಠಿ", regionCode: "mr-IN" },
+  { code: "mr", label: "Marathi", nativeLabel: "मराठी", regionCode: "mr-IN" },
 ];
 
 const STORAGE_KEYS = ["cityconnect:language", "cityconnect-locale"];

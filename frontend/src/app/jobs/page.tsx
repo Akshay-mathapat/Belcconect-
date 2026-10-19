@@ -14,6 +14,22 @@ import {
   ChevronRight,
   CheckCircle2,
   Loader2,
+  Layers,
+  Zap,
+  Droplets,
+  Wind,
+  Hammer,
+  Paintbrush,
+  Car,
+  Monitor,
+  FileText,
+  ShoppingBag,
+  Truck,
+  ChevronDown,
+  ChevronUp,
+  X,
+  SlidersHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -65,22 +81,26 @@ export default function JobsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllLocations, setShowAllLocations] = useState(false);
+
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const jobTypes = ["all", "Full-time", "Part-time", "Contract", "Internship"];
   const workModes = ["all", "On-site", "Remote", "Hybrid"];
   const categories = [
-    { id: "all", label: "All Categories" },
-    { id: "Electrical", label: "Electrical" },
-    { id: "Plumbing", label: "Plumbing" },
-    { id: "HVAC & AC Repair", label: "HVAC & AC" },
-    { id: "Carpentry", label: "Carpentry" },
-    { id: "Painting", label: "Painting" },
-    { id: "Automotive", label: "Automotive" },
-    { id: "IT & Tech", label: "IT & Tech" },
-    { id: "Administration", label: "Administration" },
-    { id: "Retail & Sales", label: "Retail & Sales" },
-    { id: "Logistics", label: "Logistics" },
+    { id: "all", label: "All Categories", icon: Layers },
+    { id: "Electrical", label: "Electrical", icon: Zap },
+    { id: "Plumbing", label: "Plumbing", icon: Droplets },
+    { id: "HVAC & AC Repair", label: "HVAC & AC Repair", icon: Wind },
+    { id: "Carpentry", label: "Carpentry", icon: Hammer },
+    { id: "Painting", label: "Painting", icon: Paintbrush },
+    { id: "Automotive", label: "Automotive", icon: Car },
+    { id: "IT & Tech", label: "IT & Tech", icon: Monitor },
+    { id: "Administration", label: "Administration", icon: FileText },
+    { id: "Retail & Sales", label: "Retail & Sales", icon: ShoppingBag },
+    { id: "Logistics", label: "Logistics", icon: Truck },
   ];
 
   const locations = [
@@ -93,6 +113,29 @@ export default function JobsPage() {
     "Hubli",
     "Dharwad",
   ];
+
+  const activeFilterCount =
+    (selectedCategory !== "all" ? 1 : 0) +
+    (selectedLocation !== "all" ? 1 : 0) +
+    (selectedType !== "all" ? 1 : 0) +
+    (selectedWorkMode !== "all" ? 1 : 0) +
+    (debouncedQuery ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setSelectedCategory("all");
+    setSelectedLocation("all");
+    setSelectedType("all");
+    setSelectedWorkMode("all");
+    setSearchQuery("");
+  };
+
+  const displayedCategories = showAllCategories
+    ? categories
+    : categories.filter((c, idx) => idx < 6 || c.id === selectedCategory);
+
+  const displayedLocations = showAllLocations
+    ? locations
+    : locations.filter((loc, idx) => idx < 5 || loc === selectedLocation);
 
   // 300 ms Debounce for search query input
   useEffect(() => {
@@ -168,6 +211,245 @@ export default function JobsPage() {
     return `${Math.floor(days / 30)}mo ago`;
   };
 
+  const renderFilterContent = () => (
+    <div className="space-y-6">
+      {/* Header with Active Badge & Reset */}
+      <div className="flex items-center justify-between pb-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-blue-600" />
+          <h3 className="font-bold text-sm text-foreground">Filters</h3>
+          {activeFilterCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset
+          </button>
+        )}
+      </div>
+
+      {/* 1. CATEGORIES (OLX Style) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 text-blue-600" />
+            Categories
+          </label>
+          {selectedCategory !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("all")}
+              className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="space-y-1">
+          {displayedCategories.map((c) => {
+            const Icon = c.icon;
+            const isSelected = selectedCategory === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(c.id);
+                  setIsMobileFilterOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? "bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-600/20 shadow-xs"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} />
+                  <span className="truncate">{c.label}</span>
+                </div>
+                {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+        {categories.length > 6 && (
+          <button
+            type="button"
+            onClick={() => setShowAllCategories(!showAllCategories)}
+            className="w-full pt-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>{showAllCategories ? "Show Less" : `View All Categories (+${categories.length - 6})`}</span>
+            {showAllCategories ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        )}
+      </div>
+
+      {/* 2. LOCATIONS (OLX Style) */}
+      <div className="space-y-2 pt-2 border-t border-border/60">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-blue-600" />
+            Location
+          </label>
+          {selectedLocation !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedLocation("all")}
+              className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="space-y-1">
+          {displayedLocations.map((loc) => {
+            const isSelected = selectedLocation === loc;
+            return (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => {
+                  setSelectedLocation(loc);
+                  setIsMobileFilterOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? "bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-600/20 shadow-xs"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <MapPin className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} />
+                  <span className="truncate">{loc === "all" ? "All Locations" : loc}</span>
+                </div>
+                {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+        {locations.length > 5 && (
+          <button
+            type="button"
+            onClick={() => setShowAllLocations(!showAllLocations)}
+            className="w-full pt-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>{showAllLocations ? "Show Less" : `View All Locations (+${locations.length - 5})`}</span>
+            {showAllLocations ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        )}
+      </div>
+
+      {/* 3. JOB TYPE (OLX Style) */}
+      <div className="space-y-2 pt-2 border-t border-border/60">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Briefcase className="h-3.5 w-3.5 text-blue-600" />
+            Job Type
+          </label>
+          {selectedType !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedType("all")}
+              className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="space-y-1">
+          {jobTypes.map((type) => {
+            const isSelected = selectedType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  setSelectedType(type);
+                  setIsMobileFilterOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? "bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-600/20 shadow-xs"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <span>{type === "all" ? "All Types" : type}</span>
+                {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. WORK MODE (OLX Style) */}
+      <div className="space-y-2 pt-2 border-t border-border/60">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-blue-600" />
+            Work Mode
+          </label>
+          {selectedWorkMode !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedWorkMode("all")}
+              className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="space-y-1">
+          {workModes.map((mode) => {
+            const isSelected = selectedWorkMode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setSelectedWorkMode(mode);
+                  setIsMobileFilterOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? "bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-600/20 shadow-xs"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <span>{mode === "all" ? "All Modes" : mode}</span>
+                {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 5. Employer CTA Box in Sidebar */}
+      <div className="p-4 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white space-y-2 shadow-xs">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4" />
+          <h4 className="text-xs font-bold uppercase tracking-wider">Hiring in Belagavi?</h4>
+        </div>
+        <p className="text-[11px] text-blue-100 leading-relaxed">
+          Connect with skilled technicians, craftsmen, and local professionals.
+        </p>
+        <Link
+          href={currentUser?.role === "job_provider" ? "/jobprovider/post-job" : "/register"}
+          className="inline-block w-full py-2 text-center text-xs font-bold rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition-colors shadow-sm"
+        >
+          Post a Job Opening
+        </Link>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-muted/10 text-foreground pb-20">
       {/* Hero Search Banner */}
@@ -215,134 +497,16 @@ export default function JobsPage() {
               </select>
             </div>
           </div>
-
-          {/* Quick Categories Bar */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-1.5 max-w-3xl mx-auto">
-            {categories.slice(0, 6).map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedCategory(c.id)}
-                className={`text-xs px-3 py-1 rounded-full transition-all cursor-pointer ${
-                  selectedCategory === c.id
-                    ? "bg-white text-blue-900 font-bold shadow-sm"
-                    : "bg-white/10 hover:bg-white/20 text-blue-100"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* Main Content Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left Sidebar Filters */}
-          <aside className="lg:col-span-1 space-y-6">
-            <div className="bg-white dark:bg-card border border-border rounded-2xl p-5 shadow-sm space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-blue-600" />
-                  <h3 className="font-bold text-sm text-foreground">Filters</h3>
-                </div>
-                {(selectedType !== "all" || selectedWorkMode !== "all" || selectedCategory !== "all" || selectedLocation !== "all" || searchQuery) && (
-                  <button
-                    onClick={() => {
-                      setSelectedType("all");
-                      setSelectedWorkMode("all");
-                      setSelectedCategory("all");
-                      setSelectedLocation("all");
-                      setSearchQuery("");
-                    }}
-                    className="text-xs font-semibold text-blue-600 hover:underline"
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-
-              {/* Job Type */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Job Type
-                </label>
-                <div className="space-y-1.5">
-                  {jobTypes.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSelectedType(type)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left ${
-                        selectedType === type
-                          ? "bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-600/20"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      <span>{type === "all" ? "All Types" : type}</span>
-                      {selectedType === type && <CheckCircle2 className="h-3.5 w-3.5" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Work Mode */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Work Mode
-                </label>
-                <div className="space-y-1.5">
-                  {workModes.map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setSelectedWorkMode(mode)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left ${
-                        selectedWorkMode === mode
-                          ? "bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-600/20"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      <span>{mode === "all" ? "All Modes" : mode}</span>
-                      {selectedWorkMode === mode && <CheckCircle2 className="h-3.5 w-3.5" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Category */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Category
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-xs font-medium text-foreground focus:outline-none cursor-pointer"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Employer CTA Box in Filter Column */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white space-y-2">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider">Hiring in Belagavi?</h4>
-                </div>
-                <p className="text-[11px] text-blue-100 leading-relaxed">
-                  Connect with skilled technicians, craftsmen, and local professionals.
-                </p>
-                <Link
-                  href={currentUser?.role === "job_provider" ? "/jobprovider/post-job" : "/register"}
-                  className="inline-block w-full py-2 text-center text-xs font-bold rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition-colors shadow-sm"
-                >
-                  Post a Job Opening
-                </Link>
-              </div>
+          {/* Left Sidebar Filters (Desktop) */}
+          <aside className="hidden lg:block lg:col-span-1 space-y-6">
+            <div className="bg-white dark:bg-card border border-border rounded-2xl p-5 shadow-sm space-y-6 sticky top-20">
+              {renderFilterContent()}
             </div>
           </aside>
 
@@ -352,7 +516,96 @@ export default function JobsPage() {
               <p className="text-xs sm:text-sm font-semibold text-muted-foreground">
                 Showing <span className="text-foreground font-bold">{jobs.length}</span> positions
               </p>
+
+              {/* Mobile Filter Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(true)}
+                className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-white dark:bg-card text-xs font-semibold shadow-xs hover:bg-muted cursor-pointer transition-colors"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-blue-600" />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
             </div>
+
+            {/* Active Filters Bar */}
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pb-1">
+                <span className="text-xs text-muted-foreground font-medium">Active:</span>
+                {selectedCategory !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    Category: {categories.find((c) => c.id === selectedCategory)?.label || selectedCategory}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("all")}
+                      className="hover:text-blue-800 dark:hover:text-blue-300 ml-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {selectedLocation !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    Location: {selectedLocation}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLocation("all")}
+                      className="hover:text-blue-800 dark:hover:text-blue-300 ml-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {selectedType !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    Type: {selectedType}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType("all")}
+                      className="hover:text-blue-800 dark:hover:text-blue-300 ml-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {selectedWorkMode !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    Mode: {selectedWorkMode}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWorkMode("all")}
+                      className="hover:text-blue-800 dark:hover:text-blue-300 ml-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {debouncedQuery && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    "{debouncedQuery}"
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="hover:text-blue-800 dark:hover:text-blue-300 ml-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground underline ml-1 cursor-pointer"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
 
             {loading ? (
               <div className="space-y-3">
@@ -500,6 +753,57 @@ export default function JobsPage() {
           </main>
         </div>
       </div>
+
+      {/* Mobile Filters Slide-Over Drawer */}
+      {isMobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileFilterOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative ml-auto w-full max-w-xs sm:max-w-sm h-full bg-white dark:bg-card border-l border-border shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-blue-600" />
+                <h3 className="font-bold text-sm text-foreground">Filters</h3>
+                {activeFilterCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                aria-label="Close filters"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Drawer Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {renderFilterContent()}
+            </div>
+
+            {/* Drawer Footer CTA */}
+            <div className="p-4 border-t border-border bg-muted/20">
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+              >
+                Show {jobs.length} Positions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

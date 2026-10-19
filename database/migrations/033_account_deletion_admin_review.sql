@@ -6,3 +6,4 @@ ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL;
 
 ALTER TABLE public.account_deletion_requests 
 ADD COLUMN IF NOT EXISTS processed_by VARCHAR(255) NULL;
+
