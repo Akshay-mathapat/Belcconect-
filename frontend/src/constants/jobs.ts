@@ -66,3 +66,4 @@ export const JOB_CATEGORIES: JobCategory[] = [
   { id: "Retail & Sales", label: "Retail & Sales", icon: ShoppingBag },
   { id: "Other", label: "Other", icon: MoreHorizontal },
 ];
+

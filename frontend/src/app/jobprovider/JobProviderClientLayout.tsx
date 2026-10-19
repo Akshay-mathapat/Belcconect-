@@ -431,22 +431,9 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
             </nav>
           </div>
 
-          {/* Sticky Bottom Actions Container: Post a New Job CTA + Profile Section */}
-          <div className="pt-3 mt-auto shrink-0 space-y-3">
-            {/* Post a New Job Button (Placed below Help and above Profile Section) */}
-            <div>
-              <Link
-                href="/jobprovider/post-job"
-                onClick={() => setSidebarOpen(false)}
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Post a New Job
-              </Link>
-            </div>
-
-            {/* Profile Info Section */}
-            <div className="pt-3 border-t border-border/40">
-              <div className="flex items-center gap-3 px-1">
+          {/* Bottom Profile Info Section */}
+          <div className="pt-3 mt-auto shrink-0 border-t border-border/40">
+            <div className="flex items-center gap-3 px-1">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-border shadow-sm shrink-0">
                   {currentUser?.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
                 </div>
@@ -460,7 +447,6 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                 </div>
               </div>
             </div>
-          </div>
         </aside>
 
         {/* ── Main Content Area ─────────────────────────────────────────── */}

@@ -13,7 +13,6 @@ import {
   Building2,
   CheckCircle2,
   FileText,
-  UserCheck,
   Award,
   Loader2,
 } from "lucide-react";
@@ -169,57 +168,6 @@ export function OverviewPanel() {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Action Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button
-              onClick={() => router.push("/jobprovider/post-job")}
-              className="p-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-white/20 text-white">
-                  <Plus className="h-5 w-5 stroke-[3]" />
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-medium text-blue-100 uppercase tracking-wider">Step 1</span>
-                  <span className="block text-sm font-bold">Post a New Job</span>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              onClick={() => router.push("/jobprovider/candidates")}
-              className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card text-slate-900 dark:text-white font-bold text-sm hover:border-violet-500/50 hover:bg-violet-50/30 dark:hover:bg-violet-950/20 transition-all flex items-center justify-between group cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                  <Calendar className="h-5 w-5" />
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-medium text-slate-400 uppercase tracking-wider">Step 2</span>
-                  <span className="block text-sm font-bold">Interview Candidates</span>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              onClick={() => router.push("/jobprovider/candidates")}
-              className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card text-slate-900 dark:text-white font-bold text-sm hover:border-emerald-500/50 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-between group cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <UserCheck className="h-5 w-5" />
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-medium text-slate-400 uppercase tracking-wider">Step 3</span>
-                  <span className="block text-sm font-bold">Hire Top Talent</span>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-            </button>
           </div>
 
           {/* Main Dashboard Grid */}

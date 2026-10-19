@@ -130,4 +130,45 @@ describe("Job Portal OLX-Style Filter & Category Taxonomy Synchronization", () =
     assert.ok(content.includes("catLower.includes(\"salon\")"), "Must match Salon variations");
     assert.ok(content.includes('category === "Other"'), "Must handle Other custom categories");
   });
+
+  test("8) Employer workspace sidebar (JobProviderClientLayout.tsx) has removed redundant sticky Post a New Job button", () => {
+    const layoutPath = path.join(rootDir, "frontend/src/app/jobprovider/JobProviderClientLayout.tsx");
+    assert.ok(fs.existsSync(layoutPath), "JobProviderClientLayout.tsx must exist");
+    const content = fs.readFileSync(layoutPath, "utf-8");
+
+    // Sidebar should NOT contain the redundant "Post a New Job" link button
+    assert.strictEqual(
+      content.includes('href="/jobprovider/post-job"'),
+      false,
+      "Sidebar must not have redundant Post a New Job button"
+    );
+  });
+
+  test("9) Employer dashboard (OverviewPanel.tsx) has exactly ONE 'Post a New Job' button in the top header", () => {
+    const overviewPath = path.join(rootDir, "frontend/src/components/jobprovider/dashboard/OverviewPanel.tsx");
+    assert.ok(fs.existsSync(overviewPath), "OverviewPanel.tsx must exist");
+    const content = fs.readFileSync(overviewPath, "utf-8");
+
+    // Match occurrences of "Post a New Job"
+    const matches = content.match(/Post a New Job/g) || [];
+    assert.strictEqual(
+      matches.length,
+      1,
+      `OverviewPanel must have exactly ONE 'Post a New Job' button, found ${matches.length}`
+    );
+
+    // Verify it is the top-right header CTA button
+    assert.ok(
+      content.includes('router.push("/jobprovider/post-job")'),
+      "OverviewPanel must have router.push('/jobprovider/post-job') for the header button"
+    );
+
+    // Verify Action Row Step 1 is removed
+    assert.strictEqual(
+      content.includes("Step 1"),
+      false,
+      "OverviewPanel must not have redundant Step 1 Action Row card"
+    );
+  });
 });
+
