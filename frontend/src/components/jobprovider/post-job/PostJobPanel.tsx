@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { panelVariants } from "../uiTokens";
 import { getAuthToken } from "@/lib/jwt";
+import { JOB_CATEGORIES } from "@/constants/jobs";
 
 export function PostJobPanel() {
   const { t } = useTranslation();
@@ -196,16 +197,11 @@ export function PostJobPanel() {
                 <option value="" disabled>
                   Select category
                 </option>
-                <option value="Electrical">Electrical</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="HVAC / AC">HVAC / AC</option>
-                <option value="Carpentry">Carpentry</option>
-                <option value="Painting">Painting</option>
-                <option value="Salon">Salon</option>
-                <option value="Security">Security</option>
-                <option value="Delivery">Delivery</option>
-                <option value="Other">Other</option>
+                {JOB_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
               </select>
 
               <AnimatePresence>

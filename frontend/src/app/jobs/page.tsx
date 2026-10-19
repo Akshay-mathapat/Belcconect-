@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { useAuthStore } from "@/store/useAuthStore";
+import { JOB_CATEGORIES } from "@/constants/jobs";
 
 interface JobItem {
   id: string;
@@ -91,16 +92,7 @@ export default function JobsPage() {
   const workModes = ["all", "On-site", "Remote", "Hybrid"];
   const categories = [
     { id: "all", label: "All Categories", icon: Layers },
-    { id: "Electrical", label: "Electrical", icon: Zap },
-    { id: "Plumbing", label: "Plumbing", icon: Droplets },
-    { id: "HVAC & AC Repair", label: "HVAC & AC Repair", icon: Wind },
-    { id: "Carpentry", label: "Carpentry", icon: Hammer },
-    { id: "Painting", label: "Painting", icon: Paintbrush },
-    { id: "Automotive", label: "Automotive", icon: Car },
-    { id: "IT & Tech", label: "IT & Tech", icon: Monitor },
-    { id: "Administration", label: "Administration", icon: FileText },
-    { id: "Retail & Sales", label: "Retail & Sales", icon: ShoppingBag },
-    { id: "Logistics", label: "Logistics", icon: Truck },
+    ...JOB_CATEGORIES,
   ];
 
   const locations = [
@@ -131,7 +123,7 @@ export default function JobsPage() {
 
   const displayedCategories = showAllCategories
     ? categories
-    : categories.filter((c, idx) => idx < 6 || c.id === selectedCategory);
+    : categories.filter((c, idx) => idx < 7 || c.id === selectedCategory);
 
   const displayedLocations = showAllLocations
     ? locations
@@ -280,13 +272,13 @@ export default function JobsPage() {
             );
           })}
         </div>
-        {categories.length > 6 && (
+        {categories.length > 7 && (
           <button
             type="button"
             onClick={() => setShowAllCategories(!showAllCategories)}
             className="w-full pt-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center justify-center gap-1 cursor-pointer"
           >
-            <span>{showAllCategories ? "Show Less" : `View All Categories (+${categories.length - 6})`}</span>
+            <span>{showAllCategories ? "Show Less" : `View All Categories (+${categories.length - 7})`}</span>
             {showAllCategories ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
         )}

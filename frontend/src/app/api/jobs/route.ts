@@ -30,8 +30,33 @@ export async function GET(request: Request) {
     }
 
     if (category && category !== "all") {
-      params.push(category);
-      conditions.push(`j.category = $${params.length}`);
+      const catLower = category.toLowerCase().trim();
+      if (catLower.includes("hvac") || catLower.includes("ac")) {
+        params.push("%hvac%", "%ac%");
+        const p1 = params.length - 1;
+        const p2 = params.length;
+        conditions.push(`(j.category ILIKE $${p1} OR j.category ILIKE $${p2})`);
+      } else if (catLower.includes("delivery") || catLower.includes("logistics")) {
+        params.push("%delivery%", "%logistics%");
+        const p1 = params.length - 1;
+        const p2 = params.length;
+        conditions.push(`(j.category ILIKE $${p1} OR j.category ILIKE $${p2})`);
+      } else if (catLower.includes("salon")) {
+        params.push("%salon%");
+        conditions.push(`j.category ILIKE $${params.length}`);
+      } else if (category === "Other") {
+        const standardCategories = [
+          "Electrical", "Plumbing", "Cleaning", "HVAC & AC Repair", "HVAC / AC",
+          "Carpentry", "Painting", "Salon", "Salon & Beauty", "Automotive", "Security",
+          "Delivery & Logistics", "Delivery", "Logistics", "IT & Tech",
+          "Administration", "Retail & Sales"
+        ];
+        params.push(standardCategories);
+        conditions.push(`(j.category NOT IN (SELECT unnest($${params.length}::text[])) OR j.category ILIKE '%other%')`);
+      } else {
+        params.push(category);
+        conditions.push(`(j.category = $${params.length} OR j.category ILIKE $${params.length})`);
+      }
     }
 
     if (jobType && jobType !== "all") {
