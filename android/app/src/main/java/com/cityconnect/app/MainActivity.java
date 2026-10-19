@@ -20,6 +20,53 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends BridgeActivity {
 
     @Override
+    protected void load() {
+        try {
+            String jsonStr = null;
+            try (java.io.InputStream is = getAssets().open("capacitor.config.json")) {
+                int size = is.available();
+                byte[] buffer = new byte[size];
+                is.read(buffer);
+                jsonStr = new String(buffer, java.nio.charset.StandardCharsets.UTF_8);
+            }
+            if (jsonStr != null) {
+                org.json.JSONObject configJson = new org.json.JSONObject(jsonStr);
+                org.json.JSONObject serverObj = configJson.optJSONObject("server");
+                if (serverObj == null) {
+                    serverObj = new org.json.JSONObject();
+                    configJson.put("server", serverObj);
+                }
+                String currentUrl = serverObj.optString("url", "").trim();
+                if (currentUrl.isEmpty() || currentUrl.contains("localhost")) {
+                    String targetUrl = "https://belcconect.vercel.app";
+                    try {
+                        int resId = getResources().getIdentifier("server_url", "string", getPackageName());
+                        if (resId != 0) {
+                            String resUrl = getString(resId);
+                            if (resUrl != null && !resUrl.trim().isEmpty()) {
+                                targetUrl = resUrl.trim();
+                            }
+                        }
+                    } catch (Exception ignored) {}
+
+                    SharedPreferences prefs = getSharedPreferences("belconnect_app_config", Context.MODE_PRIVATE);
+                    String configuredUrl = prefs.getString("server_url", targetUrl);
+
+                    serverObj.put("url", configuredUrl);
+                    serverObj.put("cleartext", configuredUrl.startsWith("http://"));
+                    Log.i("MainActivity", "[BOOT] Loaded dynamic live server URL: " + configuredUrl);
+
+                    this.config = new com.getcapacitor.CapConfig(getAssets(), configJson);
+                }
+            }
+        } catch (Exception e) {
+            Log.w("MainActivity", "[BOOT] Error loading dynamic Capacitor config: " + e.getMessage());
+        }
+
+        super.load();
+    }
+
+    @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ProviderLocationPlugin.class);
         registerPlugin(BelConnectCallPlugin.class);
