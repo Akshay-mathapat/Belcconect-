@@ -94,6 +94,8 @@ export default function CustomerTrackingMap({
   // Timestamps for priority tracking (Socket vs DB)
   const socketLastTimestampRef = useRef<number | null>(null);
   const dbLastTimestampRef = useRef<number | null>(null);
+  const lastPingTimestampRef = useRef<number | null>(null);
+  const lastReceivedLocationTimeRef = useRef<number>(0);
 
   // Check if real initial GPS coordinates exist and parse valid timestamp
   const initialValid = isValidCoord(initialProviderLatitude, initialProviderLongitude);
@@ -206,6 +208,8 @@ export default function CustomerTrackingMap({
         }
 
         socketLastTimestampRef.current = ts;
+        lastPingTimestampRef.current = ts;
+        lastReceivedLocationTimeRef.current = Date.now();
         setAccuracy(acc);
 
         setProviderCoords((prevCoords) => {
@@ -252,13 +256,15 @@ export default function CustomerTrackingMap({
     }
   }, [initialProviderLatitude, initialProviderLongitude, providerLocationUpdatedAt]);
 
-  // Periodic DB fallback polling when socket updates are quiet
+  // Periodic DB fallback polling when socket updates are quiet (> 4s)
   useEffect(() => {
     if (!bookingId) return;
 
+    let isSubscribed = true;
+
     const pollDbLocation = async () => {
-      // Skip REST poll if recent socket ping arrived in last 10s
-      if (socketLastTimestampRef.current && (Date.now() - socketLastTimestampRef.current) < 10000) {
+      // If recent location arrived via socket or poll in the last 4 seconds, skip REST poll
+      if (Date.now() - lastReceivedLocationTimeRef.current < 4000) {
         return;
       }
 
@@ -275,7 +281,7 @@ export default function CustomerTrackingMap({
         if (userId) headers["x-user-id"] = userId;
 
         const res = await authFetch(`/api/bookings/${bookingId}`, { headers });
-        if (!res.ok) return;
+        if (!res.ok || !isSubscribed) return;
         const data = await res.json();
         const b = data.booking;
         if (b && isValidCoord(b.providerCurrentLatitude, b.providerCurrentLongitude)) {
@@ -283,8 +289,20 @@ export default function CustomerTrackingMap({
           const lng = Number(b.providerCurrentLongitude);
           const updatedTs = parseDbTimestamp(b.providerLocationUpdatedAt) || Date.now();
 
-          if (!socketLastTimestampRef.current || socketLastTimestampRef.current < updatedTs) {
-            setProviderCoords({ lat, lng });
+          if (!lastPingTimestampRef.current || updatedTs >= lastPingTimestampRef.current) {
+            lastPingTimestampRef.current = updatedTs;
+            lastReceivedLocationTimeRef.current = Date.now();
+            dbLastTimestampRef.current = updatedTs;
+
+            setProviderCoords((prevCoords) => {
+              if (prevCoords && (prevCoords.lat !== lat || prevCoords.lng !== lng)) {
+                const computedHeading = calculateBearing(prevCoords.lat, prevCoords.lng, lat, lng);
+                if (computedHeading !== 0) {
+                  setHeading(computedHeading);
+                }
+              }
+              return { lat, lng };
+            });
             setLastPingTimestamp(updatedTs);
           }
         }
@@ -293,15 +311,15 @@ export default function CustomerTrackingMap({
       }
     };
 
-    // Fallback polling only when socket is disconnected, interval 60s
-    let interval: any = null;
-    const socket = getSocket();
-    if (!socket?.connected) {
-      interval = setInterval(() => {
-        if (!getSocket()?.connected) pollDbLocation();
-      }, 60000);
-    }
-    return () => { if (interval) clearInterval(interval); };
+    // Poll every 4 seconds so customer stays continuously live even if socket is silent
+    const interval = setInterval(() => {
+      pollDbLocation();
+    }, 4000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
   }, [bookingId]);
 
   // 3. Strict 1-Second Freshness State Timer (Live <= 15s | Updating <= 30s | Unavailable > 30s)

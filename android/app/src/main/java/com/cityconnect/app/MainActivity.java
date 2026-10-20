@@ -243,7 +243,8 @@ public class MainActivity extends BridgeActivity {
 
         BelConnectCallPlugin.isAppInForeground = false;
 
-        if (BelConnectCallService.isServiceRunning() && getBridge() != null && getBridge().getWebView() != null) {
+        boolean shouldKeepActive = BelConnectCallService.isServiceRunning() || BelConnectLocationService.isTracking();
+        if (shouldKeepActive && getBridge() != null && getBridge().getWebView() != null) {
             Log.i("MainActivity", "[CALL_TRACE] Call in progress during onPause: keeping WebView active for background audio");
             getBridge().getWebView().onResume();
             getBridge().getWebView().resumeTimers();
@@ -254,7 +255,8 @@ public class MainActivity extends BridgeActivity {
     public void onStop() {
         super.onStop();
 
-        if (BelConnectCallService.isServiceRunning() && getBridge() != null && getBridge().getWebView() != null) {
+        boolean shouldKeepActive = BelConnectCallService.isServiceRunning() || BelConnectLocationService.isTracking();
+        if (shouldKeepActive && getBridge() != null && getBridge().getWebView() != null) {
             Log.i("MainActivity", "[CALL_TRACE] Call in progress during onStop: keeping WebView active for background audio");
             getBridge().getWebView().onResume();
             getBridge().getWebView().resumeTimers();

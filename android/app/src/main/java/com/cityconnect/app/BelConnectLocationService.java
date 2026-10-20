@@ -11,6 +11,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.os.Build;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -28,6 +29,7 @@ import com.google.android.gms.location.Priority;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
@@ -44,8 +46,15 @@ public class BelConnectLocationService extends Service {
     private static final int NOTIFICATION_ID = 1001;
     private static final String PREFS_NAME = "BelConnectLocationPrefs";
 
+    public static volatile boolean isServiceRunning = false;
+
+    public static boolean isTracking() {
+        return isServiceRunning;
+    }
+
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
+    private HandlerThread locationHandlerThread = null;
     private OkHttpClient httpClient;
     private PowerManager.WakeLock wakeLock = null;
 
@@ -54,14 +63,13 @@ public class BelConnectLocationService extends Service {
     private String apiUrl;
 
     private long lastSentTimestamp = 0;
+    private long lastUploadRealtime = 0;
     private boolean isRequestPending = false;
-    private boolean isTracking = false;
     private Location latestPendingLocation = null;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        // Set reasonable timeouts and retry logic for native HTTP client
         
         httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
@@ -71,6 +79,13 @@ public class BelConnectLocationService extends Service {
             .build();
             
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        try {
+            locationHandlerThread = new HandlerThread("BelConnectLocationThread", android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
+            locationHandlerThread.start();
+        } catch (Exception e) {
+            Log.w(TAG, "[LocationService] Failed to start background HandlerThread: " + e.getMessage());
+        }
 
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -118,7 +133,7 @@ public class BelConnectLocationService extends Service {
                 String newToken = intent.getStringExtra("token");
                 String newApiUrl = intent.getStringExtra("apiUrl");
 
-                if (isTracking && newBookingId != null && newBookingId.equals(bookingId)) {
+                if (isServiceRunning && newBookingId != null && newBookingId.equals(bookingId)) {
                     Log.i(TAG, "[LocationService] Already tracking booking: " + bookingId);
                     if (newToken != null && !newToken.isEmpty()) token = newToken;
                     if (newApiUrl != null && !newApiUrl.isEmpty()) apiUrl = newApiUrl;
@@ -130,7 +145,7 @@ public class BelConnectLocationService extends Service {
                     return START_STICKY;
                 }
                 
-                if (isTracking) {
+                if (isServiceRunning) {
                     stopTrackingInternal();
                 }
 
@@ -152,7 +167,7 @@ public class BelConnectLocationService extends Service {
                 }
                 acquireWakeLock();
                 requestLocationUpdates();
-                isTracking = true;
+                isServiceRunning = true;
                 Log.i(TAG, "[LocationService] Started foreground tracking for booking: " + bookingId);
             } else if ("STOP_TRACKING".equals(action)) {
                 stopTracking();
@@ -171,7 +186,7 @@ public class BelConnectLocationService extends Service {
                 }
                 acquireWakeLock();
                 requestLocationUpdates();
-                isTracking = true;
+                isServiceRunning = true;
                 Log.i(TAG, "[LocationService] Restored tracking from preferences for booking: " + bookingId);
             }
         }
@@ -200,15 +215,19 @@ public class BelConnectLocationService extends Service {
 
     private void requestLocationUpdates() {
         try {
-            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-                    .setMinUpdateIntervalMillis(3000)
-                    .setMaxUpdateDelayMillis(5000)
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 4000)
+                    .setMinUpdateIntervalMillis(2500)
+                    .setMaxUpdateDelayMillis(4000)
                     .setWaitForAccurateLocation(false)
                     .setMinUpdateDistanceMeters(0.0f)
                     .build();
 
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
-            Log.i(TAG, "[LocationService] Location updates requested with high accuracy 5s interval.");
+            Looper targetLooper = (locationHandlerThread != null && locationHandlerThread.isAlive())
+                    ? locationHandlerThread.getLooper()
+                    : Looper.getMainLooper();
+
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, targetLooper);
+            Log.i(TAG, "[LocationService] Location updates requested with high accuracy 4s interval on background HandlerThread.");
         } catch (SecurityException e) {
             Log.e(TAG, "[LocationService] Lost location permission. Could not request updates. " + e);
         }
@@ -216,10 +235,18 @@ public class BelConnectLocationService extends Service {
 
     private void stopTrackingInternal() {
         if (fusedLocationClient != null && locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
+            try {
+                fusedLocationClient.removeLocationUpdates(locationCallback);
+            } catch (Exception ignored) {}
+        }
+        if (locationHandlerThread != null) {
+            try {
+                locationHandlerThread.quitSafely();
+            } catch (Exception ignored) {}
+            locationHandlerThread = null;
         }
         releaseWakeLock();
-        isTracking = false;
+        isServiceRunning = false;
     }
 
     private void stopTracking() {
@@ -233,7 +260,7 @@ public class BelConnectLocationService extends Service {
     }
 
     private void sendLocationToBackend(Location location) {
-        if (bookingId == null || token == null || apiUrl == null) return;
+        if (bookingId == null || apiUrl == null) return;
         
         // Single flight queueing: don't start new upload if one is actively pending
         if (isRequestPending) {
@@ -241,8 +268,10 @@ public class BelConnectLocationService extends Service {
             return;
         }
 
-        // Out-of-order updates prevention
-        if (location.getTime() <= lastSentTimestamp) {
+        long now = System.currentTimeMillis();
+        // Throttle updates to at most once every 3 seconds to avoid spamming the backend
+        if (now - lastUploadRealtime < 3000) {
+            latestPendingLocation = location;
             return;
         }
 
@@ -253,8 +282,7 @@ public class BelConnectLocationService extends Service {
             if (location.hasAccuracy()) jsonBody.put("accuracy", location.getAccuracy());
             if (location.hasSpeed()) jsonBody.put("speed", location.getSpeed());
             if (location.hasBearing()) jsonBody.put("heading", location.getBearing());
-            
-            jsonBody.put("timestamp", location.getTime()); // Use real device location time for accuracy
+            jsonBody.put("timestamp", location.getTime() > 0 ? location.getTime() : System.currentTimeMillis());
 
             RequestBody body = RequestBody.create(jsonBody.toString(), MediaType.parse("application/json; charset=utf-8"));
             
@@ -270,16 +298,25 @@ public class BelConnectLocationService extends Service {
             if (!base.endsWith("/api")) {
                 base = base + "/api";
             }
-            String endpoint = base + "/bookings/" + bookingId + "/provider-location-native";
+            
+            String cleanBookingId = bookingId.trim().replace("#", "");
+            try {
+                cleanBookingId = URLEncoder.encode(cleanBookingId, "UTF-8");
+            } catch (Exception ignored) {}
+            
+            String endpoint = base + "/bookings/" + cleanBookingId + "/provider-location-native";
 
-            Log.i(TAG, "LOCATION_NATIVE: POST endpoint=" + endpoint + ", bookingId=" + bookingId + 
+            Log.i(TAG, "LOCATION_NATIVE: POST endpoint=" + endpoint + ", bookingId=" + cleanBookingId + 
                        " lat=" + location.getLatitude() + " lng=" + location.getLongitude());
 
             Request.Builder requestBuilder = new Request.Builder()
                     .url(endpoint)
                     .post(body)
-                    .addHeader("Authorization", "Bearer " + token)
                     .addHeader("Content-Type", "application/json");
+
+            if (token != null && !token.trim().isEmpty()) {
+                requestBuilder.addHeader("Authorization", "Bearer " + token.trim());
+            }
 
             isRequestPending = true;
             final long currentTimestamp = location.getTime();
@@ -297,6 +334,7 @@ public class BelConnectLocationService extends Service {
                     try {
                         Log.i(TAG, "LOCATION_NATIVE: Response code=" + response.code() + " for booking " + bookingId);
                         if (response.isSuccessful()) {
+                            lastUploadRealtime = System.currentTimeMillis();
                             lastSentTimestamp = currentTimestamp;
                             Log.d(TAG, "[LocationService] Location update successfully posted to backend for booking " + bookingId);
                         } else if (response.code() == 400) {
@@ -332,7 +370,13 @@ public class BelConnectLocationService extends Service {
                                 return;
                             }
                         } else {
-                            Log.w(TAG, "[LocationService] Backend responded with code: " + response.code() + " (will retry on next GPS tick)");
+                            String bodyStr = "";
+                            try {
+                                if (response.body() != null) {
+                                    bodyStr = response.body().string();
+                                }
+                            } catch (Exception ignored) {}
+                            Log.w(TAG, "[LocationService] Backend responded with code: " + response.code() + " body: " + bodyStr + " (will retry on next GPS tick)");
                         }
                     } finally {
                         response.close();
@@ -368,12 +412,13 @@ public class BelConnectLocationService extends Service {
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("BelConnect - Active Service")
+                .setContentTitle("BelConnect - Live Service Active")
                 .setContentText("Sharing live GPS location with customer...")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .setOngoing(true)
                 .build();
     }

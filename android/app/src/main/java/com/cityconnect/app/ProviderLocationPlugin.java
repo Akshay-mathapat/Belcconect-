@@ -2,8 +2,10 @@ package com.cityconnect.app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Build;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.Manifest;
 
@@ -30,7 +32,6 @@ import com.getcapacitor.PermissionState;
 )
 public class ProviderLocationPlugin extends Plugin {
 
-    private boolean isServiceRunning = false;
     private String currentBookingId = null;
 
     @PluginMethod
@@ -40,7 +41,7 @@ public class ProviderLocationPlugin extends Plugin {
             return;
         }
 
-        checkGpsAndStart(call);
+        checkBackgroundPermAndStart(call);
     }
 
     private void showProminentDisclosureAndRequest(PluginCall call) {
@@ -69,12 +70,29 @@ public class ProviderLocationPlugin extends Plugin {
     @PermissionCallback
     private void locationPermsCallback(PluginCall call) {
         if (getPermissionState("location") == PermissionState.GRANTED) {
-            checkGpsAndStart(call);
+            checkBackgroundPermAndStart(call);
         } else {
             JSObject ret = new JSObject();
             ret.put("status", "permission_denied");
             call.resolve(ret);
         }
+    }
+
+    private void checkBackgroundPermAndStart(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getActivity() != null) {
+            if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                try {
+                    ActivityCompat.requestPermissions(
+                        getActivity(),
+                        new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION},
+                        1002
+                    );
+                } catch (Exception e) {
+                    android.util.Log.w("ProviderLocationPlugin", "Could not request background location: " + e.getMessage());
+                }
+            }
+        }
+        checkGpsAndStart(call);
     }
 
     private void checkGpsAndStart(PluginCall call) {
@@ -106,7 +124,6 @@ public class ProviderLocationPlugin extends Plugin {
         serviceIntent.setAction("START_TRACKING");
 
         ContextCompat.startForegroundService(getContext(), serviceIntent);
-        isServiceRunning = true;
         currentBookingId = bookingId;
         
         JSObject ret = new JSObject();
@@ -131,7 +148,6 @@ public class ProviderLocationPlugin extends Plugin {
         serviceIntent.setAction("STOP_TRACKING");
         getContext().startService(serviceIntent);
 
-        isServiceRunning = false;
         currentBookingId = null;
         JSObject ret = new JSObject();
         ret.put("status", "stopped");
@@ -141,7 +157,7 @@ public class ProviderLocationPlugin extends Plugin {
     @PluginMethod
     public void getTrackingStatus(PluginCall call) {
         JSObject ret = new JSObject();
-        ret.put("isTracking", isServiceRunning);
+        ret.put("isTracking", BelConnectLocationService.isTracking());
         ret.put("bookingId", currentBookingId);
         call.resolve(ret);
     }
