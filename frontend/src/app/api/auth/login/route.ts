@@ -67,11 +67,11 @@ export async function POST(request: Request) {
 
     // 4. Single UNION ALL login query utilizing migration 022 LOWER(email) indexes
     const loginQuery = `
-      SELECT id, email, name, phone, avatar, password_hash, 'user' AS role FROM customers WHERE LOWER(email) = $1
+      SELECT id, email, name, phone, avatar, password_hash, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM customers WHERE LOWER(email) = $1
       UNION ALL
-      SELECT id, email, name, phone, avatar, password_hash, 'provider' AS role FROM service_providers WHERE LOWER(email) = $1
+      SELECT id, email, name, phone, avatar, password_hash, 'provider' AS role, is_verified, verification_status, kyc_status FROM service_providers WHERE LOWER(email) = $1
       UNION ALL
-      SELECT id, email, name, phone, avatar, password_hash, 'job_provider' AS role FROM job_providers WHERE LOWER(email) = $1
+      SELECT id, email, name, phone, avatar, password_hash, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM job_providers WHERE LOWER(email) = $1
       LIMIT 1
     `;
     const userRes = await query(loginQuery, [cleanEmail]);
@@ -101,7 +101,13 @@ export async function POST(request: Request) {
 
     // 7. Lean profile payload: addresses and bookings are empty on login hotpath
     // Post-login data loading is handled asynchronously by the client
-    const userObj = {
+    const isProvider = candidate.role === "provider";
+    const isVerifiedProvider = isProvider && (candidate.is_verified === true || candidate.verification_status === "verified");
+    const providerVerificationStatus = isProvider
+      ? (candidate.verification_status || (candidate.is_verified ? "verified" : "unverified"))
+      : undefined;
+
+    const userObj: Record<string, any> = {
       id: candidate.id,
       email: candidate.email,
       name: candidate.name,
@@ -110,6 +116,11 @@ export async function POST(request: Request) {
       role: candidate.role,
       addresses: [],
       bookings: [],
+      ...(isProvider ? {
+        isVerified: isVerifiedProvider,
+        verificationStatus: providerVerificationStatus,
+        kycStatus: candidate.kyc_status || (isVerifiedProvider ? "Verified" : "Unverified"),
+      } : {}),
     };
 
     // 8. Generate JWT token

@@ -84,9 +84,15 @@ export async function POST(request: Request) {
     );
 
     const userRes = await query(`SELECT id, email, name, phone, avatar FROM ${targetTable} WHERE id = $1`, [userId]);
-    const userObj = { ...userRes.rows[0], role };
+    const userObj: Record<string, any> = { ...userRes.rows[0], role };
     userObj.addresses = [];
     userObj.bookings = [];
+
+    if (role === "provider") {
+      userObj.isVerified = false;
+      userObj.verificationStatus = "unverified";
+      userObj.kycStatus = "Unverified";
+    }
 
     // Generate JWT token
     const token = signJwtToken({

@@ -57,10 +57,16 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
       setIsSubmitted(true);
       
       const userRole = res.user?.role || "user";
+      const isUnverified = userRole === "provider" && res.user?.verificationStatus !== "verified";
+
       // Auto-redirect directly to the appropriate dashboard after 500ms
       setTimeout(() => {
         if (userRole === "provider") {
-          router.push(safeReturnTo !== "/" ? safeReturnTo : "/provider");
+          if (isUnverified) {
+            router.push("/provider/kyc");
+          } else {
+            router.push(safeReturnTo !== "/" ? safeReturnTo : "/provider");
+          }
         } else if (userRole === "job_provider") {
           router.push(safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard");
         } else {
@@ -73,9 +79,13 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
     }
   };
 
+  const isCurrentProviderUnverified = currentUser?.role === "provider" && currentUser?.verificationStatus !== "verified";
+
   const getRedirectPath = () => {
     const role = currentUser?.role;
-    if (role === "provider") return safeReturnTo !== "/" ? safeReturnTo : "/provider";
+    if (role === "provider") {
+      return isCurrentProviderUnverified ? "/provider/kyc" : (safeReturnTo !== "/" ? safeReturnTo : "/provider");
+    }
     if (role === "job_provider") return safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard";
     return safeReturnTo;
   };
@@ -90,14 +100,14 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
         </div>
         <h3 className="text-xl font-bold text-emerald-900 dark:text-emerald-200">
           {currentUser?.role === "provider" 
-            ? "Logged In as Service Provider!" 
+            ? (isCurrentProviderUnverified ? "Identity Verification Required" : "Logged In as Service Provider!") 
             : currentUser?.role === "job_provider" 
             ? "Logged In as Job Provider!" 
             : "Logged In Successfully!"}
         </h3>
         <p className="text-sm text-emerald-700 dark:text-emerald-300">
           {currentUser?.role === "provider" 
-            ? "Welcome back! Redirecting to your Provider Dashboard..."
+            ? (isCurrentProviderUnverified ? "Welcome back! Please complete your mandatory KYC verification to start receiving customer bookings..." : "Welcome back! Redirecting to your Provider Dashboard...")
             : currentUser?.role === "job_provider"
             ? "Welcome back! Redirecting to your Job Provider Workspace..."
             : "Welcome back! Redirecting to the BelConnect Marketplace..."}
@@ -107,7 +117,7 @@ export function LoginForm({ onSwitchToSignup, onForgotPassword, accountType: ini
           className="inline-flex items-center justify-center w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md"
         >
           {currentUser?.role === "provider" 
-            ? "Go to Provider Dashboard" 
+            ? (isCurrentProviderUnverified ? "Complete KYC Verification" : "Go to Provider Dashboard") 
             : currentUser?.role === "job_provider" 
             ? "Go to Job Provider Portal" 
             : "Go to Home"}

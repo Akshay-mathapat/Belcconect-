@@ -200,5 +200,6 @@ export interface ProviderProfile {
   kycStatus?: "Verified" | "Pending" | "Not Submitted" | "Unverified" | "Rejected" | string;
   kycDocumentType?: string;
   kycDocumentNumber?: string;
+  kycDocumentLast4?: string;
   kycDocumentPhoto?: string;
 }

@@ -42,6 +42,7 @@ interface NavItem {
 
 const primaryNavItems: NavItem[] = [
   { key: "home", href: "/provider", label: "Home", icon: LayoutDashboard },
+  { key: "kyc", href: "/provider/kyc", label: "Identity (KYC)", icon: ShieldCheck, tourAttr: "provider-kyc" },
   { key: "requests", href: "/provider/bookings?tab=Requested", label: "Requests", icon: Clock, tourAttr: "provider-bookings" },
   { key: "myJobs", href: "/provider/bookings?tab=ACTIVE", label: "My Jobs", icon: CalendarDays },
   { key: "profile", href: "/provider/profile", label: "Profile", icon: User },
@@ -110,6 +111,11 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
     const translated = t(`serviceProvider.${item.key}`);
     const label = translated && !translated.startsWith("serviceProvider.") ? translated : (item.label || item.key);
 
+    const isKyc = item.key === "kyc";
+    const kycBadge = isKyc
+      ? (profile.isVerified ? "Verified" : (profile.verificationStatus === "pending" ? "Pending" : "Required"))
+      : item.badge;
+
     return (
       <Link
         key={item.href}
@@ -126,19 +132,21 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
       >
         <Icon
           className={`h-4 w-4 shrink-0 transition-transform group-hover:scale-110 ${
-            isActive ? "text-white" : "text-foreground/70"
+            isActive ? "text-white" : (isKyc && !profile.isVerified ? "text-amber-500" : "text-foreground/70")
           }`}
         />
         <span className="truncate flex-1">{label}</span>
-        {item.badge && (
+        {kycBadge && (
           <span
             className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
               isActive
                 ? "bg-white/20 text-white"
+                : isKyc && !profile.isVerified
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300"
                 : "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300"
             }`}
           >
-            {item.badge}
+            {kycBadge}
           </span>
         )}
       </Link>
@@ -192,16 +200,18 @@ export function ProviderSidebar({ collapsed = false, setCollapsed, mobileOpen = 
 
         {/* Provider Profile Summary Footer */}
         <div className="p-3 border-t border-border/50 bg-muted/20" id="tour-provider-kyc">
-          <Link href="/provider/profile" className="flex items-center gap-3">
+          <Link href="/provider/kyc" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center border border-blue-600/30 shrink-0">
               {profile.name ? profile.name.trim().charAt(0).toUpperCase() : "P"}
             </div>
             <div className="overflow-hidden">
               <div className="flex items-center gap-1">
                 <span className="text-xs font-bold text-foreground truncate">{profile.name}</span>
-                <ShieldCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                <ShieldCheck className={`h-3.5 w-3.5 ${profile.isVerified ? "text-emerald-500" : "text-amber-500"} shrink-0`} />
               </div>
-              <span className="text-[10px] text-muted-foreground block truncate">{t("serviceProvider.verifiedPro")}</span>
+              <span className={`text-[10px] font-semibold block truncate ${profile.isVerified ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                {profile.isVerified ? (t("serviceProvider.verifiedPro") || "Verified Pro") : (profile.verificationStatus === "pending" ? "KYC Review Pending" : "KYC Required")}
+              </span>
             </div>
           </Link>
         </div>

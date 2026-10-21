@@ -48,21 +48,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2. API Requests & Auth & Signaling & Dynamic Data -> STRICT NETWORK-FIRST (no stale data)
+  // 2. Private APIs, Auth, Bookings, Notifications, Calls, Socket.IO & LiveKit
+  // STRICT BYPASS RULE: Do not call event.respondWith(), do not cache, do not synthesize fallback
   if (
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/admin") ||
     url.pathname.includes("socket.io") ||
     url.pathname.includes("/auth/") ||
-    url.pathname.includes("/livekit/")
+    url.pathname.includes("/livekit")
   ) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(JSON.stringify({ error: "Offline mode. Network unavailable." }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" }
-        });
-      })
-    );
     return;
   }
 
@@ -80,7 +74,8 @@ self.addEventListener("fetch", (event) => {
         .catch(async () => {
           const cachedResponse = await caches.match(request);
           if (cachedResponse) return cachedResponse;
-          return caches.match("/");
+          const fallback = await caches.match("/");
+          return fallback || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
         })
     );
     return;
@@ -97,7 +92,7 @@ self.addEventListener("fetch", (event) => {
           }
           return networkResponse;
         })
-        .catch(() => cachedResponse);
+        .catch(() => cachedResponse || new Response(null, { status: 404 }));
 
       return cachedResponse || fetchPromise;
     })
@@ -115,7 +110,6 @@ self.addEventListener("push", (event) => {
     const notificationData = payload.data || payload || {};
     const type = notificationData.type || payload.type || "general";
 
-    if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled") {
     if (type === "call:cancelled" || type === "call:ended" || type === "call_cancelled" || type === "call_ended") {
       const callId = notificationData.callId || payload.callId;
       const callTag = `call_${callId}`;

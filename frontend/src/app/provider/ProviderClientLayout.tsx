@@ -43,7 +43,7 @@ export default function ProviderLayout({
   const pathname = usePathname();
   const router = useRouter();
 
-  const { isOnline, toggleOnlineStatus, profile, fetchProviderBookings, fetchProviderServices } = useProviderStore();
+  const { isOnline, toggleOnlineStatus, profile, fetchProviderBookings, fetchProviderServices, fetchProviderKyc } = useProviderStore();
   const { currentUser, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
@@ -143,6 +143,32 @@ export default function ProviderLayout({
     }
   }, [currentUser, router, isHydrated]);
 
+  // Compulsory KYC Verification Route Guard:
+  // Automatically query latest KYC status from PostgreSQL database on mount.
+  // Unverified service providers are strictly restricted to /provider/kyc and /provider/profile.
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!currentUser || currentUser.role !== "provider") return;
+
+    fetchProviderKyc();
+  }, [currentUser, isHydrated, fetchProviderKyc]);
+
+  const isVerifiedProvider = profile.isVerified || profile.verificationStatus === "verified";
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!currentUser || currentUser.role !== "provider") return;
+
+    const allowedUnverifiedRoutes = ["/provider/kyc", "/provider/profile"];
+    const isAllowedRoute = allowedUnverifiedRoutes.some(
+      (allowed) => pathname === allowed || pathname.startsWith(`${allowed}/`)
+    );
+
+    if (!isVerifiedProvider && !isAllowedRoute) {
+      router.replace("/provider/kyc");
+    }
+  }, [currentUser, isHydrated, isVerifiedProvider, pathname, router]);
+
   // Auto-close search on route navigation
   useEffect(() => {
     setSearchFocused(false);
@@ -157,9 +183,9 @@ export default function ProviderLayout({
 
   const mobileBottomNav = [
     { key: "dashboard", href: "/provider", icon: LayoutDashboard },
+    { key: "kyc", href: "/provider/kyc", icon: ShieldCheck },
     { key: "bookings", href: "/provider/bookings", icon: CalendarDays },
     { key: "messages", href: "/provider/messages", icon: MessageSquare },
-    { key: "myServices", href: "/provider/services", icon: Wrench },
     { key: "profile", href: "/provider/profile", icon: User },
   ];
 
@@ -462,6 +488,30 @@ export default function ProviderLayout({
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 pt-16 transition-all duration-300">
+        {!isVerifiedProvider && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-200 flex flex-wrap items-center justify-between gap-3 lg:ml-[240px]">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="font-bold">
+                {profile.verificationStatus === "pending"
+                  ? "KYC Verification Under Review"
+                  : "Compulsory KYC Identity Verification Required"}
+              </span>
+              <span className="hidden md:inline text-amber-700/80 dark:text-amber-300/80">
+                {profile.verificationStatus === "pending"
+                  ? "— Your documents are currently being verified by the BelConnect team."
+                  : "— Submit your Government ID to unlock customer requests and start accepting jobs."}
+              </span>
+            </div>
+            <Link
+              href="/provider/kyc"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-sm transition-all"
+            >
+              <span>{profile.verificationStatus === "pending" ? "Check Status" : "Complete KYC Now"}</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        )}
         <main
           className="flex-1 pt-4 sm:pt-6 pb-24 md:pb-12 px-3 sm:px-6 lg:px-8 transition-all duration-300 lg:ml-[240px]"
         >

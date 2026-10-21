@@ -87,7 +87,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       // Auto-redirect directly to appropriate dashboard after 500ms
       setTimeout(() => {
         if (signupRole === "provider") {
-          router.push(safeReturnTo !== "/" ? safeReturnTo : "/provider");
+          router.push("/provider/kyc");
         } else if (signupRole === "job_provider") {
           router.push(safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard");
         } else {
@@ -114,7 +114,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const getRoleDescription = () => {
     switch (signupRole) {
       case "provider":
-        return "Welcome! Your Service Provider account is ready. Redirecting to your Provider Dashboard...";
+        return "Welcome! Your Service Provider account is created. Please complete compulsory KYC identity verification to activate your profile and start accepting bookings...";
       case "job_provider":
         return "Welcome! Your Job Provider account is ready. Redirecting to your Job Provider Workspace...";
       default:
@@ -123,7 +123,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   };
 
   const getTargetUrl = () => {
-    if (signupRole === "provider") return "/provider";
+    if (signupRole === "provider") return "/provider/kyc";
     if (signupRole === "job_provider") return "/jobprovider";
     return safeReturnTo;
   };
@@ -145,7 +145,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           className="inline-flex items-center justify-center w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md cursor-pointer"
         >
           {signupRole === "provider" 
-            ? "Proceed to Provider Dashboard" 
+            ? "Complete KYC Verification" 
             : signupRole === "job_provider"
             ? "Proceed to Job Provider Portal"
             : "Proceed to Marketplace"}

@@ -52,6 +52,9 @@ export interface AuthUser {
   bookings?: BookingItem[];
   isFirstLogin?: boolean;
   preferred_language?: string;
+  isVerified?: boolean;
+  verificationStatus?: "unverified" | "pending" | "verified" | "rejected" | string;
+  kycStatus?: string;
 }
 
 interface AuthState {

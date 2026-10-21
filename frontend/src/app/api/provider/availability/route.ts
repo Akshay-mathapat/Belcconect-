@@ -72,6 +72,30 @@ export async function PATCH(request: Request) {
     // Provider ID is derived strictly from authenticated JWT token — never trusted from client body or params
     const providerId = authUser.userId;
 
+    const provCheck = await query(
+      "SELECT id, is_verified, verification_status FROM service_providers WHERE id = $1",
+      [providerId]
+    );
+
+    if (provCheck.rows.length === 0) {
+      return NextResponse.json({ error: "Provider account not found in database. Please ensure your provider profile is active." }, { status: 404 });
+    }
+
+    const currentProv = provCheck.rows[0];
+    const isVerifiedCurrent = currentProv.verification_status === "verified" || currentProv.is_verified === true;
+
+    if (isAvailable && !isVerifiedCurrent) {
+      return NextResponse.json(
+        {
+          error: "KYC identity verification required. You cannot go online until your KYC documents are approved by the admin.",
+          requiresKyc: true,
+          isVerified: false,
+          verificationStatus: currentProv.verification_status || "unverified"
+        },
+        { status: 403 }
+      );
+    }
+
     const updateRes = await query(
       `UPDATE service_providers
        SET is_available = $1

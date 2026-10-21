@@ -37,7 +37,7 @@ function formatTimeLabel(val: string): string {
 }
 
 export default function AvailabilityPage() {
-  const { schedule, updateAvailabilitySchedule, isOnline, setAvailability, fetchProviderAvailability } = useProviderStore();
+  const { schedule, updateAvailabilitySchedule, isOnline, setAvailability, fetchProviderAvailability, profile } = useProviderStore();
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState("");
   const [togglingAvailability, setTogglingAvailability] = useState(false);
@@ -51,6 +51,15 @@ export default function AvailabilityPage() {
 
   const handleToggleLiveAvailability = async () => {
     const targetState = !isOnline;
+    const isVerified = profile.isVerified || profile.verificationStatus === "verified";
+    if (targetState && !isVerified) {
+      setAvailabilityMessage({
+        text: "Compulsory KYC Identity Verification required before going online. Please submit and verify your KYC documents.",
+        isError: true
+      });
+      return;
+    }
+
     setTogglingAvailability(true);
     setAvailabilityMessage(null);
     try {

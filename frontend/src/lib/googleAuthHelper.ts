@@ -85,7 +85,19 @@ export async function resolveGoogleIdentity({
           await dbClient.query("ROLLBACK");
           return accountMismatch(account.type);
         }
-        const user = { ...result.rows[0], role: oauthAccountTypeToJwtRole(account.type) };
+        const role = oauthAccountTypeToJwtRole(account.type);
+        const raw = result.rows[0];
+        const isProv = role === "provider";
+        const isVerifiedProv = isProv && (raw.is_verified === true || raw.verification_status === "verified");
+        const user = {
+          ...raw,
+          role,
+          ...(isProv ? {
+            isVerified: isVerifiedProv,
+            verificationStatus: raw.verification_status || (raw.is_verified ? "verified" : "unverified"),
+            kycStatus: raw.kyc_status || (isVerifiedProv ? "Verified" : "Unverified"),
+          } : {})
+        };
         await dbClient.query("COMMIT");
         delete user.password_hash;
         return { user, accountType: account.type, status: "existing" };
@@ -115,7 +127,19 @@ export async function resolveGoogleIdentity({
          WHERE id = $3 AND (google_id IS NULL OR google_id = $1)`,
         [googleId, avatar, matched.id]
       );
-      const user = { ...matched, google_id: googleId, role: oauthAccountTypeToJwtRole(account.type) };
+      const role = oauthAccountTypeToJwtRole(account.type);
+      const isProv = role === "provider";
+      const isVerifiedProv = isProv && (matched.is_verified === true || matched.verification_status === "verified");
+      const user = {
+        ...matched,
+        google_id: googleId,
+        role,
+        ...(isProv ? {
+          isVerified: isVerifiedProv,
+          verificationStatus: matched.verification_status || (matched.is_verified ? "verified" : "unverified"),
+          kycStatus: matched.kyc_status || (isVerifiedProv ? "Verified" : "Unverified"),
+        } : {})
+      };
       await dbClient.query("COMMIT");
       delete user.password_hash;
       return { user, accountType: account.type, status: "linked" };
@@ -129,14 +153,20 @@ export async function resolveGoogleIdentity({
       [newUserId, cleanEmail, cleanName, avatar, googleId]
     );
 
-    const user = {
+    const userRole = oauthAccountTypeToJwtRole(requestedAccountType);
+    const user: Record<string, any> = {
       id: newUserId,
       email: cleanEmail,
       name: cleanName,
       avatar,
       google_id: googleId,
-      role: oauthAccountTypeToJwtRole(requestedAccountType),
+      role: userRole,
       isFirstLogin: true,
+      ...(userRole === "provider" ? {
+        isVerified: false,
+        verificationStatus: "unverified",
+        kycStatus: "Unverified",
+      } : {})
     };
     await dbClient.query("COMMIT");
     return { user, accountType: requestedAccountType, status: "created" };

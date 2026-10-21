@@ -41,6 +41,7 @@ interface ProviderStoreState {
   toggleOnlineStatus: () => Promise<void> | void;
   setAvailability: (available: boolean) => Promise<boolean>;
   fetchProviderAvailability: () => Promise<void>;
+  fetchProviderKyc: () => Promise<void>;
   updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   fetchProviderBookings: () => Promise<void>;
@@ -137,6 +138,15 @@ export const useProviderStore = create<ProviderStoreState>()(
       schedule: initialSchedule,
 
       toggleOnlineStatus: async () => {
+        const profile = get().profile;
+        const isVerified = profile.isVerified || profile.verificationStatus === "verified";
+        if (!isVerified) {
+          if (typeof window !== "undefined") {
+            window.alert("Compulsory KYC Verification Required: Please complete your identity verification to go online and accept customer bookings.");
+            window.location.href = "/provider/kyc";
+          }
+          return;
+        }
         const nextState = !get().isOnline;
         await get().setAvailability(nextState);
       },
@@ -150,6 +160,13 @@ export const useProviderStore = create<ProviderStoreState>()(
           }
           if (authUser.role !== "provider" && (authUser as any).role !== "admin") {
             console.warn("setAvailability aborted: Current user role is not provider:", authUser.role);
+            return false;
+          }
+
+          const profile = get().profile;
+          const isVerified = profile.isVerified || profile.verificationStatus === "verified";
+          if (available && !isVerified) {
+            console.warn("setAvailability blocked: Provider is not KYC verified.");
             return false;
           }
 
@@ -226,6 +243,47 @@ export const useProviderStore = create<ProviderStoreState>()(
           }
         } catch (e: any) {
           console.warn("Provider availability fetch retry:", e?.message || e);
+        }
+      },
+
+      fetchProviderKyc: async () => {
+        const currentUser = useAuthStore.getState().currentUser;
+        if (!currentUser || (currentUser.role !== "provider" && (currentUser as any).role !== "admin")) return;
+        try {
+          const token = currentUser.token || getStoredAuthToken();
+          const headers: Record<string, string> = {};
+          if (currentUser.id) headers["x-user-id"] = currentUser.id;
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
+          const res = await authFetch(`/api/provider/kyc?providerId=${encodeURIComponent(currentUser.id)}`, {
+            headers,
+            credentials: "include",
+            cache: "no-store"
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.kyc) {
+              const vStatus = data.kyc.verificationStatus || (data.kyc.isVerified ? "verified" : "unverified");
+              const isVerified = vStatus === "verified";
+              set((state) => ({
+                profile: {
+                  ...state.profile,
+                  isVerified,
+                  verificationStatus: vStatus,
+                  kycStatus: data.kyc.kycStatus || (isVerified ? "Verified" : "Unverified"),
+                  kycDocumentType: data.kyc.kycDocumentType || undefined,
+                  kycDocumentNumber: data.kyc.kycDocumentNumber || undefined,
+                  kycDocumentLast4: data.kyc.kycDocumentLast4 || undefined,
+                  kycDocumentPhoto: data.kyc.kycDocumentPhoto || undefined,
+                  panNumber: data.kyc.panNumber || undefined,
+                  aadhaarNumber: data.kyc.aadhaarNumber || undefined,
+                }
+              }));
+            }
+          }
+        } catch (e: any) {
+          console.warn("Provider KYC fetch error:", e?.message || e);
         }
       },
 
