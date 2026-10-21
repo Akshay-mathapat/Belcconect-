@@ -1,6 +1,9 @@
 -- Migration 034: Complete Provider eKYC Verification System
 -- Idempotent, safe migration for PostgreSQL
 
+-- 0. Ensure service_providers has updated_at column
+ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
 -- 1. Main KYC Application Table
 CREATE TABLE IF NOT EXISTS public.provider_kyc (
     id VARCHAR(64) PRIMARY KEY,

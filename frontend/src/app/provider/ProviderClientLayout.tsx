@@ -182,11 +182,11 @@ export default function ProviderLayout({
   ];
 
   const mobileBottomNav = [
-    { key: "dashboard", href: "/provider", icon: LayoutDashboard },
-    { key: "kyc", href: "/provider/ekyc", icon: ShieldCheck },
-    { key: "bookings", href: "/provider/bookings", icon: CalendarDays },
-    { key: "messages", href: "/provider/messages", icon: MessageSquare },
-    { key: "profile", href: "/provider/profile", icon: User },
+    { key: "dashboard", href: "/provider", icon: LayoutDashboard, label: "Home" },
+    { key: "kyc", href: "/provider/ekyc", icon: ShieldCheck, label: "eKYC" },
+    { key: "bookings", href: "/provider/bookings", icon: CalendarDays, label: "Bookings" },
+    { key: "messages", href: "/provider/messages", icon: MessageSquare, label: "Messages" },
+    { key: "profile", href: "/provider/profile", icon: User, label: "Profile" },
   ];
 
   if (!isHydrated) {
@@ -488,7 +488,7 @@ export default function ProviderLayout({
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 pt-16 transition-all duration-300">
-        {!isVerifiedProvider && (
+        {!isVerifiedProvider && !pathname.startsWith("/provider/ekyc") && !pathname.startsWith("/provider/kyc") && (
           <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-200 flex flex-wrap items-center justify-between gap-3 lg:ml-[240px]">
             <div className="flex items-center gap-2.5">
               <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
@@ -526,7 +526,7 @@ export default function ProviderLayout({
         {mobileBottomNav.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/provider" && pathname.startsWith(item.href));
           const Icon = item.icon;
-          const label = t(`serviceProvider.${item.key}`);
+          const label = item.label || t(`serviceProvider.${item.key}`);
 
           return (
             <Link

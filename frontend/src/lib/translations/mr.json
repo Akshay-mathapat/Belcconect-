@@ -578,7 +578,8 @@
     "fullNameOnGovtId": "पूर्ण नाव (सरकारी आयडीनुसार) *",
     "uploadDocumentPhoto": "दस्तऐवज अपलोड करा (फोटो / PDF) *",
     "chooseDocumentPhoto": "दस्तऐवज (फोटो किंवा PDF) निवडा",
-    "submitKycForVerification": "पडताळणीसाठी केवायसी सबमिट करा"
+    "submitKycForVerification": "पडताळणीसाठी केवायसी सबमिट करा",
+    "kyc": "ओळख पडताळणी (eKYC)"
   },
   "chat": {
     "shareLocation": "📍 स्थान सामायिक करा",

@@ -18,7 +18,8 @@ export async function POST(request: Request) {
     const { consentText, documentType } = body;
 
     const providerId = authUser.userId;
-    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "127.0.0.1";
+    const rawIp = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "127.0.0.1";
+    const ipAddress = rawIp.split(",")[0].trim().slice(0, 45);
     const userAgent = request.headers.get("user-agent") || "Unknown";
 
     // 1. Get or create provider_kyc record
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("[EKYC_START_ERROR]", error?.message || error);
-    return NextResponse.json({ error: "Failed to initialize eKYC session" }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Failed to initialize eKYC session" }, { status: 500 });
   }
 }
 

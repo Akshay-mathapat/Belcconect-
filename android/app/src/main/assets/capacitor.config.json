@@ -3,10 +3,7 @@
 	"appName": "BelConnect",
 	"webDir": "public",
 	"server": {
-		"url": "https://belcconect.vercel.app",
 		"cleartext": false
-	},
-	"android": {
-		"path": "../android"
 	}
 }
+

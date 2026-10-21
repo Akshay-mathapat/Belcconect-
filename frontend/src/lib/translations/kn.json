@@ -578,7 +578,8 @@
     "fullNameOnGovtId": "ಪೂರ್ಣ ಹೆಸರು (ಸರ್ಕಾರಿ ಐಡಿಯಂತೆ) *",
     "uploadDocumentPhoto": "ದಾಖಲೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ (ಫೋಟೋ / PDF) *",
     "chooseDocumentPhoto": "ದಾಖಲೆ (ಫೋಟೋ ಅಥವಾ PDF) ಆಯ್ಕೆಮಾಡಿ",
-    "submitKycForVerification": "ಪರಿಶೀಲನೆಗಾಗಿ KYC ಸಲ್ಲಿಸಿ"
+    "submitKycForVerification": "ಪರಿಶೀಲನೆಗಾಗಿ KYC ಸಲ್ಲಿಸಿ",
+    "kyc": "ಗುರುತು ಪರಿಶೀಲನೆ (eKYC)"
   },
   "chat": {
     "shareLocation": "📍 ಸ್ಥಳ ಹಂಚಿಕೊಳ್ಳಿ",

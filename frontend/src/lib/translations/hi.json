@@ -497,7 +497,8 @@
     "noBookingsFoundDesc": "चयनित स्थिति से मेल खाने वाली कोई बुकिंग नहीं है।",
     "pricing": "मूल्य निर्धारण",
     "mutuallyAgreed": "आपसी सहमति",
-    "details": "विवरण"
+    "details": "विवरण",
+    "kyc": "पहचान सत्यापन (eKYC)"
   },
   "auth": {
     "welcomeBack": "वापसी पर आपका स्वागत है",

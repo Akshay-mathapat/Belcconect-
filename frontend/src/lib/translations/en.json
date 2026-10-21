@@ -571,7 +571,8 @@
     "fullNameOnGovtId": "Full Name (As on Government ID) *",
     "uploadDocumentPhoto": "Upload Document (Photo / PDF) *",
     "chooseDocumentPhoto": "Choose Document (Photo or PDF)",
-    "submitKycForVerification": "Submit KYC for Verification"
+    "submitKycForVerification": "Submit KYC for Verification",
+    "kyc": "eKYC"
   },
   "chat": {
     "shareLocation": "📍 Share Location",
