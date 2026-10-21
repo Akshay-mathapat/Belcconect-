@@ -187,9 +187,14 @@ export async function POST(
      *
      * Never provide a hardcoded fallback secret here.
      */
-    const internalSecret =
+    const rawSecret =
       process.env.SIGNALING_INTERNAL_SECRET ||
-      process.env.INTERNAL_API_SECRET;
+      process.env.INTERNAL_API_SECRET ||
+      process.env.JWT_SECRET;
+
+    const internalSecret = typeof rawSecret === "string"
+      ? rawSecret.trim().replace(/^["']|["']$/g, "")
+      : "";
 
     if (internalSecret) {
       // Fire-and-forget real-time broadcast.

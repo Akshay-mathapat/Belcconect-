@@ -888,6 +888,7 @@ function isInternalSecretAuthorized(candidate) {
     INTERNAL_API_SECRET,
     JWT_SECRET,
     normalizeSecret("cityconnect_signaling_secret_key_2026"),
+    normalizeSecret("cityconnect_internal_secret_key_2026"),
     process.env.SIGNALING_INTERNAL_SECRET_FALLBACK ? normalizeSecret(process.env.SIGNALING_INTERNAL_SECRET_FALLBACK) : null
   ].filter(Boolean);
 
@@ -909,6 +910,7 @@ app.post("/api/chat/broadcast", (req, res) => {
 app.post("/api/location/broadcast", (req, res) => {
   const { secret, bookingId, event, payload } = req.body;
   if (!isInternalSecretAuthorized(secret)) {
+    console.warn(`[Signaling Server] /api/location/broadcast rejected: secret mismatch (fingerprint: ${getSecretFingerprint(secret)})`);
     return res.status(403).json({ error: "Forbidden: Invalid internal secret" });
   }
   if (bookingId && event && payload) {
