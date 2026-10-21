@@ -213,8 +213,8 @@ export async function POST(
       })
         .then((response) => {
           if (!response.ok) {
-            console.error(
-              `[Native Location] Signaling broadcast failed with status ${response.status}`
+            console.warn(
+              `[Native Location] Signaling socket relay returned ${response.status} from ${signalingUrl} (PostgreSQL location was saved successfully with 200 OK; customer map will update via DB polling)`
             );
 
             return;
