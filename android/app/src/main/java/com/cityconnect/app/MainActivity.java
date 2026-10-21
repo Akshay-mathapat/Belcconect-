@@ -37,13 +37,13 @@ public class MainActivity extends BridgeActivity {
                     configJson.put("server", serverObj);
                 }
                 String currentUrl = serverObj.optString("url", "").trim();
-                if (currentUrl.isEmpty() || currentUrl.contains("localhost")) {
+                if (currentUrl.isEmpty() || currentUrl.contains("localhost") || currentUrl.contains("belconnect.vercel.app")) {
                     String targetUrl = "https://belcconect.vercel.app";
                     try {
                         int resId = getResources().getIdentifier("server_url", "string", getPackageName());
                         if (resId != 0) {
                             String resUrl = getString(resId);
-                            if (resUrl != null && !resUrl.trim().isEmpty()) {
+                            if (resUrl != null && !resUrl.trim().isEmpty() && !resUrl.contains("belconnect.vercel.app")) {
                                 targetUrl = resUrl.trim();
                             }
                         }
@@ -51,6 +51,10 @@ public class MainActivity extends BridgeActivity {
 
                     SharedPreferences prefs = getSharedPreferences("belconnect_app_config", Context.MODE_PRIVATE);
                     String configuredUrl = prefs.getString("server_url", targetUrl);
+                    if (configuredUrl == null || configuredUrl.contains("localhost") || configuredUrl.contains("belconnect.vercel.app")) {
+                        configuredUrl = targetUrl;
+                        prefs.edit().putString("server_url", configuredUrl).apply();
+                    }
 
                     serverObj.put("url", configuredUrl);
                     serverObj.put("cleartext", configuredUrl.startsWith("http://"));
