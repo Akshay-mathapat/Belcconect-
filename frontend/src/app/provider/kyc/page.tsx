@@ -20,6 +20,7 @@ import {
   X
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
 import { useProviderStore } from "@/store/useProviderStore";
 import { authFetch } from "@/lib/authFetch";
@@ -33,8 +34,13 @@ const GOVT_DOC_TYPES = [
 ];
 
 export default function ProviderKycPage() {
+  const router = useRouter();
   const { currentUser } = useAuthStore();
   const { profile, fetchProviderKyc } = useProviderStore();
+
+  useEffect(() => {
+    router.replace("/provider/ekyc");
+  }, [router]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

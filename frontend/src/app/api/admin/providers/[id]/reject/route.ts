@@ -55,6 +55,14 @@ export async function POST(
 
     const provider = updateRes.rows[0];
 
+    // Sync provider_kyc table if a KYC record exists
+    await query(
+      `UPDATE provider_kyc
+       SET status = 'REJECTED', rejection_reason = $1, reviewed_at = CURRENT_TIMESTAMP, reviewed_by = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE provider_id = $3`,
+      [cleanReason, authUser.email || authUser.userId, id]
+    ).catch(() => {});
+
     // 3. Record in admin_audit_logs
     const auditId = crypto.randomUUID();
     await query(

@@ -42,7 +42,7 @@ interface NavItem {
 
 const primaryNavItems: NavItem[] = [
   { key: "home", href: "/provider", label: "Home", icon: LayoutDashboard },
-  { key: "kyc", href: "/provider/kyc", label: "Identity (KYC)", icon: ShieldCheck, tourAttr: "provider-kyc" },
+  { key: "kyc", href: "/provider/ekyc", label: "Identity (eKYC)", icon: ShieldCheck, tourAttr: "provider-kyc" },
   { key: "requests", href: "/provider/bookings?tab=Requested", label: "Requests", icon: Clock, tourAttr: "provider-bookings" },
   { key: "myJobs", href: "/provider/bookings?tab=ACTIVE", label: "My Jobs", icon: CalendarDays },
   { key: "profile", href: "/provider/profile", label: "Profile", icon: User },

@@ -71,7 +71,7 @@ describe("Compulsory Provider KYC Verification System", () => {
     const content = fs.readFileSync(layoutPath, "utf8");
 
     assert.ok(content.includes("fetchProviderKyc"), "layout must call fetchProviderKyc on mount");
-    assert.ok(content.includes('router.replace("/provider/kyc")'), "layout must redirect unverified providers to /provider/kyc");
+    assert.ok(content.includes('router.replace("/provider/kyc")') || content.includes('router.replace("/provider/ekyc")'), "layout must redirect unverified providers to /provider/kyc or /provider/ekyc");
     assert.ok(content.includes("isAllowedRoute"), "layout must check against allowed routes (/provider/kyc, /provider/profile)");
     assert.ok(content.includes("Compulsory KYC") || content.includes("KYC Verification Under Review"), "layout must render KYC warning banner for unverified providers");
   });

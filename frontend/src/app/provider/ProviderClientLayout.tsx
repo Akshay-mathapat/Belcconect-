@@ -159,13 +159,13 @@ export default function ProviderLayout({
     if (!isHydrated) return;
     if (!currentUser || currentUser.role !== "provider") return;
 
-    const allowedUnverifiedRoutes = ["/provider/kyc", "/provider/profile"];
+    const allowedUnverifiedRoutes = ["/provider/ekyc", "/provider/kyc", "/provider/profile"];
     const isAllowedRoute = allowedUnverifiedRoutes.some(
       (allowed) => pathname === allowed || pathname.startsWith(`${allowed}/`)
     );
 
     if (!isVerifiedProvider && !isAllowedRoute) {
-      router.replace("/provider/kyc");
+      router.replace("/provider/ekyc");
     }
   }, [currentUser, isHydrated, isVerifiedProvider, pathname, router]);
 
@@ -183,7 +183,7 @@ export default function ProviderLayout({
 
   const mobileBottomNav = [
     { key: "dashboard", href: "/provider", icon: LayoutDashboard },
-    { key: "kyc", href: "/provider/kyc", icon: ShieldCheck },
+    { key: "kyc", href: "/provider/ekyc", icon: ShieldCheck },
     { key: "bookings", href: "/provider/bookings", icon: CalendarDays },
     { key: "messages", href: "/provider/messages", icon: MessageSquare },
     { key: "profile", href: "/provider/profile", icon: User },
@@ -504,7 +504,7 @@ export default function ProviderLayout({
               </span>
             </div>
             <Link
-              href="/provider/kyc"
+              href="/provider/ekyc"
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-sm transition-all"
             >
               <span>{profile.verificationStatus === "pending" ? "Check Status" : "Complete KYC Now"}</span>
