@@ -55,6 +55,8 @@ export interface AuthUser {
   isVerified?: boolean;
   verificationStatus?: "unverified" | "pending" | "verified" | "rejected" | string;
   kycStatus?: string;
+  google_id?: string;
+  googleId?: string;
 }
 
 interface AuthState {

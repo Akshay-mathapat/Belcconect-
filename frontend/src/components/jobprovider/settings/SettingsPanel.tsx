@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon, Laptop, Trash2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation } from "@/lib/i18n";
 import { getAuthToken } from "@/lib/jwt";
+import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
 import { panelVariants } from "../uiTokens";
 
 export function SettingsPanel() {
   const router = useRouter();
+  const { currentUser } = useAuthStore();
   const { theme, setTheme, mounted } = useTheme();
   const { t } = useTranslation();
   const inputCls = "block w-full px-3 py-3 border border-border rounded-xl bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all sm:text-sm text-foreground placeholder-muted-foreground";
@@ -21,6 +23,42 @@ export function SettingsPanel() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [deleteOtp, setDeleteOtp] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpSentMessage, setOtpSentMessage] = useState<string | null>(null);
+  const [isGoogleAccount, setIsGoogleAccount] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.google_id || (currentUser as any)?.googleId) {
+      setIsGoogleAccount(true);
+    }
+  }, [currentUser]);
+
+  const handleSendOtp = async () => {
+    try {
+      setIsSendingOtp(true);
+      setDeleteError(null);
+      const token = getStoredAuthToken();
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ action: "send_otp" })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send verification code");
+      }
+      setOtpSentMessage(data.message || `Verification code sent to ${currentUser?.email || "your email"}`);
+      setIsGoogleAccount(true);
+    } catch (err: any) {
+      setDeleteError(err.message || "Failed to send verification code. Please try again.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     try {
@@ -35,11 +73,15 @@ export function SettingsPanel() {
         },
         body: JSON.stringify({
           password: deletePassword,
+          otp: deleteOtp,
           reason: "Job provider requested in-app account deletion"
         })
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.requiresOtp || data.error?.includes("verification code") || data.error?.includes("Google-authenticated")) {
+          setIsGoogleAccount(true);
+        }
         throw new Error(data.error || "Failed to delete account");
       }
       try {
@@ -223,18 +265,82 @@ export function SettingsPanel() {
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Enter password to confirm deletion:
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter current password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-red-500/30"
-                />
-              </div>
+              {/* Google Account OTP flow */}
+              {(isGoogleAccount || (deleteError && (deleteError.includes("verification code") || deleteError.includes("Google-authenticated")))) ? (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs">
+                  <div>
+                    <p className="font-bold text-foreground">Google Account Verification Code</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      A 6-digit verification code sent to <span className="font-semibold text-foreground">{currentUser?.email}</span> is required to confirm deletion.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isSendingOtp}
+                      onClick={handleSendOtp}
+                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isSendingOtp ? "Sending Code..." : (otpSentMessage ? "Resend Code" : "Send Verification Code")}
+                    </button>
+                    {otpSentMessage && (
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        Code sent! Check inbox
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-[11px] font-bold text-foreground">
+                      Enter 6-Digit Verification Code (OTP):
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="e.g. 123456"
+                      value={deleteOtp}
+                      onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="w-full px-3.5 py-2 text-sm font-mono tracking-widest rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 pt-1 border-t border-blue-500/10">
+                    <label className="text-[10px] font-medium text-muted-foreground">
+                      Enter password to confirm deletion:
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Optional for Google accounts"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-xl border border-border bg-background/50 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Enter password to confirm deletion:
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter current password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  />
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => setIsGoogleAccount(true)}
+                      className="text-[10px] text-blue-600 hover:underline cursor-pointer"
+                    >
+                      Signed in with Google? Use email verification code
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
                 <button

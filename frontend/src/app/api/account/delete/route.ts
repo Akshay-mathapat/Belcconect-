@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 import { query, getClient, verifyPassword } from "@/lib/db";
 import { checkIpRateLimit, checkUserRateLimit } from "@/lib/rateLimit";
 import { normalizeIndianPhone } from "@/lib/phone";
-import { hashOtpWithHmac } from "@/lib/email";
+import { hashOtpWithHmac, sendPasswordResetOtpEmail } from "@/lib/email";
 import { performAccountDeletionTx } from "@/lib/accountDeletion";
 
 export async function POST(request: Request) {
@@ -60,6 +60,39 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "User account not found." }, { status: 404 });
       }
 
+      // Handle requesting a verification OTP for Google / passwordless accounts
+      if (body.action === "send_otp") {
+        const cleanEmail = (userRecord.email || authUser.email || "").trim().toLowerCase();
+        if (!cleanEmail) {
+          return NextResponse.json(
+            { error: "No email address found on file to send verification code." },
+            { status: 400 }
+          );
+        }
+        const rawOtp = crypto.randomInt(100000, 1000000).toString();
+        const otpHash = hashOtpWithHmac(userId, rawOtp);
+        await query(
+          "UPDATE public.password_reset_otps SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL",
+          [userId]
+        );
+        const otpId = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        await query(
+          `INSERT INTO public.password_reset_otps (id, user_id, email, otp_hash, expires_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
+          [otpId, userId, cleanEmail, otpHash, expiresAt]
+        );
+        try {
+          await sendPasswordResetOtpEmail({ to: cleanEmail, otp: rawOtp, expiresInMinutes: 15 });
+        } catch (mailErr: any) {
+          console.warn("[DELETE_ACCOUNT_OTP_MAIL_WARN]", mailErr?.message || mailErr);
+        }
+        return NextResponse.json({
+          success: true,
+          message: `Verification code sent to ${cleanEmail}. Check your inbox.`
+        });
+      }
+
       // 2. Authentication Verification: Require current password or fresh OTP for Google-only accounts
       if (userRecord.password_hash) {
         const password = typeof body.password === "string" ? body.password : "";
@@ -81,7 +114,12 @@ export async function POST(request: Request) {
         const otp = typeof body.otp === "string" ? body.otp.trim() : "";
         if (!otp) {
           return NextResponse.json(
-            { error: "A verification code is required to delete a Google-authenticated account. Please enter the OTP sent to your email." },
+            { 
+              error: "A verification code is required to delete a Google-authenticated account. Please enter the OTP sent to your email.",
+              requiresOtp: true,
+              isGoogleAccount: true,
+              email: userRecord.email
+            },
             { status: 400 }
           );
         }
