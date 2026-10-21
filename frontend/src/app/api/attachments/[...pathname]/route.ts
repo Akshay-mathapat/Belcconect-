@@ -18,7 +18,7 @@ export async function GET(
 
     // 1. Enforce strict prefix
     const isChat = blobPathname.startsWith("chat-attachments/");
-    const isKyc = blobPathname.startsWith("kyc-documents/");
+    const isKyc = blobPathname.startsWith("kyc-documents/") || blobPathname.startsWith("kyc-selfies/");
     if (!isChat && !isKyc) {
       return NextResponse.json({ error: "Invalid attachment path" }, { status: 400 });
     }
@@ -35,7 +35,7 @@ export async function GET(
     }
 
     // 3. Strict character whitelist
-    if (!/^(chat-attachments|kyc-documents)\/[a-zA-Z0-9._\/-]+$/.test(blobPathname)) {
+    if (!/^(chat-attachments|kyc-documents|kyc-selfies)\/[a-zA-Z0-9._\/-]+$/.test(blobPathname)) {
       return NextResponse.json({ error: "Invalid attachment path" }, { status: 400 });
     }
 

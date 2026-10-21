@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const sanitizeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const randomSuffix = crypto.randomBytes(6).toString("hex");
     const uploadCategory = (formData.get("category") as string) || (formData.get("type") as string) || "chat";
-    const prefix = uploadCategory === "kyc" ? "kyc-documents" : "chat-attachments";
+    const prefix = uploadCategory === "kyc" ? "kyc-documents" : (uploadCategory === "selfie" ? "kyc-selfies" : "chat-attachments");
     const blobPathname = `${prefix}/${userId}/${Date.now()}-${randomSuffix}-${sanitizeFilename}`;
 
     const bytes = await file.arrayBuffer();

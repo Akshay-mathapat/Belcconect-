@@ -128,4 +128,13 @@ describe("BelConnect eKYC System Architecture & Integration", () => {
     assert.ok(content.includes("2. Live Selfie Liveness"), "Admin modal must display Live Selfie card");
     assert.ok(content.includes("livenessScore"), "Admin modal must display liveness score");
   });
+
+  test("11) /api/attachments allows kyc-selfies/ alongside kyc-documents/ and chat-attachments/", () => {
+    const attachPath = path.join(rootDir, "frontend/src/app/api/attachments/[...pathname]/route.ts");
+    assert.ok(fs.existsSync(attachPath), "Attachments route must exist");
+    const content = fs.readFileSync(attachPath, "utf8");
+
+    assert.ok(content.includes("kyc-selfies/"), "Attachments route must whitelist kyc-selfies/");
+    assert.ok(content.includes("kyc-documents/"), "Attachments route must whitelist kyc-documents/");
+  });
 });
