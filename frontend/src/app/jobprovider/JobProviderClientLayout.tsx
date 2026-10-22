@@ -428,12 +428,29 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                   </Link>
                 );
               })}
+
+              {/* Logout Option in Sidebar Navigation */}
+              <div className="pt-2 mt-2 border-t border-border/40">
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setSidebarOpen(false);
+                    router.push("/");
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-500/10 transition-all cursor-pointer"
+                >
+                  <LogOut className="h-5 w-5 text-rose-500 shrink-0" />
+                  <span>{t("common.signOut") !== "common.signOut" ? t("common.signOut") : "Sign Out"}</span>
+                </button>
+              </div>
             </nav>
           </div>
 
           {/* Bottom Profile Info Section */}
           <div className="pt-3 mt-auto shrink-0 border-t border-border/40">
-            <div className="flex items-center gap-3 px-1">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center border border-border shadow-sm shrink-0">
                   {currentUser?.name ? currentUser.name.trim().charAt(0).toUpperCase() : "U"}
                 </div>
@@ -446,7 +463,22 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
                   </p>
                 </div>
               </div>
+
+              {/* Quick Logout button on profile footer */}
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setSidebarOpen(false);
+                  router.push("/");
+                }}
+                title={t("common.signOut") !== "common.signOut" ? t("common.signOut") : "Sign Out"}
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
+          </div>
         </aside>
 
         {/* ── Main Content Area ─────────────────────────────────────────── */}
