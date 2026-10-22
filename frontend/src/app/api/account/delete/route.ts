@@ -75,18 +75,31 @@ export async function POST(request: Request) {
           "UPDATE public.password_reset_otps SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL",
           [userId]
         );
-        const otpId = crypto.randomUUID();
+        const otpId = `otp-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
         await query(
-          `INSERT INTO public.password_reset_otps (id, user_id, email, otp_hash, expires_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())`,
-          [otpId, userId, cleanEmail, otpHash, expiresAt]
+          `INSERT INTO public.password_reset_otps (id, user_id, user_table, email, otp_hash, expires_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [otpId, userId, userTable, cleanEmail, otpHash, expiresAt]
         );
-        try {
-          await sendPasswordResetOtpEmail({ to: cleanEmail, otp: rawOtp, expiresInMinutes: 15 });
-        } catch (mailErr: any) {
-          console.warn("[DELETE_ACCOUNT_OTP_MAIL_WARN]", mailErr?.message || mailErr);
+        const emailResult = await sendPasswordResetOtpEmail({
+          to: cleanEmail,
+          otp: rawOtp,
+          expiresInMinutes: 15,
+          subject: `BelConnect Account Deletion Code: ${rawOtp}`,
+          title: "Confirm Account Deletion",
+          actionDescription: "You requested a verification code to permanently delete your BelConnect account."
+        });
+
+        if (!emailResult.success) {
+          console.error("[DELETE_ACCOUNT_OTP_MAIL_ERROR]", emailResult.error);
+          await query("DELETE FROM public.password_reset_otps WHERE id = $1", [otpId]);
+          return NextResponse.json(
+            { error: emailResult.error || "Failed to send verification email. Please try again." },
+            { status: 500 }
+          );
         }
+
         return NextResponse.json({
           success: true,
           message: `Verification code sent to ${cleanEmail}. Check your inbox.`

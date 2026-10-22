@@ -17,6 +17,9 @@ export interface SendPasswordResetOtpEmailParams {
   to: string;
   otp: string;
   expiresInMinutes?: number;
+  subject?: string;
+  title?: string;
+  actionDescription?: string;
 }
 
 export interface SendEmailResult {
@@ -115,6 +118,9 @@ export async function sendPasswordResetOtpEmail({
   to,
   otp,
   expiresInMinutes = 10,
+  subject,
+  title,
+  actionDescription,
 }: SendPasswordResetOtpEmailParams): Promise<SendEmailResult> {
   const missingVars = getSmtpMissingVars();
   if (missingVars.length > 0) {
@@ -133,26 +139,30 @@ export async function sendPasswordResetOtpEmail({
     const fromName = process.env.SMTP_FROM_NAME || "BelConnect";
     const from = `${fromName} <${fromEmail}>`;
 
-    console.log("[PASSWORD_RESET] smtp-send-start");
+    const emailSubject = subject || "BelConnect Password Reset Code";
+    const emailTitle = title || "Reset Your Password";
+    const emailDesc = actionDescription || "You requested a password reset code for your account.";
+
+    console.log(`[PASSWORD_RESET] smtp-send-start to=${to}`);
 
     const info = await transporter.sendMail({
       from,
       to,
-      subject: "BelConnect Password Reset Code",
-      text: `Your BelConnect password reset code is: ${otp}\n\nThis code expires in ${expiresInMinutes} minutes.\n\nIf you did not request a password reset, you can ignore this email.`,
+      subject: emailSubject,
+      text: `${emailTitle}\n\n${emailDesc}\n\nYour BelConnect verification code is: ${otp}\n\nThis code expires in ${expiresInMinutes} minutes.\n\nIf you did not request this, you can ignore this email.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 20px;">
             <h2 style="color: #2563eb; margin: 0; font-size: 22px; font-weight: bold;">${fromName}</h2>
           </div>
-          <h3 style="color: #0f172a; margin-top: 0; font-size: 18px;">Reset Your Password</h3>
-          <p style="color: #475569; font-size: 14px; line-height: 1.5;">You requested a password reset code for your account.</p>
+          <h3 style="color: #0f172a; margin-top: 0; font-size: 18px;">${emailTitle}</h3>
+          <p style="color: #475569; font-size: 14px; line-height: 1.5;">${emailDesc}</p>
           <div style="background-color: #f1f5f9; padding: 18px; text-align: center; border-radius: 10px; font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #1e293b; margin: 24px 0;">
             ${otp}
           </div>
           <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">This code expires in <strong>${expiresInMinutes} minutes</strong>.</p>
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #94a3b8; margin: 0; text-align: center;">If you did not request this, please ignore this email.</p>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0; text-align: center;">If you did not request this, please ignore this email or contact support.</p>
         </div>
       `,
     });
