@@ -19,7 +19,6 @@ import {
   PlayCircle,
   CheckCircle,
   MapPin,
-  Phone,
   ArrowRight,
   PackageCheck,
   Droplets,
@@ -445,12 +444,6 @@ export default function ProviderDashboardPage() {
                         <Clock className="h-3 w-3 text-blue-600" />
                         {booking.date} {t("common.at") || "at"} {booking.time}
                       </span>
-                      {booking.customerPhone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-blue-600" />
-                          {booking.customerPhone}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </Link>

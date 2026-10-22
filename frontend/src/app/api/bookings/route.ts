@@ -10,7 +10,7 @@ function mapRowToBooking(row: any) {
     id: row.id,
     customerId: row.customer_id,
     customerName: row.customer_name || "Customer",
-    customerPhone: row.customer_phone || "",
+    customerPhone: "",
     customerPhoto: row.customer_photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
     serviceName: row.service_name,
     category: row.category,

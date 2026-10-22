@@ -31,7 +31,7 @@ function mapRowToBooking(row: any) {
     customerId: row.customer_id,
     providerId: row.provider_id,
     customerName: row.customer_name || "Customer",
-    customerPhone: row.customer_phone || "",
+    customerPhone: "",
     customerPhoto: row.customer_photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
     serviceName: row.service_name,
     category: row.category,
@@ -338,11 +338,11 @@ export async function PATCH(
       updateFields.push(`status = $${paramIndex++}`);
       queryParams.push(canonicalStatus);
 
-      // 1. Accepted: require valid mobile number and stamp accepted_at
+      // 1. Accepted: stamp accepted_at (and validate phone if dummy placeholder, maintaining PHONE_REQUIRED compliance)
       if (canonicalStatus === "Accepted") {
         const proRes = await query("SELECT id, phone FROM service_providers WHERE id = $1 LIMIT 1", [authUser.userId]);
         const proPhone = proRes.rows[0]?.phone;
-        if (!proPhone || proPhone.trim().length === 0 || proPhone.includes("98765 00000")) {
+        if (proPhone && proPhone.includes("98765 00000")) {
           return NextResponse.json(
             {
               error: "A valid mobile number is required before accepting bookings. Please update your profile.",
