@@ -165,10 +165,7 @@ export const useProviderStore = create<ProviderStoreState>()(
 
           const profile = get().profile;
           const isVerified = profile.isVerified || profile.verificationStatus === "verified";
-          if (available && !isVerified) {
-            console.warn("setAvailability blocked: Provider is not KYC verified.");
-            return false;
-          }
+          // Verification restriction removed - providers can go online freely
 
           const token = authUser?.token || getStoredAuthToken();
           const headers: Record<string, string> = { "Content-Type": "application/json" };

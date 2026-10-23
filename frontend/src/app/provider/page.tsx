@@ -194,15 +194,6 @@ export default function ProviderDashboardPage() {
     }
 
     const targetState = !isOnline;
-    const isVerified = profile.isVerified || profile.verificationStatus === "verified";
-    if (targetState && !isVerified) {
-      setAvailabilityMessage({
-        text: "Compulsory KYC Identity Verification required before going online. Please complete your KYC verification.",
-        isError: true
-      });
-      setTimeout(() => setAvailabilityMessage(null), 4500);
-      return;
-    }
 
     setTogglingAvailability(true);
     setAvailabilityMessage(null);

@@ -84,17 +84,7 @@ export async function PATCH(request: Request) {
     const currentProv = provCheck.rows[0];
     const isVerifiedCurrent = currentProv.verification_status === "verified" || currentProv.is_verified === true;
 
-    if (isAvailable && !isVerifiedCurrent) {
-      return NextResponse.json(
-        {
-          error: "KYC identity verification required. You cannot go online until your KYC documents are approved by the admin.",
-          requiresKyc: true,
-          isVerified: false,
-          verificationStatus: currentProv.verification_status || "unverified"
-        },
-        { status: 403 }
-      );
-    }
+    // Verification restriction removed - providers can toggle availability freely
 
     const updateRes = await query(
       `UPDATE service_providers

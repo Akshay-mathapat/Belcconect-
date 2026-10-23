@@ -62,18 +62,12 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
 
     const rawReturnUrl = searchParams.get("returnUrl");
     const safeReturnUrl = getSafeReturnUrl(rawReturnUrl);
-    const isUnverifiedProvider = user.role === "provider" && user.verificationStatus !== "verified";
-
-    if (safeReturnUrl && (!isUnverifiedProvider || safeReturnUrl === "/provider/kyc")) {
+    if (safeReturnUrl) {
       router.push(safeReturnUrl);
     } else {
       switch (user.role) {
         case "provider":
-          if (isUnverifiedProvider) {
-            router.push("/provider/kyc");
-          } else {
-            router.push(user.isFirstLogin ? "/provider/profile" : "/provider");
-          }
+          router.push(user.isFirstLogin ? "/provider/profile" : "/provider");
           break;
         case "job_provider":
           router.push(user.isFirstLogin ? "/jobprovider/business-profile" : "/jobprovider/dashboard");

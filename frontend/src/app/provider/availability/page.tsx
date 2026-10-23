@@ -51,14 +51,6 @@ export default function AvailabilityPage() {
 
   const handleToggleLiveAvailability = async () => {
     const targetState = !isOnline;
-    const isVerified = profile.isVerified || profile.verificationStatus === "verified";
-    if (targetState && !isVerified) {
-      setAvailabilityMessage({
-        text: "Compulsory KYC Identity Verification required before going online. Please submit and verify your KYC documents.",
-        isError: true
-      });
-      return;
-    }
 
     setTogglingAvailability(true);
     setAvailabilityMessage(null);

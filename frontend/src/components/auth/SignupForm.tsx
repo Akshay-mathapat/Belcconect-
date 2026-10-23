@@ -87,7 +87,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       // Auto-redirect directly to appropriate dashboard after 500ms
       setTimeout(() => {
         if (signupRole === "provider") {
-          router.push("/provider/kyc");
+          router.push(safeReturnTo !== "/" ? safeReturnTo : "/provider");
         } else if (signupRole === "job_provider") {
           router.push(safeReturnTo !== "/" ? safeReturnTo : "/jobprovider/dashboard");
         } else {
