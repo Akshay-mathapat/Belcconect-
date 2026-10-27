@@ -24,7 +24,7 @@ export async function GET(
   { params }: { params: Promise<{ provider: string; z: string; x: string; y: string }> }
 ) {
   // 0. Authentication: Login is strictly required
-  const authUser = getAuthenticatedUser(request);
+  const authUser = await getAuthenticatedUser(request);
   if (!authUser) {
     return new Response("Authentication required", { status: 401 });
   }

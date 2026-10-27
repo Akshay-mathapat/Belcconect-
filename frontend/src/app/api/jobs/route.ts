@@ -150,7 +150,7 @@ export async function GET(request: Request) {
 // ── POST /api/jobs — Create New Job Listing (Employer / Job Provider) ─────
 export async function POST(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

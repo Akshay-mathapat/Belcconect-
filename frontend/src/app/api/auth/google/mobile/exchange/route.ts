@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { consumeMobileHandoff } from "@/lib/googleOAuthTransactions";
+import { createSession, setSessionCookie, UserRole } from "@/lib/session";
 
 export async function POST(request: Request) {
   const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
@@ -19,26 +20,51 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or expired mobile sign-in code." }, { status: 401 });
     }
 
-    const token = signJwtToken({
+    // Create server-side session for Android client
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const userAgent = request.headers.get("user-agent") || null;
+
+    const session = await createSession({
       userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
+      role: user.role as UserRole,
+      ip,
+      user_agent: userAgent,
+      device_label: "Google Mobile Sign-In",
+      client: "android"
     });
-    console.info("[GOOGLE_AUTH] localJwtIssued", true);
+
+    const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
+    let token = "";
+    if (issueLegacy) {
+      token = signJwtToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      });
+      console.info("[GOOGLE_AUTH] localJwtIssued", true);
+    }
 
     const response = NextResponse.json({
       success: true,
       user,
-      token,
+      ...(issueLegacy ? { token } : {}),
+      sessionId: session.sessionId
     });
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 3600,
-      path: "/",
-    });
+
+    // Set server-side session cookie
+    setSessionCookie(response.headers, session.rawToken, user.role as UserRole);
+
+    if (issueLegacy && token) {
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 3600,
+        path: "/",
+      });
+    }
+
     return response;
   } catch (error: unknown) {
     console.error("[GOOGLE_AUTH_MOBILE_EXCHANGE_ERROR]", error instanceof Error ? error.message : "Unknown error");

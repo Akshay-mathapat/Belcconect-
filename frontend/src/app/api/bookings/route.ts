@@ -52,7 +52,7 @@ function mapRowToBooking(row: any) {
 
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser || !authUser.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -190,7 +190,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     // 1. Authenticate requester exclusively using centralized auth helper
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
 
     if (!authUser || !authUser.userId) {
       return NextResponse.json(

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     let body: any = {};
     try {
       body = await request.json();

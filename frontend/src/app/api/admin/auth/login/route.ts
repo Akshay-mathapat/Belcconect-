@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query, verifyPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { createSession, setSessionCookie } from "@/lib/session";
 
 export async function POST(request: Request) {
   try {
@@ -47,16 +48,48 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Issue JWT with role "admin"
-    const token = signJwtToken({
-      userId: admin.id,
-      email: admin.email,
-      role: "admin"
-    });
+    // 4. Create server-side admin session in PostgreSQL with graceful fallback
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const userAgent = request.headers.get("user-agent") || null;
+    const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
+
+    let session: { sessionId: string; rawToken: string; expiresAt: Date; absoluteExpiresAt: Date } | null = null;
+    try {
+      session = await createSession({
+        userId: admin.id,
+        role: "admin",
+        ip,
+        user_agent: userAgent,
+        device_label: "Admin Portal",
+        client: "web"
+      });
+    } catch (sessionErr: any) {
+      console.error(
+        `[ADMIN_LOGIN_SESSION_ERROR] Failed to create session for admin ${admin.id}:`,
+        sessionErr?.message || "Unknown error"
+      );
+      if (!issueLegacy) {
+        return NextResponse.json(
+          { error: "Authentication service unavailable. Please try again." },
+          { status: 503 }
+        );
+      }
+    }
+
+    // 5. Dual-issuance: legacy JWT if AUTH_ISSUE_LEGACY_JWT is true (default true)
+    let token = "";
+    if (issueLegacy) {
+      token = signJwtToken({
+        userId: admin.id,
+        email: admin.email,
+        role: "admin"
+      });
+    }
 
     const response = NextResponse.json({
       success: true,
-      token,
+      ...(issueLegacy ? { token } : {}),
+      ...(session ? { sessionId: session.sessionId } : {}),
       admin: {
         id: admin.id,
         email: admin.email,
@@ -64,14 +97,21 @@ export async function POST(request: Request) {
       }
     });
 
-    // Set secure auth cookie
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 3600
-    });
+    // Set server-side session cookie (__Host-admin_session) when session was created
+    if (session) {
+      setSessionCookie(response.headers, session.rawToken, "admin");
+    }
+
+    // Legacy cookie support during transition
+    if (issueLegacy && token) {
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 7 * 24 * 3600
+      });
+    }
 
     return response;
   } catch (error: any) {
@@ -82,4 +122,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

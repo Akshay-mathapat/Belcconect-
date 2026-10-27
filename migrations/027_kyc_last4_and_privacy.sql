@@ -7,6 +7,11 @@ ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS aadhaar_last4 VARC
 ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS pan_last4 VARCHAR(4);
 ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS kyc_document_last4 VARCHAR(4);
 
+-- Ensure legacy source columns exist for safe backfill/migration
+ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS aadhaar_number TEXT;
+ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS pan_number TEXT;
+ALTER TABLE public.service_providers ADD COLUMN IF NOT EXISTS kyc_document_number TEXT;
+
 -- 2. Backfill last4 columns from existing records before clearing full numbers
 UPDATE public.service_providers
 SET aadhaar_last4 = RIGHT(REGEXP_REPLACE(aadhaar_number, '[^0-9]', '', 'g'), 4)

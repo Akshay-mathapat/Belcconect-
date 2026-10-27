@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthenticatedUser, verifyJwtToken } from "@/lib/jwt";
+import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function GET(req: Request) {
   try {
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
     if (!authUser) {
       return NextResponse.json([]);
     }
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
     }

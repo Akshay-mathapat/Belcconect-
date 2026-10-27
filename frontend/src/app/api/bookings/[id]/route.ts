@@ -82,7 +82,7 @@ export async function GET(
 
   try {
     // 1. Enforce authentication via JWT session token
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=GET rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(
@@ -266,7 +266,7 @@ export async function PATCH(
 
   try {
     // 1. Enforce authentication via JWT session token
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=PATCH rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(
@@ -486,7 +486,7 @@ export async function PATCH(
 
     // Notifications for lifecycle events
     if (canonicalStatus !== previousStatus) {
-      (async () => {
+      void (async () => {
         try {
           const serviceName = previousBooking.service_name || "Service";
           const dateVal = date || previousBooking.date || "scheduled date";
@@ -773,7 +773,7 @@ export async function DELETE(
   const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
 
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id] method=DELETE rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(

@@ -73,6 +73,7 @@ export default function () {
   const customer = customers[custIndex] || customers[0];
 
   const custHeaders = {
+    "Cookie": customer.cookie || ("session=" + customer.session_token),
     "Authorization": "Bearer " + customer.token,
     "Content-Type": "application/json"
   };

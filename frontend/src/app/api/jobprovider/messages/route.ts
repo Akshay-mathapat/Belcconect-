@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 // ── GET /api/jobprovider/messages — Employer Candidate Messages Inbox ────
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
 // ── PATCH /api/jobprovider/messages — Mark Message as Read ────────────────
 export async function PATCH(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

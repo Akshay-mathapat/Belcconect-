@@ -98,5 +98,8 @@ tests/load/*token*.json
 tests/load/staging_users.json
 staging_users.json
 loadtest/*token*.json
+tests/fixtures/*token*.json
+tests/fixtures/*.tokens.json
+tests/fixtures/customer_100_tokens.json
 
 

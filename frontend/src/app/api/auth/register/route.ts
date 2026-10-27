@@ -4,6 +4,7 @@ import { query, hashPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, registerSchema, normalizeIndianPhone } from "@/lib/validations";
+import { createSession, setSessionCookie, UserRole } from "@/lib/session";
 
 export async function POST(request: Request) {
   // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
     if (role === "job_provider") targetTable = "job_providers";
 
     await query(
-      `INSERT INTO ${targetTable} (id, email, name, phone, avatar, password_hash) VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO ${targetTable} (id, email, name, phone, avatar, password_hash, account_status) VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
       [
         userId,
         cleanEmail,
@@ -94,22 +95,51 @@ export async function POST(request: Request) {
       userObj.kycStatus = "Unverified";
     }
 
-    // Generate JWT token
-    const token = signJwtToken({
+    // Create server-side session in PostgreSQL
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const userAgent = request.headers.get("user-agent") || null;
+    const clientType = request.headers.get("x-client-type") === "android" ? "android" : "web";
+
+    const session = await createSession({
       userId: userObj.id,
-      email: userObj.email,
-      role: userObj.role,
-      name: userObj.name
+      role: userObj.role as UserRole,
+      ip,
+      user_agent: userAgent,
+      client: clientType
     });
 
-    const response = NextResponse.json({ success: true, user: userObj, token });
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 3600,
-      path: "/"
+    // Dual-issuance: legacy JWT if AUTH_ISSUE_LEGACY_JWT is true (default true)
+    const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
+    let token = "";
+    if (issueLegacy) {
+      token = signJwtToken({
+        userId: userObj.id,
+        email: userObj.email,
+        role: userObj.role,
+        name: userObj.name
+      });
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      user: userObj,
+      ...(issueLegacy ? { token } : {}),
+      sessionId: session.sessionId
     });
+
+    // Set server-side session cookie (__Host-session)
+    setSessionCookie(response.headers, session.rawToken, userObj.role as UserRole);
+
+    // Legacy cookie support during transition
+    if (issueLegacy && token) {
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 3600,
+        path: "/"
+      });
+    }
 
     return response;
   } catch (error: unknown) {

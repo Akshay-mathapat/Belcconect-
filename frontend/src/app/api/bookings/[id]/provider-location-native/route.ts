@@ -28,7 +28,7 @@ export async function POST(
 
   try {
     // 1. Authenticate user from session token
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
 
     if (!authUser) {
       console.log(

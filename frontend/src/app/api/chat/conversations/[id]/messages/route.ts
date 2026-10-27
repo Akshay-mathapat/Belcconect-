@@ -5,7 +5,7 @@ import { sendPushToUser } from "@/lib/pushNotifications";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
     if (!authUser || !authUser.userId) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication session" },
@@ -77,7 +77,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
     if (!authUser || !authUser.userId) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication session" },
@@ -209,7 +209,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
 
     if (!authUser || !authUser.userId) {
       return NextResponse.json(

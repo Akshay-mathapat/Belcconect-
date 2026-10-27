@@ -11,6 +11,11 @@
     "test:e2e:ui": "cd frontend && npx playwright test --ui",
     "test:e2e:report": "cd frontend && npx playwright show-report",
     "migrate": "node scripts/run-migrations.js",
-    "migrate:status": "node scripts/run-migrations.js --status"
+    "migrate:status": "node scripts/run-migrations.js --status",
+    "migrate:test": "node scripts/run-migrations.js --target test",
+    "check:auth-await": "npm --prefix frontend run check:auth-await",
+    "preflight": "node scripts/preflight.js",
+    "smoke": "node scripts/smoke-test.js",
+    "compare-fingerprints": "node scripts/compare-fingerprints.js"
   }
 }

@@ -19,8 +19,9 @@ if (!process.env.JWT_SECRET) {
 }
 
 const JWT_SECRET = normalizeSecret(process.env.JWT_SECRET);
-const SIGNALING_SECRET = normalizeSecret(process.env.SIGNALING_INTERNAL_SECRET);
-const INTERNAL_API_SECRET = normalizeSecret(process.env.INTERNAL_API_SECRET || process.env.SIGNALING_INTERNAL_SECRET);
+const CANONICAL_INTERNAL_SECRET = normalizeSecret(process.env.INTERNAL_API_SECRET || process.env.SIGNALING_INTERNAL_SECRET);
+const SIGNALING_SECRET = CANONICAL_INTERNAL_SECRET;
+const INTERNAL_API_SECRET = CANONICAL_INTERNAL_SECRET;
 const DATABASE_URL = process.env.DATABASE_URL;
 const ALLOWED_ORIGIN = (process.env.ALLOWED_ORIGIN || "").trim();
 const PORT = process.env.PORT || process.env.SIGNALING_PORT || 4001;
@@ -35,11 +36,8 @@ if (NODE_ENV === "production" && !ALLOWED_ORIGIN) {
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   throw new Error("FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.");
 }
-if (!SIGNALING_SECRET || SIGNALING_SECRET.length < 32) {
-  throw new Error("FATAL: SIGNALING_INTERNAL_SECRET environment variable is missing or shorter than 32 characters.");
-}
-if (!INTERNAL_API_SECRET || INTERNAL_API_SECRET.length < 32) {
-  throw new Error("FATAL: INTERNAL_API_SECRET environment variable is missing or shorter than 32 characters.");
+if (!CANONICAL_INTERNAL_SECRET || CANONICAL_INTERNAL_SECRET.length < 32) {
+  throw new Error("FATAL: INTERNAL_API_SECRET (or SIGNALING_INTERNAL_SECRET) environment variable is missing or shorter than 32 characters.");
 }
 if (!DATABASE_URL) {
   throw new Error("FATAL: DATABASE_URL environment variable is missing.");
@@ -895,6 +893,24 @@ function isInternalSecretAuthorized(candidate) {
   return allowed.some((s) => s === candidateNorm);
 }
 
+app.get("/internal/fingerprints", (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  const secret = authHeader.replace("Bearer ", "").trim() || req.query.secret;
+  if (!isInternalSecretAuthorized(secret)) {
+    return res.status(403).json({ error: "Forbidden: Invalid internal secret" });
+  }
+
+  return res.json({
+    service: "backend",
+    timestamp: new Date().toISOString(),
+    fingerprints: {
+      JWT_SECRET: getSecretFingerprint(JWT_SECRET).slice(0, 8),
+      SIGNALING_INTERNAL_SECRET: getSecretFingerprint(SIGNALING_SECRET).slice(0, 8),
+      INTERNAL_API_SECRET: getSecretFingerprint(INTERNAL_API_SECRET).slice(0, 8)
+    }
+  });
+});
+
 app.post("/api/chat/broadcast", (req, res) => {
   const { secret, conversationId, event, payload } = req.body;
   if (!isInternalSecretAuthorized(secret)) {
@@ -1064,17 +1080,81 @@ setInterval(runStaleCallCleanup, 15000);
 app.get("/health", async (req, res) => {
   let dbStatus = "ok";
   try {
-    await pool.query("SELECT 1");
+    const client = await Promise.race([
+      pool.connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Database timeout (2000ms)")), 2000))
+    ]);
+    try {
+      await client.query("SELECT 1");
+    } finally {
+      client.release();
+    }
   } catch (err) {
     dbStatus = "error";
   }
 
   const statusCode = dbStatus === "ok" ? 200 : 503;
   res.status(statusCode).json({
-    status: "ok",
+    status: dbStatus === "ok" ? "ok" : "degraded",
     uptime: Math.floor(process.uptime()),
     db: dbStatus
   });
+});
+
+app.get("/ready", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({ ready: true, uptime: Math.floor(process.uptime()) });
+  } catch (err) {
+    res.status(503).json({ ready: false, error: "Database not ready" });
+  }
+});
+
+let isShuttingDown = false;
+
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`[Signaling Server] Received ${signal}. Starting graceful shutdown...`);
+
+  try {
+    io.emit("server:shutdown", { message: "Signaling server is shutting down for maintenance" });
+  } catch (_) {}
+
+  server.close(async () => {
+    console.log("[Signaling Server] HTTP server closed.");
+    try {
+      io.close();
+      console.log("[Signaling Server] Socket.IO engine closed.");
+    } catch (_) {}
+
+    try {
+      await pool.end();
+      console.log("[Signaling Server] PostgreSQL connection pool closed.");
+    } catch (err) {
+      console.error("[Signaling Server] Error closing database pool:", err?.message || err);
+    }
+
+    console.log("[Signaling Server] Graceful shutdown complete. Exiting cleanly.");
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error("[Signaling Server] Forcefully terminating after 10s timeout.");
+    process.exit(1);
+  }, 10000).unref();
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+process.on("uncaughtException", (err) => {
+  console.error("[Signaling Server] FATAL UNCAUGHT EXCEPTION:", err);
+  gracefulShutdown("uncaughtException");
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[Signaling Server] UNHANDLED PROMISE REJECTION:", reason);
 });
 
 server.listen(PORT, "0.0.0.0", async () => {

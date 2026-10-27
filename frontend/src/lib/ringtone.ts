@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { callAudioManager } from "./callAudioManager";
 
@@ -9,9 +9,9 @@ class CustomRingtonePlayer {
 
   startRingtone(mode: "incoming" | "outgoing" = "incoming") {
     if (mode === "incoming") {
-      callAudioManager.playIncoming();
+      void callAudioManager.playIncoming();
     } else {
-      callAudioManager.playOutgoing();
+      void callAudioManager.playOutgoing();
     }
   }
 

@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function POST(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }

@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/expire-bookings",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-sessions",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
+

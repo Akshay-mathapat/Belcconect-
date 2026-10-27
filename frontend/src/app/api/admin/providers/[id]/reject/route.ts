@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     // 1. Enforce admin role
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser || authUser.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden: Administrator privileges required." },

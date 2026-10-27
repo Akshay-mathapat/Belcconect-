@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 // ── GET /api/jobs/applications — Candidate's Own Applications (Job Seeker) ─
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication session" },

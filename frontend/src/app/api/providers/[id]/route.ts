@@ -21,7 +21,7 @@ export async function GET(
     const provider = providerRes.rows[0];
 
     // Authenticate requester: only the provider themselves or admins may see phone and email
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     const isOwner = Boolean(authUser && authUser.userId === id);
     const isAdmin = Boolean(authUser && authUser.role === "admin");
     const isOwnerOrAdmin = isOwner || isAdmin;

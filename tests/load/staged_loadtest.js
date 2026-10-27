@@ -82,11 +82,13 @@ export default function () {
   const provider = providers[provIndex] || providers[0];
 
   const custHeaders = {
+    "Cookie": customer.cookie || ("session=" + customer.session_token),
     "Authorization": "Bearer " + customer.token,
     "Content-Type": "application/json"
   };
 
   const provHeaders = {
+    "Cookie": provider.cookie || ("session=" + provider.session_token),
     "Authorization": "Bearer " + provider.token,
     "Content-Type": "application/json"
   };

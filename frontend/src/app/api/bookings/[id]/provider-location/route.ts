@@ -24,7 +24,7 @@ export async function POST(
 
   try {
     // 1. Authenticate user from session token
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       console.log(`[BOOKING_LOOKUP] route=/api/bookings/[id]/provider-location method=POST rawId=${rawId} cleanId=${cleanId} authenticated=false`);
       return NextResponse.json(

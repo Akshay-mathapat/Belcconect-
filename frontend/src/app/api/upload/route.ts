@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   }
 
   // 2. Authentication Check: Reject unauthenticated requests
-  const authUser = getAuthenticatedUser(req);
+  const authUser = await getAuthenticatedUser(req);
   if (!authUser || !authUser.userId) {
     return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
   }

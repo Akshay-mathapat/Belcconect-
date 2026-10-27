@@ -3,16 +3,24 @@
  * Single source of truth: database/migrations/
  *
  * Capabilities:
- * - Sorts and executes migrations sequentially (001 -> 030)
+ * - Sorts and executes migrations sequentially (001 -> 035)
  * - Tracks applied migrations in the `schema_migrations` table
  * - Guards against running migration 031 (Task 8 compliance: draft only)
  * - Automatically keeps /migrations synchronized with database/migrations
- * - Supports CLI flags: --status, --dry-run, --sync, --force
+ * - Supports CLI flags: --status, --dry-run, --sync, --target test
  * - Strict production guard: Refuses execution on production render.com host
  */
 
 const fs = require("fs");
 const path = require("path");
+
+// Load .env if present (supports TEST_DATABASE_URL, DATABASE_URL)
+const rootEnvPath = path.resolve(__dirname, "../.env");
+if (fs.existsSync(rootEnvPath) && typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile(rootEnvPath);
+  } catch (_) {}
+}
 
 const PRIMARY_MIGRATIONS_DIR = path.resolve(__dirname, "../database/migrations");
 const SECONDARY_MIGRATIONS_DIR = path.resolve(__dirname, "../migrations");
@@ -88,6 +96,10 @@ async function run() {
   const isStatus = args.includes("--status");
   const isDryRun = args.includes("--dry-run");
   const isSyncOnly = args.includes("--sync");
+  const isTargetTest =
+    (args.includes("--target") && args[args.indexOf("--target") + 1] === "test") ||
+    args.includes("--target=test") ||
+    args.includes("--test");
 
   // Step 1: Ensure directory synchronization
   const syncResult = syncMigrationsDirectories();
@@ -101,21 +113,58 @@ async function run() {
   console.log(`[MIGRATIONS] Secondary directory synced: ${SECONDARY_MIGRATIONS_DIR}`);
   console.log(`[MIGRATIONS] Discovered ${migrationFiles.length} migration files in numerical order:\n`);
 
-  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!dbUrl) {
-    console.log("[MIGRATIONS] No DATABASE_URL provided. Migration order inspection:\n");
-    migrationFiles.forEach((file, idx) => {
-      const isExcluded = EXCLUDED_FROM_AUTO_RUN.has(file);
-      console.log(`  ${String(idx + 1).padStart(2, " ")}. ${file} ${isExcluded ? "(HOLD - Task 8 compliance)" : ""}`);
-    });
-    return;
-  }
+  let dbUrl = "";
 
-  // Safety guard: Test database only
-  if (dbUrl.includes("render.com") && !args.includes("--allow-production")) {
-    console.error("FATAL SAFETY CHECK: DATABASE_URL points to a production host (render.com).");
-    console.error("Running migration scripts against production database is strictly prohibited.");
-    process.exit(1);
+  if (isTargetTest) {
+    const testUrl = process.env.TEST_DATABASE_URL;
+    if (!testUrl || !testUrl.trim()) {
+      console.error("[FATAL SAFETY CHECK] --target test requires TEST_DATABASE_URL environment variable.");
+      process.exit(1);
+    }
+
+    try {
+      const { validateTestDatabaseUrl } = require(path.resolve(__dirname, "../tests/integration/db-guard.js"));
+      const guardResult = validateTestDatabaseUrl();
+      if (!guardResult.shouldRun) {
+        console.error(`[FATAL SAFETY CHECK] ${guardResult.reason}`);
+        process.exit(1);
+      }
+    } catch (guardErr) {
+      console.error(guardErr.message);
+      process.exit(1);
+    }
+
+    dbUrl = testUrl.trim();
+    console.log(`[MIGRATIONS] Target mode: TEST_DATABASE_URL (${new URL(dbUrl).hostname}/${new URL(dbUrl).pathname})`);
+  } else {
+    // Migration runner prefers DATABASE_DIRECT_URL (direct port 5432) over DATABASE_URL (which may point to PgBouncer port 6432)
+    dbUrl = process.env.DATABASE_DIRECT_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    if (!dbUrl) {
+      console.log("[MIGRATIONS] No DATABASE_DIRECT_URL or DATABASE_URL provided. Migration order inspection:\n");
+      migrationFiles.forEach((file, idx) => {
+        const isExcluded = EXCLUDED_FROM_AUTO_RUN.has(file);
+        console.log(`  ${String(idx + 1).padStart(2, " ")}. ${file} ${isExcluded ? "(HOLD - Task 8 compliance)" : ""}`);
+      });
+      return;
+    }
+
+    // Safety check: PgBouncer transaction mode port (6432) breaks DDL and advisory locks
+    try {
+      const parsedUrl = new URL(dbUrl);
+      if (parsedUrl.port === "6432") {
+        console.error("\n[FATAL ERROR] Migrations cannot be executed through PgBouncer port 6432 (transaction pooling mode).");
+        console.error("DDL statements and table locks require a direct connection.");
+        console.error("Please configure DATABASE_DIRECT_URL pointing to PostgreSQL port 5432.\n");
+        process.exit(1);
+      }
+    } catch (_) {}
+
+    // Strict production guard: Refuses execution on production render.com host
+    if (dbUrl.includes("render.com") && !args.includes("--allow-production")) {
+      console.error("FATAL SAFETY CHECK: DATABASE_URL points to a production host (render.com).");
+      console.error("Running migration scripts against production database is strictly prohibited.");
+      process.exit(1);
+    }
   }
 
   const pg = resolvePg();

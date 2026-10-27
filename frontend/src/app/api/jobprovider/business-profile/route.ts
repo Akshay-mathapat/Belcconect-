@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 // ── GET /api/jobprovider/business-profile — Fetch Profile ─────────────────
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 // ── PUT /api/jobprovider/business-profile — Upsert Profile ────────────────
 export async function PUT(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

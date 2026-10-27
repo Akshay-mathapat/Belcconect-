@@ -18,7 +18,7 @@ function formatMaskedNumber(type: string, last4: string | null): string | null {
 
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }

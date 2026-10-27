@@ -156,15 +156,16 @@ describe("2. JWT Cross-Verification Tests (Frontend HMAC-SHA256 vs Backend jsonw
 
     // 1. Unauthorized route with ?token= must return null
     const reqUnauthorized = new Request(`http://localhost/api/bookings?token=${shortLivedToken}`);
-    assert.strictEqual(getAuthenticatedUser(reqUnauthorized), null);
+    assert.strictEqual(await getAuthenticatedUser(reqUnauthorized), null);
 
     // 2. Allowed download route with long-lived ?token= must return null
     const reqLongLived = new Request(`http://localhost/api/attachments/chat-attachments/img.png?token=${longLivedToken}`);
-    assert.strictEqual(getAuthenticatedUser(reqLongLived), null);
+    assert.strictEqual(await getAuthenticatedUser(reqLongLived), null);
 
     // 3. Allowed download route with short-lived ?token= must authenticate successfully
     const reqAllowed = new Request(`http://localhost/api/attachments/chat-attachments/img.png?token=${shortLivedToken}`);
-    const authAllowed = getAuthenticatedUser(reqAllowed);
+    const mockRunner = async () => ({ rows: [{ user_exists: true, account_status: 'active' }], rowCount: 1 });
+    const authAllowed = await getAuthenticatedUser(reqAllowed, mockRunner);
     assert.ok(authAllowed, "Should authenticate short-lived token on allowed route");
     assert.strictEqual(authAllowed.userId, "u123");
 
@@ -172,7 +173,7 @@ describe("2. JWT Cross-Verification Tests (Frontend HMAC-SHA256 vs Backend jsonw
     const reqBearer = new Request("http://localhost/api/bookings", {
       headers: { Authorization: `Bearer ${longLivedToken}` }
     });
-    const authBearer = getAuthenticatedUser(reqBearer);
+    const authBearer = await getAuthenticatedUser(reqBearer, mockRunner);
     assert.ok(authBearer, "Should authenticate Bearer token on any route");
     assert.strictEqual(authBearer.userId, "u123");
   });

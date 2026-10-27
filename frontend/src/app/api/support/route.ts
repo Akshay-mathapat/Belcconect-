@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
 
     if (!authUser || !authUser.userId) {
       return NextResponse.json(

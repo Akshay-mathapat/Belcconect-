@@ -7,7 +7,7 @@ import crypto from "crypto";
 // ── GET /api/jobprovider/interviews — List Employer Interviews ───────────
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 // ── POST /api/jobprovider/interviews — Schedule an Interview ──────────────
 export async function POST(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
@@ -231,7 +231,7 @@ export async function POST(request: Request) {
 // ── PATCH /api/jobprovider/interviews — Update Interview Status ───────────
 export async function PATCH(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

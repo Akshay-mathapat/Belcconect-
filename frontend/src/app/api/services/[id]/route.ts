@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
     }
@@ -110,7 +110,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
     }

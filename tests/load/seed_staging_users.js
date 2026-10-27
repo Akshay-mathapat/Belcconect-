@@ -103,6 +103,34 @@ async function runSeed() {
     await client.query("COMMIT");
     console.log(`[SEED] Successfully seeded ${users.length} staging users into 'customers' table.`);
 
+    // Seed the 100 fixture accounts & active server-side sessions for cookie load testing
+    const fixturePath = path.resolve(__dirname, "../fixtures/customer_100_tokens.json");
+    if (fs.existsSync(fixturePath)) {
+      const fixtureData = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+      console.log(`[SEED] Seeding ${fixtureData.customers.length} fixture accounts and active server sessions...`);
+      await client.query("BEGIN");
+      for (const fc of fixtureData.customers) {
+        await client.query(
+          `INSERT INTO customers (id, email, name, phone, password_hash, account_status, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'active', NOW())
+           ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, account_status = 'active'`,
+          [fc.id, fc.email, fc.name, fc.phone, testHash]
+        );
+        if (fc.token_hash) {
+          await client.query(
+            `INSERT INTO public.sessions (
+               token_hash, user_id, role, created_at, last_seen_at,
+               idle_expires_at, absolute_expires_at, revoked_at, client
+             ) VALUES ($1, $2, 'user', NOW(), NOW(), NOW() + INTERVAL '7 days', NOW() + INTERVAL '30 days', NULL, 'web')
+             ON CONFLICT (token_hash) DO NOTHING`,
+            [fc.token_hash, fc.id]
+          );
+        }
+      }
+      await client.query("COMMIT");
+      console.log(`[SEED] Active session fixtures seeded successfully.`);
+    }
+
     // Write user credentials to JSON file for concurrency load test
     const outPath = path.join(__dirname, "staging_users.json");
     fs.writeFileSync(

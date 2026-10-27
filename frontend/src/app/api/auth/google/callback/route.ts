@@ -10,6 +10,12 @@ import {
   createMobileHandoffCode,
   storeMobileHandoff,
 } from "@/lib/googleOAuthTransactions";
+import {
+  createSession,
+  getCookieConfig,
+  getRoleSessionLifetimes,
+  UserRole
+} from "@/lib/session";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -178,29 +184,57 @@ export async function GET(request: Request) {
       }, true);
     }
 
-    // 9. Issue the canonical BelConnect JWT for desktop web OAuth.
-    const token = signJwtToken({
+    // 9. Create server-side session for desktop web OAuth.
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const userAgent = request.headers.get("user-agent") || null;
+    const session = await createSession({
       userId: userObj.id,
-      email: userObj.email,
-      role: userObj.role,
-      name: userObj.name,
+      role: userObj.role as UserRole,
+      ip,
+      user_agent: userAgent,
+      device_label: "Google Web OAuth",
+      client: "web"
     });
-    console.info("[GOOGLE_AUTH] localJwtIssued", true);
 
-    // 10. Next.js Cookie Handling for desktop web OAuth.
+    // 10. Set __Host- server-side session cookie
     const cookieStore = await cookies();
-    cookieStore.set("auth_token", token, {
+    const { name: cookieName, isSecure } = getCookieConfig(userObj.role as UserRole);
+    const { absoluteSeconds } = getRoleSessionLifetimes(userObj.role as UserRole);
+
+    cookieStore.set(cookieName, session.rawToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
-      maxAge: 7 * 24 * 3600,
+      maxAge: absoluteSeconds,
       path: "/",
     });
 
-    // 11. Send postMessage targeting STRICT trusted origin (NO WILD CARD "*")
+    // 11. Dual-issuance: legacy JWT if AUTH_ISSUE_LEGACY_JWT is true (default true)
+    const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
+    let token = "";
+    if (issueLegacy) {
+      token = signJwtToken({
+        userId: userObj.id,
+        email: userObj.email,
+        role: userObj.role,
+        name: userObj.name,
+      });
+      console.info("[GOOGLE_AUTH] localJwtIssued", true);
+
+      cookieStore.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 3600,
+        path: "/",
+      });
+    }
+
+    // 12. Send postMessage targeting STRICT trusted origin (NO WILD CARD "*")
     return renderCloseWindowScript({
       type: "GOOGLE_AUTH_SUCCESS",
-      token,
+      token: issueLegacy ? token : undefined,
+      sessionId: session.sessionId,
       user: userObj,
     }, stateCheck.mobile);
   } catch (err: any) {

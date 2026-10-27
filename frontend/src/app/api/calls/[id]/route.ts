@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { id: callId } = await params;
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }

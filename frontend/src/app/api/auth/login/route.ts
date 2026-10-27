@@ -8,6 +8,7 @@ import {
   recordLoginSuccess,
 } from "@/lib/rateLimit";
 import { parseAndValidate, loginSchema } from "@/lib/validations";
+import { createSession, setSessionCookie, UserRole } from "@/lib/session";
 
 export async function POST(request: Request) {
   // 1. IP Ceiling Rate Limit Check (120 req/min)
@@ -65,13 +66,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Single UNION ALL login query utilizing migration 022 LOWER(email) indexes
+    // 4. Single UNION ALL login query including account_status
     const loginQuery = `
-      SELECT id, email, name, phone, avatar, password_hash, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM customers WHERE LOWER(email) = $1
+      SELECT id, email, name, phone, avatar, password_hash, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM customers WHERE LOWER(email) = $1
       UNION ALL
-      SELECT id, email, name, phone, avatar, password_hash, 'provider' AS role, is_verified, verification_status, kyc_status FROM service_providers WHERE LOWER(email) = $1
+      SELECT id, email, name, phone, avatar, password_hash, 'provider' AS role, is_verified, verification_status, kyc_status, account_status FROM service_providers WHERE LOWER(email) = $1
       UNION ALL
-      SELECT id, email, name, phone, avatar, password_hash, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM job_providers WHERE LOWER(email) = $1
+      SELECT id, email, name, phone, avatar, password_hash, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM job_providers WHERE LOWER(email) = $1
       LIMIT 1
     `;
     const userRes = await query(loginQuery, [cleanEmail]);
@@ -86,6 +87,14 @@ export async function POST(request: Request) {
 
     const candidate = userRes.rows[0];
 
+    // Check account status: suspended accounts cannot log in
+    if (candidate.account_status === "suspended") {
+      return NextResponse.json(
+        { error: "This account has been suspended. Please contact support." },
+        { status: 403 }
+      );
+    }
+
     // 5. Verify password hash using argon2 queue
     const isMatch = await verifyPassword(password, candidate.password_hash);
     if (!isMatch) {
@@ -99,8 +108,7 @@ export async function POST(request: Request) {
     // 6. Reset failure counter on login success
     await recordLoginSuccess(cleanEmail);
 
-    // 7. Lean profile payload: addresses and bookings are empty on login hotpath
-    // Post-login data loading is handled asynchronously by the client
+    // 7. Lean profile payload
     const isProvider = candidate.role === "provider";
     const isVerifiedProvider = isProvider && (candidate.is_verified === true || candidate.verification_status === "verified");
     const providerVerificationStatus = isProvider
@@ -123,22 +131,67 @@ export async function POST(request: Request) {
       } : {}),
     };
 
-    // 8. Generate JWT token
-    const token = signJwtToken({
-      userId: userObj.id,
-      email: userObj.email,
-      role: userObj.role,
-      name: userObj.name,
+    // 8. Create server-side session in PostgreSQL with graceful fallback
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const userAgent = request.headers.get("user-agent") || null;
+    const clientType = request.headers.get("x-client-type") === "android" ? "android" : "web";
+    const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
+
+    let session: { sessionId: string; rawToken: string; expiresAt: Date; absoluteExpiresAt: Date } | null = null;
+    try {
+      session = await createSession({
+        userId: candidate.id,
+        role: candidate.role as UserRole,
+        ip,
+        user_agent: userAgent,
+        client: clientType
+      });
+    } catch (sessionErr: any) {
+      console.error(
+        `[AUTH_LOGIN_SESSION_ERROR] Failed to create session for user ${candidate.id}:`,
+        sessionErr?.message || "Unknown error"
+      );
+      if (!issueLegacy) {
+        return NextResponse.json(
+          { error: "Authentication service unavailable. Please try again." },
+          { status: 503 }
+        );
+      }
+    }
+
+    // 9. Dual-issuance: legacy JWT if AUTH_ISSUE_LEGACY_JWT is true (default true)
+    let token = "";
+    if (issueLegacy) {
+      token = signJwtToken({
+        userId: userObj.id,
+        email: userObj.email,
+        role: userObj.role,
+        name: userObj.name,
+      });
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      user: userObj,
+      ...(issueLegacy ? { token } : {}),
+      ...(session ? { sessionId: session.sessionId } : {})
     });
 
-    const response = NextResponse.json({ success: true, user: userObj, token });
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 3600,
-      path: "/",
-    });
+    // Set server-side session cookie (__Host-session) when session creation succeeded
+    if (session) {
+      setSessionCookie(response.headers, session.rawToken, candidate.role as UserRole);
+    }
+
+    // Legacy cookie support during transition
+    if (issueLegacy && token) {
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 3600,
+        path: "/",
+      });
+    }
 
     return response;
   } catch (error: unknown) {

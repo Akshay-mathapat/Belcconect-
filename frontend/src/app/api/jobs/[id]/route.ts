@@ -73,7 +73,7 @@ export async function GET(
     let applicationStatus: string | null = null;
     let isSaved = false;
 
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (authUser) {
       const appCheck = await query(
         `SELECT id, status FROM job_applications WHERE job_id = $1 AND candidate_id = $2 LIMIT 1`,
@@ -116,7 +116,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
@@ -281,7 +281,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

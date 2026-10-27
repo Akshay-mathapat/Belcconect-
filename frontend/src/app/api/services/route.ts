@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const searchQuery = searchParams.get("query");
 
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     let baseWhere = "WHERE s.is_available = TRUE";
     const queryParams: any[] = [];
     let paramIndex = 1;
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication token" }, { status: 401 });
     }

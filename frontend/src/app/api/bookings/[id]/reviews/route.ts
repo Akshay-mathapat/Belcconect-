@@ -23,7 +23,7 @@ export async function GET(
   const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
 
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
 
     if (!authUser) {
       return NextResponse.json(
@@ -138,7 +138,7 @@ export async function POST(
 
   try {
     // 1. Authenticate requester
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
 
     if (!authUser) {
       return NextResponse.json(

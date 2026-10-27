@@ -32,7 +32,7 @@ export async function POST(
 
   try {
     // 1. Authenticate user
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

@@ -40,7 +40,7 @@ export async function GET(
     }
 
     // 4. Authenticate requester using existing session / cookie / header authentication
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication session" },

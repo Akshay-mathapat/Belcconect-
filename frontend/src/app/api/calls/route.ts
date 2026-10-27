@@ -18,7 +18,7 @@ import { sendPushToUser, sendCallPushWakeUp } from "@/lib/pushNotifications";
 export async function POST(request: Request) {
   try {
     // 1. Fire-and-forget background cleanup of stale calls (non-blocking)
-    (async () => {
+    void (async () => {
       try {
         const expired = await autoExpireStaleCalls(45);
         for (const call of expired) {
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     })();
 
     // 2. Authenticate user from JWT session token
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Please log in to start a voice call" },
@@ -203,7 +203,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Invalid or missing authentication session" }, { status: 401 });
     }

@@ -9,7 +9,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = getAuthenticatedUser(req);
+    const authUser = await getAuthenticatedUser(req);
 
     if (!authUser) {
       return NextResponse.json(

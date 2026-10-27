@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     // 1. Strict server-side admin check
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser || authUser.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden: Administrator privileges required." },

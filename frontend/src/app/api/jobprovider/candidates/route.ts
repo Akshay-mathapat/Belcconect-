@@ -7,7 +7,7 @@ import crypto from "crypto";
 // ── GET /api/jobprovider/candidates — Applications Across Employer Jobs ─
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
@@ -130,7 +130,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 // ── PATCH /api/jobprovider/candidates — Update Candidate Status ───────────
 export async function PATCH(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },

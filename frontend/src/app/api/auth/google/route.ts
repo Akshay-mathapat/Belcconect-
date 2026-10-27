@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, googleAuthSchema } from "@/lib/validations";
 import { resolveGoogleIdentity } from "@/lib/googleAuthHelper";
 import { normalizeOAuthAccountType } from "@/lib/oauthAccountType";
+import { createSession, setSessionCookie, UserRole } from "@/lib/session";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
       name: payload.name,
       picture: payload.picture,
       requestedAccountType,
-        roleNeutral: !rawAccountType && !rawRole,
+      roleNeutral: !rawAccountType && !rawRole,
     });
 
     if (result.error || !result.user) {
@@ -104,24 +105,67 @@ export async function POST(request: Request) {
       userObj.bookings = [];
     }
 
-    // 5. Issue Canonical BelConnect JWT Token
-    const token = signJwtToken({
-      userId: userObj.id,
-      email: userObj.email,
-      role: userObj.role,
-      name: userObj.name
+    // 5. Create server-side session in PostgreSQL with graceful fallback
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const userAgent = request.headers.get("user-agent") || null;
+    const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
+
+    let session: { sessionId: string; rawToken: string; expiresAt: Date; absoluteExpiresAt: Date } | null = null;
+    try {
+      session = await createSession({
+        userId: userObj.id,
+        role: userObj.role as UserRole,
+        ip,
+        user_agent: userAgent,
+        device_label: "Google One-Tap / GIS",
+        client: "web",
+      });
+    } catch (sessionErr: unknown) {
+      console.error(
+        `[GOOGLE_AUTH_SESSION_ERROR] Failed to create session for user ${userObj.id}:`,
+        sessionErr instanceof Error ? sessionErr.message : "Unknown error"
+      );
+      if (!issueLegacy) {
+        return NextResponse.json(
+          { error: "Authentication service unavailable. Please try again." },
+          { status: 503 }
+        );
+      }
+    }
+
+    // 6. Dual-issuance: legacy JWT if AUTH_ISSUE_LEGACY_JWT is true (default true)
+    let token = "";
+    if (issueLegacy) {
+      token = signJwtToken({
+        userId: userObj.id,
+        email: userObj.email,
+        role: userObj.role,
+        name: userObj.name,
+      });
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      user: userObj,
+      ...(issueLegacy ? { token } : {}),
+      ...(session ? { sessionId: session.sessionId } : {}),
     });
 
-    const response = NextResponse.json({ success: true, user: userObj, token });
-    
-    // Cookie Handling
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 3600,
-      path: "/"
-    });
+    // Set server-side session cookie (__Host-session)
+    if (session) {
+      setSessionCookie(response.headers, session.rawToken, userObj.role as UserRole);
+    }
+
+    // Legacy cookie support during transition
+    if (issueLegacy && token) {
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 3600,
+        path: "/",
+      });
+    }
 
     return response;
   } catch (error: unknown) {

@@ -18,7 +18,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser || authUser.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden: Administrator privileges required." },

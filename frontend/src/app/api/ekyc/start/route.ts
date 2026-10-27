@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function POST(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Missing authentication session" }, { status: 401 });
     }
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const userAgent = request.headers.get("user-agent") || "Unknown";
 
     // 1. Get or create provider_kyc record
-    let kycRes = await query("SELECT id, status, current_step FROM provider_kyc WHERE provider_id = $1", [providerId]);
+    const kycRes = await query("SELECT id, status, current_step FROM provider_kyc WHERE provider_id = $1", [providerId]);
     let kycId: string;
 
     if (kycRes.rows.length === 0) {

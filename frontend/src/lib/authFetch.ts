@@ -109,12 +109,26 @@ export function triggerAuthExpired() {
   }, 5000);
 }
 
+function getRetryDelayMs(response: Response, fallbackMs: number): number {
+  const retryAfter = response.headers.get("Retry-After");
+  if (retryAfter) {
+    const seconds = parseInt(retryAfter, 10);
+    if (!isNaN(seconds) && seconds > 0) {
+      return Math.min(seconds * 1000, 5000);
+    }
+  }
+  return fallbackMs;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Central authenticated fetch helper.
  * - Injects Authorization: Bearer <token>
  * - Injects credentials: "include"
  * - Prevents unauthenticated requests to protected endpoints
- * - Automatically triggers auth:expired once on HTTP 401
+ * - Automatically triggers auth:expired ONLY on true HTTP 401 (never on 503 or network errors)
+ * - Retries transient 503 (database busy) and network errors with backoff
  */
 export async function authFetch(
   input: RequestInfo | URL,
@@ -143,15 +157,48 @@ export async function authFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(input, {
-    ...init,
-    headers,
-    credentials: init.credentials || "include"
-  });
+  const maxRetries = 2;
+  let lastResponse: Response | null = null;
+  let lastError: unknown = null;
 
-  if (response.status === 401) {
-    triggerAuthExpired();
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(input, {
+        ...init,
+        headers,
+        credentials: init.credentials || "include"
+      });
+
+      lastResponse = response;
+
+      // HTTP 401: True session expiration (unauthorized) -> trigger logout
+      if (response.status === 401) {
+        triggerAuthExpired();
+        return response;
+      }
+
+      // HTTP 503 (Database / server temporarily busy): Retry with backoff, NEVER trigger logout!
+      if (response.status === 503 && attempt < maxRetries) {
+        const delay = getRetryDelayMs(response, 500 * Math.pow(2, attempt));
+        console.warn(`[authFetch] Received 503 Service Unavailable (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+
+      return response;
+    } catch (err: unknown) {
+      lastError = err;
+      // Network errors (e.g. transient disconnect) -> retry with backoff, NEVER trigger logout
+      if (attempt < maxRetries) {
+        const delay = 500 * Math.pow(2, attempt);
+        console.warn(`[authFetch] Network fetch failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+      throw err;
+    }
   }
 
-  return response;
+  if (lastResponse) return lastResponse;
+  throw lastError || new Error("Failed to execute authenticated request after retries.");
 }

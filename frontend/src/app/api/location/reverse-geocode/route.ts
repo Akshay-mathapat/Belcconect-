@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   try {
     // 0. Authentication: Login is strictly required
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }

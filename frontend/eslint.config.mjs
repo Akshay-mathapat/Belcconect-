@@ -18,6 +18,20 @@ const eslintConfig = defineConfig([
       "security/detect-object-injection": "off",
     },
   },
+  // Typed promise linting strictly enforced for server API routes and shared libs
+  {
+    files: ["src/app/api/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": "error",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     "**/.next/**",
@@ -26,6 +40,7 @@ const eslintConfig = defineConfig([
     "**/node_modules/**",
     "chat/**",
     "backup/**",
+    "scripts/**",
     "next-env.d.ts",
   ]),
 ]);

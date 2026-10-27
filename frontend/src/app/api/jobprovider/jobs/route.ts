@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 // ── GET /api/jobprovider/jobs — List Employer's Posted Jobs ───────────────
 export async function GET(request: Request) {
   try {
-    const authUser = getAuthenticatedUser(request);
+    const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
       return NextResponse.json(
         { error: "Unauthorized: Missing authentication token" },
