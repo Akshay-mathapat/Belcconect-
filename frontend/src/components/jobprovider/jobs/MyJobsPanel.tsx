@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { statusColors, panelVariants } from "../uiTokens";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 export function MyJobsPanel() {
   const { t } = useTranslation();

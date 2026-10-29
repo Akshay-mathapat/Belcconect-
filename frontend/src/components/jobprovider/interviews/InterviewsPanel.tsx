@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { panelVariants } from "../uiTokens";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 interface InterviewItem {
   id: string;

@@ -29,7 +29,7 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { appStatusColors, panelVariants } from "../uiTokens";
 import { AvatarCircle } from "../common/AvatarCircle";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 export function ApplicationsPanel() {
   const { t } = useTranslation();

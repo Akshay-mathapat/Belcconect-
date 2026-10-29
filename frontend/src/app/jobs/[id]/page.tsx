@@ -26,7 +26,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 interface JobDetail {
   id: string;

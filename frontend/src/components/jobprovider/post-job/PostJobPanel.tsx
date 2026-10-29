@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { panelVariants } from "../uiTokens";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 import { JOB_CATEGORIES } from "@/constants/jobs";
 
 export function PostJobPanel() {

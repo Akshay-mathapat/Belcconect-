@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Zap, Rocket, Share2, Megaphone, Loader2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { panelVariants } from "../uiTokens";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 export function PromotePanel() {
   const { t } = useTranslation();

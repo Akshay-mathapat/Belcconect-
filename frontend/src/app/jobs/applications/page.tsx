@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 interface TimelineEvent {
   id: string;

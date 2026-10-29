@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Upload, MapPin, Globe, Mail, Phone, BadgeCheck, Loader2, Building2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 import { panelVariants } from "../uiTokens";
 
 export function BusinessProfilePanel() {

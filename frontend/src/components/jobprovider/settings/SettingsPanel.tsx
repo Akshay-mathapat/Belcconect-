@@ -6,7 +6,7 @@ import { Sun, Moon, Laptop, Trash2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation } from "@/lib/i18n";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
 import { panelVariants } from "../uiTokens";
 

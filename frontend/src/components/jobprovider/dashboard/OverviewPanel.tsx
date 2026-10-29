@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { panelVariants } from "../uiTokens";
-import { getAuthToken } from "@/lib/jwt";
+import { getAuthToken } from "@/lib/clientAuth";
 
 export function OverviewPanel() {
   const router = useRouter();
