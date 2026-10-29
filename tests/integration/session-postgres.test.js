@@ -90,13 +90,21 @@ suite("PostgreSQL Real Integration Tests: Migration 035 & Session Engine", () =>
   });
 
   after(async () => {
-    await pool.query("DELETE FROM public.socket_tickets WHERE user_id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.sessions WHERE user_id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.customers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.service_providers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.job_providers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.admins WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.end();
+    try {
+      await pool.query("DELETE FROM public.socket_tickets WHERE user_id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.sessions WHERE user_id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.customers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.service_providers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.job_providers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.admins WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.end();
+      if (globalThis.postgresPool) {
+        await globalThis.postgresPool.end().catch(() => {});
+        delete globalThis.postgresPool;
+      }
+    } catch (err) {
+      console.error("[Teardown Error in session-postgres]:", err);
+    }
   });
 
   test("1) Create and validate session for customer (user role)", async () => {

@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query } from "@/lib/db";
@@ -7,6 +8,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser || authUser.role !== "admin") {

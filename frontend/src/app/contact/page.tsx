@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Footer from "@/components/sections/Footer";
 import { MessageSquare, ThumbsUp, Send, CheckCircle2, AlertCircle } from "lucide-react";
-import { getStoredAuthToken } from "@/store/useAuthStore";
+import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
+import { authFetch } from "@/lib/authFetch";
 
 export default function ContactPage() {
   const [activeTab, setActiveTab] = useState<"support" | "feedback">("support");
@@ -27,8 +28,9 @@ export default function ContactPage() {
   const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSupportError(null);
-    const token = getStoredAuthToken() || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
-    if (!token) {
+    const currentUser = useAuthStore.getState().currentUser;
+    const token = currentUser?.token || getStoredAuthToken();
+    if (!currentUser && !token) {
       setSupportError("Please log in to submit a support request.");
       return;
     }
@@ -40,11 +42,11 @@ export default function ContactPage() {
 
     setSupportSubmitting(true);
     try {
-      const res = await fetch("/api/support", {
+      const res = await authFetch("/api/support", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           subject: supportSubject.trim(),
@@ -77,8 +79,9 @@ export default function ContactPage() {
       return;
     }
 
-    const token = getStoredAuthToken() || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
-    if (!token) {
+    const currentUser = useAuthStore.getState().currentUser;
+    const token = currentUser?.token || getStoredAuthToken();
+    if (!currentUser && !token) {
       setFeedbackError("Please log in to submit feedback.");
       return;
     }
@@ -87,10 +90,10 @@ export default function ContactPage() {
     try {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       };
 
-      const res = await fetch("/api/feedback", {
+      const res = await authFetch("/api/feedback", {
         method: "POST",
         headers,
         body: JSON.stringify({

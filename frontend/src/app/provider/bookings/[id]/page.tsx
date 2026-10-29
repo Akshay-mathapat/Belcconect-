@@ -56,7 +56,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     setIsReviewLoading(true);
     setReviewFetchError(null);
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const token = currentUser?.token;
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -115,7 +115,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     if (!booking) return;
     setIsCancelling(true);
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const token = currentUser?.token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -151,7 +151,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     if (!booking) return;
     setIsReporting(true);
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const token = currentUser?.token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -186,7 +186,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     if (!booking) return;
     setIsSubmittingReview(true);
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const token = currentUser?.token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -220,7 +220,7 @@ export default function ProviderBookingDetailPage({ params }: { params: Promise<
     let isMounted = true;
     async function loadDirectBooking() {
       try {
-        const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+        const token = currentUser?.token;
         const headers: Record<string, string> = {};
         if (currentUser?.id) headers["x-user-id"] = currentUser.id;
         if (token) headers["Authorization"] = `Bearer ${token}`;

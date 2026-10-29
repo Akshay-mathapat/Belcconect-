@@ -7,6 +7,7 @@ import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthRequiredDialog } from "@/components/auth/AuthRequiredDialog";
+import { authFetch } from "@/lib/authFetch";
 import { 
   Star, 
   Phone, 
@@ -95,11 +96,11 @@ export default function ProviderProfilePage() {
     setBlockError(null);
 
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const token = currentUser?.token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch("/api/users/block", {
+      const res = await authFetch("/api/users/block", {
         method: "POST",
         headers,
         body: JSON.stringify({

@@ -1,10 +1,14 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { consumeMobileHandoff } from "@/lib/googleOAuthTransactions";
-import { createSession, setSessionCookie, UserRole } from "@/lib/session";
+import { createSession, setSessionCookie, type UserRole } from "@/lib/session";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) return rateLimit.response;
 

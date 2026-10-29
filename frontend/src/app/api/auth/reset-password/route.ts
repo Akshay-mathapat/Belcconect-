@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getClient, hashPassword } from "@/lib/db";
@@ -5,6 +6,9 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { parseAndValidate, resetPasswordSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   // 1. Rate Limiting Check (Max 10 attempts per 5 minutes per IP)
   const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {

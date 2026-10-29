@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -67,6 +68,9 @@ function verifyMagicBytes(buffer: Buffer, filename: string, mime: string): { val
 }
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {

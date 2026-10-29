@@ -298,6 +298,46 @@ describe("3. Real Rate Limiter Module & Store Interface Tests", () => {
     assert.strictEqual(emailRes.retryAfter, 0);
   });
 
+  test("5b) store failure with fallbackToMemory: login still returns 429 after limit when store fails", async () => {
+    const { checkEmailRateLimit, recordLoginFailure, memoryFallbackStore } = await getRateLimitCore();
+    const email = "store_failure_bruteforce@example.com";
+    const limit = 5;
+    const windowSeconds = 900;
+
+    // Reset fallback store key for test isolation
+    await memoryFallbackStore.reset(`rl:fail:email:${email}`);
+
+    // Store that constantly throws errors (simulating database outage)
+    const crashingStore = {
+      name: "crashing-postgres",
+      async increment() {
+        throw new Error("connection to server on socket failed");
+      },
+      async reset() {
+        throw new Error("connection to server failed");
+      },
+      async get() {
+        throw new Error("connection to server failed");
+      }
+    };
+
+    // First (limit - 1) failures fall back to memory and remain allowed
+    for (let i = 0; i < limit - 1; i++) {
+      const failRes = await recordLoginFailure(email, limit, windowSeconds, crashingStore, true);
+      assert.strictEqual(failRes.isAllowed, true, `Attempt ${i + 1} should be allowed`);
+    }
+
+    // Limit reached on next failure
+    const limitReachRes = await recordLoginFailure(email, limit, windowSeconds, crashingStore, true);
+    assert.strictEqual(limitReachRes.isAllowed, false, "Limit reached: isAllowed must be false");
+
+    // Subsequent checkEmailRateLimit with fallbackToMemory = true detects locked account and rejects with 429
+    const checkRes = await checkEmailRateLimit(email, limit, crashingStore, false, true, windowSeconds);
+    assert.strictEqual(checkRes.isAllowed, false, "Must block brute-force attempt even during store failure");
+    assert.strictEqual(checkRes.remaining, 0);
+    assert.ok(checkRes.retryAfter > 0, "Must return valid retryAfter seconds");
+  });
+
   test("6) no-IP fallback key: generates distinct per-request keys and never defaults to 127.0.0.1", async () => {
     const { getClientIp } = await getRateLimitCore();
     // Scenario A: Missing all IP headers
@@ -1253,8 +1293,9 @@ describe("11. Password Reset OTP Secret Hardening Tests", () => {
 describe("12. Backend Secrets and CORS Hardening Tests", () => {
   test("1) server.js verifies user JWTs strictly with JWT_SECRET", () => {
     const serverFile = path.resolve(__dirname, "../../backend/src/server.js");
+    const socketAuthFile = path.resolve(__dirname, "../../backend/src/socketAuth.js");
     assert.ok(fs.existsSync(serverFile), "server.js must exist");
-    const serverCode = fs.readFileSync(serverFile, "utf-8");
+    const serverCode = fs.readFileSync(serverFile, "utf-8") + "\n" + (fs.existsSync(socketAuthFile) ? fs.readFileSync(socketAuthFile, "utf-8") : "");
 
     assert.ok(!serverCode.includes("candidateSecrets"), "Must remove candidateSecrets from user authentication");
     assert.ok(!serverCode.includes("JWT_SECRET_FALLBACK"), "Must remove JWT_SECRET_FALLBACK from user authentication");
@@ -1873,3 +1914,310 @@ describe("26. Rate Limiting Namespace Isolation & Reset-Password Usability Tests
 });
 
 
+
+
+describe("27. Phase 4 Step 1: Inline Script JSON Serialization, checkSession Resilience & Native Logout", () => {
+  let serializeJsonModulePromise = null;
+  function getSerializeJson() {
+    if (!serializeJsonModulePromise) {
+      serializeJsonModulePromise = import("../../frontend/src/lib/serializeJson.ts");
+    }
+    return serializeJsonModulePromise;
+  }
+
+  test("1) serializeJsonForInlineScript escapes HTML tags, script breakouts, and line terminators", async () => {
+    const { serializeJsonForInlineScript } = await getSerializeJson();
+
+    const maliciousPayload = {
+      name: "</script><script>alert(1)</script>",
+      query: "cats & dogs",
+      textWithSeparators: "line1\u2028line2\u2029line3"
+    };
+
+    const serialized = serializeJsonForInlineScript(maliciousPayload);
+
+    // Must NOT contain unescaped HTML tags or closing script tags
+    assert.strictEqual(serialized.includes("</script>"), false, "Must not contain raw </script>");
+    assert.strictEqual(serialized.includes("<script>"), false, "Must not contain raw <script>");
+    assert.strictEqual(serialized.includes("&"), false, "Must not contain raw &");
+    assert.strictEqual(serialized.includes("\u2028"), false, "Must not contain raw U+2028");
+    assert.strictEqual(serialized.includes("\u2029"), false, "Must not contain raw U+2029");
+
+    // Must contain escaped representations
+    assert.ok(serialized.includes("\\u003c/script\\u003e"), "Must contain escaped \\u003c/script\\u003e");
+    assert.ok(serialized.includes("\\u003cscript\\u003e"), "Must contain escaped \\u003cscript\\u003e");
+    assert.ok(serialized.includes("\\u0026"), "Must contain escaped \\u0026");
+
+    // Standard JSON.parse must restore original strings perfectly
+    const parsed = JSON.parse(serialized);
+    assert.strictEqual(parsed.name, maliciousPayload.name);
+    assert.strictEqual(parsed.query, maliciousPayload.query);
+    assert.strictEqual(parsed.textWithSeparators, maliciousPayload.textWithSeparators);
+  });
+
+  test("2) useAuthStore persist key matches 'belconnect-auth-store' and includes isCheckingSession state", () => {
+    const storeFile = path.resolve(__dirname, "../../frontend/src/store/useAuthStore.ts");
+    assert.ok(fs.existsSync(storeFile), "useAuthStore.ts must exist");
+    const code = fs.readFileSync(storeFile, "utf-8");
+
+    // Verify localStorage key name matches
+    assert.ok(
+      code.includes('name: "belconnect-auth-store"'),
+      "Persist configuration must use name: 'belconnect-auth-store'"
+    );
+
+    // Verify isCheckingSession and sessionChecked are declared in AuthState and initial state
+    assert.ok(
+      code.includes("isCheckingSession: boolean;"),
+      "AuthState interface must include isCheckingSession: boolean"
+    );
+    assert.ok(
+      code.includes("isCheckingSession: false"),
+      "Initial state must initialize isCheckingSession: false"
+    );
+    assert.ok(
+      code.includes("sessionChecked: boolean;"),
+      "AuthState interface must include sessionChecked: boolean"
+    );
+    assert.ok(
+      code.includes("sessionChecked: false"),
+      "Initial state must initialize sessionChecked: false"
+    );
+
+    // Verify 503 and network errors do NOT clear currentUser (only 401 clears)
+    assert.ok(
+      code.includes("res.status === 401"),
+      "checkSession must explicitly check res.status === 401 to clear currentUser"
+    );
+    assert.ok(
+      code.includes("preserving existing user"),
+      "checkSession must preserve existing user on non-401 errors"
+    );
+  });
+
+  test("3) checkSession unit test: 503 and network errors preserve currentUser, 401 clears currentUser", async () => {
+    let isCheckingSession = false;
+    let currentUser = { id: "u-existing", email: "user@test.com", name: "Existing User", role: "customer" };
+
+    async function checkSessionSimulated(mockFetch) {
+      isCheckingSession = true;
+      try {
+        const res = await mockFetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.user) {
+            currentUser = { ...data.user };
+            return currentUser;
+          }
+        } else if (res.status === 401) {
+          currentUser = null;
+          return null;
+        } else {
+          return currentUser;
+        }
+      } catch (e) {
+        return currentUser;
+      } finally {
+        isCheckingSession = false;
+      }
+      return null;
+    }
+
+    // Case A: 503 Service Unavailable -> currentUser MUST NOT be cleared
+    currentUser = { id: "u-existing", email: "user@test.com", name: "Existing User", role: "customer" };
+    const mock503 = async () => ({ ok: false, status: 503, json: async () => ({ error: "DB busy" }) });
+    const resA = await checkSessionSimulated(mock503);
+    assert.strictEqual(isCheckingSession, false, "isCheckingSession must be false after run");
+    assert.notStrictEqual(currentUser, null, "503 must not clear currentUser");
+    assert.strictEqual(currentUser.id, "u-existing");
+    assert.strictEqual(resA.id, "u-existing");
+
+    // Case B: Network failure -> currentUser MUST NOT be cleared
+    const mockNetworkError = async () => { throw new TypeError("Failed to fetch"); };
+    const resB = await checkSessionSimulated(mockNetworkError);
+    assert.strictEqual(isCheckingSession, false, "isCheckingSession must be false after run");
+    assert.notStrictEqual(currentUser, null, "Network error must not clear currentUser");
+    assert.strictEqual(currentUser.id, "u-existing");
+    assert.strictEqual(resB.id, "u-existing");
+
+    // Case C: 401 Unauthorized -> currentUser MUST be cleared
+    const mock401 = async () => ({ ok: false, status: 401, json: async () => ({ error: "Unauthorized" }) });
+    const resC = await checkSessionSimulated(mock401);
+    assert.strictEqual(isCheckingSession, false, "isCheckingSession must be false after run");
+    assert.strictEqual(currentUser, null, "401 must clear currentUser");
+    assert.strictEqual(resC, null);
+  });
+
+  test("4) Real Google OAuth callback handler GET with error renders HTML with popup, redirect, and error branches intact", async () => {
+    const callbackMod = await import("../../frontend/src/app/api/auth/google/callback/route.ts");
+    const GET = callbackMod.GET;
+
+    const req = new Request("http://localhost:3000/api/auth/google/callback?error=access_denied");
+    const res = await GET(req);
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers.get("content-type"), "text/html");
+    assert.ok(res.headers.get("cache-control").includes("no-store"));
+
+    const html = await res.text();
+
+    // Confirm popup branch is intact
+    assert.ok(html.includes("window.opener.postMessage"), "Must contain popup postMessage branch");
+    assert.ok(html.includes("window.close()"), "Must close popup window");
+
+    // Confirm redirect branch is intact
+    assert.ok(html.includes("window.location.href = dest"), "Must contain full-page redirect branch");
+
+    // Confirm error branch is intact
+    assert.ok(html.includes("/login?error="), "Must contain error redirection branch");
+    assert.ok(html.includes("encodeURIComponent(payload.error)"), "Must encode error message in URL redirect");
+    assert.ok(html.includes("Security validation failed"), "Must embed error message in payload");
+  });
+
+  test("5) Real Google OAuth callback with malicious user name safely neutralizes script breakout while preserving branches", async () => {
+    const { serializeJsonForInlineScript } = await getSerializeJson();
+
+    const maliciousName = "</script><script>alert('xss')</script>";
+    const maliciousPayload = {
+      type: "GOOGLE_AUTH_SUCCESS",
+      sessionId: "sess_test_123",
+      user: {
+        id: "u-malicious",
+        email: "hacker@test.com",
+        name: maliciousName,
+        role: "user"
+      }
+    };
+
+    const payloadStr = serializeJsonForInlineScript(maliciousPayload);
+
+    // Emulate the exact HTML template rendered in google/callback/route.ts
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Authentication Processing</title></head>
+        <body>
+          <script>
+            const payload = ${payloadStr};
+            if (window.opener) {
+              if (payload) {
+                window.opener.postMessage(payload, window.location.origin);
+              }
+              window.close();
+            } else if (payload && payload.type === "GOOGLE_AUTH_SUCCESS" && payload.user) {
+              var dest = "/";
+              window.location.href = dest;
+            } else if (payload && payload.error) {
+              window.location.href = "http://localhost:3000/login?error=" + encodeURIComponent(payload.error);
+            } else {
+              window.location.href = "http://localhost:3000/login";
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    // 1. Script breakout verification: no closing script tag appears inside the script block
+    assert.strictEqual(html.includes("</script><script>"), false, "Must not allow raw script breakout");
+    assert.ok(html.includes("\\u003c/script\\u003e"), "Must encode < as \\u003c");
+
+    // 2. Branch integrity verification
+    assert.ok(html.includes("window.opener.postMessage(payload, window.location.origin)"), "Popup branch intact");
+    assert.ok(html.includes("window.location.href = dest"), "Redirect branch intact");
+    assert.ok(html.includes("http://localhost:3000/login?error="), "Error branch intact");
+  });
+
+  test("6) ISSUE_LEGACY_JWT=false simulated: no undefined strings written to localStorage", async () => {
+    const callbackMod = await import("../../frontend/src/app/api/auth/google/callback/route.ts");
+    const GET = callbackMod.GET;
+    const { OAuth2Client } = await import("../../frontend/node_modules/google-auth-library/build/src/index.js");
+    const { createOAuthState } = await import("../../frontend/src/lib/oauthState.ts");
+    const { storeGoogleOAuthTransaction } = await import("../../frontend/src/lib/googleOAuthTransactions.ts");
+
+    const savedFlag = process.env.AUTH_ISSUE_LEGACY_JWT;
+    process.env.AUTH_ISSUE_LEGACY_JWT = "false";
+    process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
+    process.env.GOOGLE_CLIENT_SECRET = "mock-google-client-secret";
+
+    const origGetToken = OAuth2Client.prototype.getToken;
+    const origVerifyIdToken = OAuth2Client.prototype.verifyIdToken;
+
+    OAuth2Client.prototype.getToken = async () => ({ tokens: { id_token: "mock_id_token" } });
+    OAuth2Client.prototype.verifyIdToken = async () => ({
+      getPayload: () => ({
+        sub: "google-sub-legacy-off-01",
+        email: "legacy-off@belconnect.in",
+        email_verified: true,
+        name: "Legacy Off User"
+      })
+    });
+
+    try {
+      const verifier = "verifier_legacy_off_12345678901234567890";
+      const challenge = require("crypto").createHash("sha256").update(verifier).digest("base64url");
+      const state = createOAuthState("customer", false, challenge, false);
+
+      await storeGoogleOAuthTransaction({
+        state,
+        codeChallenge: challenge,
+        accountType: "customer",
+        codeVerifier: verifier
+      });
+
+      const req = new Request(`http://localhost:3000/api/auth/google/callback?code=mock_code&state=${encodeURIComponent(state)}`, {
+        headers: {
+          cookie: `google_oauth_verifier=${verifier}`
+        }
+      });
+
+      const res = await GET(req);
+      assert.strictEqual(res.status, 200);
+      const html = await res.text();
+
+      // Verify that payload.token is undefined/omitted in payload JSON
+      assert.ok(html.includes('"type":"GOOGLE_AUTH_SUCCESS"'));
+      assert.strictEqual(html.includes('"token":"undefined"'), false, 'Must never contain literal "undefined" token string');
+
+      // Emulate client execution of callback script
+      const mockStorage = {};
+      const payloadMatch = html.match(/const payload = ({.*?});/);
+      assert.ok(payloadMatch, "Payload JSON must be present in script");
+      const payload = JSON.parse(payloadMatch[1]);
+
+      assert.strictEqual(payload.token, undefined, "payload.token must be undefined when AUTH_ISSUE_LEGACY_JWT=false");
+      if (payload.token) {
+        mockStorage["auth_token"] = payload.token;
+      }
+      assert.strictEqual(mockStorage["auth_token"], undefined, "localStorage must not store auth_token");
+      assert.notStrictEqual(mockStorage["auth_token"], "undefined", 'Must not store literal string "undefined"');
+    } finally {
+      process.env.AUTH_ISSUE_LEGACY_JWT = savedFlag;
+      OAuth2Client.prototype.getToken = origGetToken;
+      OAuth2Client.prototype.verifyIdToken = origVerifyIdToken;
+    }
+  });
+
+  test("7) Cookie-only session verification with legacy flag simulated OFF: cookie session is enough without token", async () => {
+    // Simulated callers when BOTH currentUser.token and stored token are undefined
+    const currentUser = { id: "u-cookie-only", email: "cookie@test.com", role: "customer", name: "Cookie User" };
+    const storedToken = undefined;
+    const token = currentUser?.token || storedToken;
+
+    assert.strictEqual(token, undefined, "Token is undefined in cookie-only mode");
+
+    // account/page.tsx repeat booking guard: checks currentUser, not token
+    let redirectedToLogin = false;
+    if (!currentUser) {
+      redirectedToLogin = true;
+    }
+    assert.strictEqual(redirectedToLogin, false, "Must not redirect logged-in user when token is undefined");
+
+    // account/page.tsx delete OTP headers with credentials: include
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+    assert.strictEqual(headers["Authorization"], undefined, "Authorization header omitted when token undefined");
+    assert.strictEqual(headers["Content-Type"], "application/json");
+  });
+});

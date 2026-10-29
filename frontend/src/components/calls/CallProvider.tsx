@@ -1,6 +1,6 @@
 "use client";
 
-import { authFetch, getClientToken, triggerAuthExpired } from "@/lib/authFetch";
+import { authFetch, getClientToken } from "@/lib/authFetch";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
@@ -495,8 +495,31 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     console.log(`[SIGNALING] Connecting Socket.IO to ${signalingUrl} as userId=${uid}...`);
 
+    const fetchFreshSocketTicket = async (): Promise<string | null> => {
+      try {
+        const res = await fetch("/api/auth/socket-ticket", {
+          method: "POST",
+          credentials: "include"
+        });
+        if (res.ok) {
+          const json = await res.json();
+          return json.ticket || null;
+        }
+      } catch (e) {
+        console.warn("[SIGNALING] Failed to fetch ephemeral socket ticket:", e);
+      }
+      return null;
+    };
+
     const socket = io(signalingUrl, {
-      auth: { token, userId: uid },
+      auth: async (cb: (authData: Record<string, any>) => void) => {
+        const ticket = await fetchFreshSocketTicket();
+        if (ticket) {
+          cb({ ticket, userId: uid });
+        } else {
+          cb({ token: token || undefined, userId: uid });
+        }
+      },
       transports,
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -539,6 +562,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       console.warn(`[SIGNALING] Connection notice host=${host}:`, err.message);
+    });
+
+    socket.on("auth:revoked", () => {
+      console.warn("[SIGNALING] Received auth:revoked event. Parent session has been invalidated.");
+      socket.disconnect();
+      socketConnectedRef.current = false;
+      try { socket.io.opts.reconnection = false; } catch (e) {}
     });
 
     socket.on("disconnect", (reason: string) => {
@@ -584,6 +614,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ensureSocketConnected = useCallback(async (): Promise<void> => {
+    if (!currentUserIdRef.current) {
+      return;
+    }
     if (socketConnectedRef.current && socketRef.current) {
       return;
     }
@@ -893,6 +926,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     handleNativeCallAction();
 
     const handleForeground = () => {
+      if (!currentUserIdRef.current) return;
       console.log("[CALL] App foreground / visible event. Checking socket & call status...");
       ensureSocketConnected().catch(() => {});
       handleNativeCallAction();

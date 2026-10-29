@@ -7,6 +7,7 @@ import CallButton from "@/components/calls/CallButton";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import { getChatSocket } from "@/lib/socketChat";
+import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "@/lib/i18n";
 
 interface ChatWindowProps {
@@ -63,12 +64,10 @@ export default function ChatWindow({
 
     const syncMessages = async () => {
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null;
         const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
         if (currentUserId) headers["x-user-id"] = currentUserId;
 
-        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, { headers });
+        const res = await authFetch(`/api/chat/conversations/${conversationId}/messages`, { headers });
         if (res.ok) {
           const data = await res.json();
           if (isMounted && Array.isArray(data)) {
@@ -268,12 +267,10 @@ export default function ChatWindow({
       });
     } else {
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
         if (currentUserId) headers["x-user-id"] = currentUserId;
 
-        const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
+        const res = await authFetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: "POST",
           headers,
           body: JSON.stringify({

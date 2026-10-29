@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -93,41 +94,7 @@ const io = new Server(server, {
   transports: ["polling", "websocket"]
 });
 
-// Socket.IO Middleware for Authentication - Strict JWT Verification (NO FALLBACK)
-io.use((socket, next) => {
-  const token =
-    socket.handshake.auth?.token ||
-    socket.handshake.headers?.authorization?.replace("Bearer ", "");
-
-  if (!token) {
-    console.warn(`[Signaling Server] Connection rejected: Missing authentication token`);
-    return next(new Error("Authentication failed: Missing authentication token"));
-  }
-
-  let decoded = null;
-  let lastError = null;
-
-  try {
-    decoded = jwt.verify(token, JWT_SECRET);
-  } catch (err) {
-    lastError = err;
-  }
-
-  if (decoded && decoded.userId) {
-    socket.userId = decoded.userId;
-    socket.userRole = decoded.role;
-    return next();
-  }
-
-  try {
-    const unverified = jwt.decode(token);
-    console.warn(`[Signaling Server] Connection rejected (user: ${unverified?.userId || "unknown"}, issued: ${unverified?.iat ? new Date(unverified.iat * 1000).toISOString() : "?"}): Token verification failed (${lastError ? lastError.message : "invalid payload"})`);
-  } catch (_) {
-    console.warn(`[Signaling Server] Connection rejected: Token verification failed (${lastError ? lastError.message : "invalid payload"})`);
-  }
-  return next(new Error("Authentication failed: Invalid or expired token"));
-});
-
+// Database Connection Pool
 const { Pool } = require("pg");
 
 const isLocalDbHost = (url) => {
@@ -163,6 +130,32 @@ const pool = new Pool({
 pool.on("error", (err) => {
   console.error("[Signaling Database] Unexpected idle PostgreSQL client error:", err.message);
 });
+
+const {
+  createSocketAuthMiddleware,
+  startRevocationSweepInterval
+} = require("./socketAuth");
+
+// Socket.IO Middleware for Authentication: Single-Use Ticket (Primary) + Legacy JWT Fallback
+io.use(
+  createSocketAuthMiddleware({
+    pool,
+    jwt,
+    jwtSecret: JWT_SECRET,
+    acceptLegacy: process.env.SIGNALING_ACCEPT_LEGACY_JWT !== "false"
+  })
+);
+
+// Periodic Sweep: Disconnect live sockets whose parent session was revoked or expired (default 30s)
+const sweepInstance = startRevocationSweepInterval({
+  io,
+  pool,
+  intervalMs: Number(process.env.SESSION_SWEEP_INTERVAL_MS) || 30000
+});
+const runRevokedSessionDisconnectSweep = sweepInstance.sweepFn;
+// Scheduled interval: setInterval(runRevokedSessionDisconnectSweep, 30000);
+
+
 const getAuthorizedCall = async (callId, userId) => {
   if (!callId || !userId) return null;
 

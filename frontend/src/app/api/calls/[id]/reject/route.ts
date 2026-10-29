@@ -1,5 +1,6 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
-import { getCallById, updateCallStatus, CallParticipantRole } from "@/lib/calls";
+import { getCallById, updateCallStatus, type CallParticipantRole } from "@/lib/calls";
 import { sendCallSignal } from "@/lib/socketSignaling";
 import { callSignaling } from "@/lib/callSignaling";
 import { getAuthenticatedUser } from "@/lib/jwt";
@@ -11,6 +12,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const { id: callId } = await params;
     const authUser = await getAuthenticatedUser(request);

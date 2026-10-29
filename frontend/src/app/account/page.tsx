@@ -30,6 +30,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore, BookingItem, getStoredUserId, getStoredAuthToken } from "@/store/useAuthStore";
+import { authFetch } from "@/lib/authFetch";
 import { useTranslation } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/common/LanguageSelector";
 import CallButton from "@/components/calls/CallButton";
@@ -87,7 +88,7 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { currentUser, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings, fetchUserAddresses } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings, fetchUserAddresses, checkSession } = useAuthStore();
   const { replayTour } = useOnboardingTour();
   const [activeTab, setActiveTab] = useState<"bookings" | "addresses" | "profile" | "applications">("bookings");
   const { t } = useTranslation();
@@ -106,15 +107,14 @@ export default function AccountPage() {
   const hasFetchedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !sessionChecked) return;
 
-    const token = getStoredAuthToken();
-    const storedId = currentUserId || getStoredUserId();
-
-    if (!storedId && !token) {
+    if (!currentUser) {
       router.push("/auth?mode=login&returnTo=/account");
       return;
     }
+
+    const storedId = currentUserId || getStoredUserId();
     // Legacy session cleanup: if user holds an outdated pre-split ID, force relogin
     if (storedId && storedId.startsWith("user-")) {
       logout();
@@ -201,6 +201,7 @@ export default function AccountPage() {
       const token = getStoredAuthToken();
       const res = await fetch("/api/account/delete", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -227,6 +228,7 @@ export default function AccountPage() {
       const token = getStoredAuthToken();
       const res = await fetch("/api/account/delete", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -296,13 +298,9 @@ export default function AccountPage() {
     if (!cancelBookingId) return;
     setIsCancelling(true);
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch(`/api/bookings/${encodeURIComponent(cancelBookingId)}`, {
+      const res = await authFetch(`/api/bookings/${encodeURIComponent(cancelBookingId)}`, {
         method: "PATCH",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "Cancelled",
           cancellationReason,
@@ -365,7 +363,7 @@ export default function AccountPage() {
       const category = bObj && bObj.category ? String(bObj.category) : "General";
       const token = currentUser?.token;
 
-      if (!token) {
+      if (!currentUser) {
         router.push("/auth?mode=login&returnTo=/account");
         return;
       }
@@ -377,9 +375,10 @@ export default function AccountPage() {
 
       const res = await fetch("/api/bookings", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           providerId,
@@ -444,14 +443,10 @@ export default function AccountPage() {
     if (!rateBookingId) return;
     setIsSubmittingReview(true);
     try {
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
       // Submit the review to the authoritative two-sided reviews endpoint
-      const res = await fetch(`/api/bookings/${encodeURIComponent(rateBookingId)}/reviews`, {
+      const res = await authFetch(`/api/bookings/${encodeURIComponent(rateBookingId)}/reviews`, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           rating: selectedRating,
           comment: reviewText.trim()
@@ -483,6 +478,14 @@ export default function AccountPage() {
       setIsSubmittingReview(false);
     }
   };
+
+  if ((!isHydrated || !sessionChecked || isCheckingSession) && !currentUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-muted/10 text-foreground flex flex-col">

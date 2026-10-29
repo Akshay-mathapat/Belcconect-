@@ -290,7 +290,7 @@ export default function Navigation() {
 
   const lastScrollY = useRef(0);
 
-  const { currentUser, logout, restartTour } = useAuthStore();
+  const { currentUser, logout, restartTour, checkSession, isCheckingSession } = useAuthStore();
 
   const { theme, setTheme } = useTheme();
 
@@ -379,6 +379,11 @@ export default function Navigation() {
     };
 
   }, []);
+
+  // On client startup: validate server session cookie and synchronize user state
+  useEffect(() => {
+    checkSession().catch(() => {});
+  }, [checkSession]);
 
 
 

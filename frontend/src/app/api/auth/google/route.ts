@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 import { query } from "@/lib/db";
@@ -12,6 +13,9 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   // 1. Rate Limiting Check
   const rateLimit = await checkRateLimit(request, 10, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
@@ -151,11 +155,6 @@ export async function POST(request: Request) {
       ...(session ? { sessionId: session.sessionId } : {}),
     });
 
-    // Set server-side session cookie (__Host-session)
-    if (session) {
-      setSessionCookie(response.headers, session.rawToken, userObj.role as UserRole);
-    }
-
     // Legacy cookie support during transition
     if (issueLegacy && token) {
       response.cookies.set("auth_token", token, {
@@ -167,6 +166,13 @@ export async function POST(request: Request) {
       });
     }
 
+    // Set server-side session cookie (__Host-session)
+    // Must be set after response.cookies.set to prevent Next.js from overwriting headers
+    if (session) {
+      setSessionCookie(response.headers, session.rawToken, userObj.role as UserRole);
+    }
+
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     return response;
   } catch (error: unknown) {
     console.error("Error in google auth API:", error);

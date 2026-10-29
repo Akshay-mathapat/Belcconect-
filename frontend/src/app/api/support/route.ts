@@ -1,9 +1,13 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   // 1. Rate Limiting Check: Max 5 support requests per 10 minutes to prevent spam
   const rateLimit = await checkRateLimit(request, 5, 10 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {

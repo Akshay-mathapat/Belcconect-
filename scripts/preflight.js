@@ -183,13 +183,13 @@ async function runPreflight() {
   }
 
   // ─── SUMMARY & EXIT ────────────────────────────────────────────────────────
-  console.log(`\n================================================================`);
+    console.log(`\n================================================================`);
   if (hasCriticalFailure) {
     console.error(`[PREFLIGHT RESULT: FAILED] Critical checks failed. Resolve issues before deployment.\n`);
-    process.exit(1);
+    process.exitCode = 1;
   } else {
     console.log(`[PREFLIGHT RESULT: SUCCESS] All preflight checks passed.\n`);
-    process.exit(0);
+    process.exitCode = 0;
   }
 }
 

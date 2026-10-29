@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query } from "@/lib/db";
@@ -6,6 +7,9 @@ import { parseAndValidate, verifyResetOtpSchema } from "@/lib/validations";
 import { hashOtpWithHmac } from "@/lib/email";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   // 1. Rate Limiting Check (Max 5 verification attempts per 5 minutes per IP)
   const rateLimit = await checkRateLimit(request, 5, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {

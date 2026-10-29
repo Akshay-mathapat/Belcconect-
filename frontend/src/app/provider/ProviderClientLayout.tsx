@@ -44,7 +44,7 @@ export default function ProviderLayout({
   const router = useRouter();
 
   const { isOnline, toggleOnlineStatus, profile, fetchProviderBookings, fetchProviderServices } = useProviderStore();
-  const { currentUser, logout } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, logout, checkSession } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
 
@@ -131,17 +131,17 @@ export default function ProviderLayout({
 
   // Redirect unauthorized roles
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !sessionChecked) return;
 
-    const token = getStoredAuthToken();
-    if (!currentUser && !token) {
+    if (!currentUser) {
       router.push("/login");
       return;
     }
-    if (currentUser && currentUser.role !== "provider" && (currentUser as any).role !== "admin") {
+
+    if (currentUser.role !== "provider" && (currentUser as any).role !== "admin") {
       router.push("/");
     }
-  }, [currentUser, router, isHydrated]);
+  }, [currentUser, sessionChecked, router, isHydrated]);
 
   // Auto-close search on route navigation
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function ProviderLayout({
     { key: "profile", href: "/provider/profile", icon: User, label: "Profile" },
   ];
 
-  if (!isHydrated) {
+  if (!isHydrated || !sessionChecked || isCheckingSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />

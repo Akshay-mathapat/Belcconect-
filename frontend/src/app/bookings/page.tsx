@@ -34,11 +34,7 @@ export default function CustomerBookingsPage() {
     async function fetchBookings() {
       try {
         const authUser = useAuthStore.getState().currentUser;
-        const token = authUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const res = await authFetch("/api/bookings", { headers });
+        const res = await authFetch("/api/bookings");
         if (!res.ok) throw new Error("Failed to fetch bookings");
         const data = await res.json();
         setBookings(Array.isArray(data) ? data : []);
@@ -68,12 +64,10 @@ export default function CustomerBookingsPage() {
     if (window.confirm("Are you sure you want to delete this completed service record?")) {
       try {
         const authUser = useAuthStore.getState().currentUser;
-        const token = authUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
         const headers: Record<string, string> = {};
         if (authUser?.id) headers["x-user-id"] = authUser.id;
-        if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        await fetch(`/api/bookings/${id}`, { method: "DELETE", headers });
+        await authFetch(`/api/bookings/${id}`, { method: "DELETE", headers });
         setBookings((prev) => prev.filter((b) => b.id !== id));
       } catch (e) {
         console.error("Error deleting booking:", e);

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { getClient } from "@/lib/db";
 import {
-  OAuthAccountType,
+  type OAuthAccountType,
   oauthAccountTypeToJwtRole,
   oauthAccountTypeToTable,
 } from "@/lib/oauthAccountType";

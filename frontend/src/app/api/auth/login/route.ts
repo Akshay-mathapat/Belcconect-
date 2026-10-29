@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query, verifyPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
@@ -8,11 +9,14 @@ import {
   recordLoginSuccess,
 } from "@/lib/rateLimit";
 import { parseAndValidate, loginSchema } from "@/lib/validations";
-import { createSession, setSessionCookie, UserRole } from "@/lib/session";
+import { createSession, setSessionCookie, type UserRole } from "@/lib/session";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   // 1. IP Ceiling Rate Limit Check (120 req/min)
-  const ipLimit = await checkIpRateLimit(request, 120, 60);
+  const ipLimit = await checkIpRateLimit(request, 120, 60, undefined, undefined, false, true);
   if (!ipLimit.isAllowed) {
     return NextResponse.json(
       {
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
     const cleanEmail = email.trim().toLowerCase();
 
     // 3. Per-normalized-email failure rate limit check (10 failures / 15 min)
-    const emailLimit = await checkEmailRateLimit(cleanEmail, 10);
+    const emailLimit = await checkEmailRateLimit(cleanEmail, 10, undefined, false, true, 15 * 60);
     if (!emailLimit.isAllowed) {
       return NextResponse.json(
         {
@@ -177,11 +181,6 @@ export async function POST(request: Request) {
       ...(session ? { sessionId: session.sessionId } : {})
     });
 
-    // Set server-side session cookie (__Host-session) when session creation succeeded
-    if (session) {
-      setSessionCookie(response.headers, session.rawToken, candidate.role as UserRole);
-    }
-
     // Legacy cookie support during transition
     if (issueLegacy && token) {
       response.cookies.set("auth_token", token, {
@@ -193,6 +192,13 @@ export async function POST(request: Request) {
       });
     }
 
+    // Set server-side session cookie (__Host-session) when session creation succeeded
+    // Must be set after response.cookies.set to prevent Next.js from overwriting headers
+    if (session) {
+      setSessionCookie(response.headers, session.rawToken, candidate.role as UserRole);
+    }
+
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     return response;
   } catch (error: unknown) {
     console.error("[AUTH_LOGIN_ERROR]", error);

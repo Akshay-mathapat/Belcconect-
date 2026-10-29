@@ -1,0 +1,208 @@
+================================================================
+ BelConnect Full Integration Test Suite Execution
+ Timestamp: 2026-10-29T07:33:38.506Z
+ DB Host: localhost:5433 | DB Name: belconnect_test
+ Output File: run1.log
+================================================================
+
+
+>>> [SUITE] tests/integration/phase1-real-db.test.js <<<
+(node:355564) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/BELCONNECT/belconnectt/frontend/src/app/api/auth/socket-ticket/route.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\BELCONNECT\belconnectt\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ Phase 1 Real PostgreSQL & Live Socket.IO Integration Tests
+  ✔ 1) [SOURCE CHECK] Route handler contract: /api/auth/socket-ticket file structure, exports and constants (10.3914ms)
+  ✔ 2) [REAL HANDLER] Call POST without cookie: returns HTTP 401 Unauthorized + no-store (4.7045ms)
+[Database] Creating PostgreSQL pool host=localhost max=20
+  ✔ 3) [REAL HANDLER + REAL DB] Call POST with valid session cookie: returns HTTP 200 + ticket + expiresAt ~60s ahead (479.2943ms)
+  ✔ 4) [REAL HANDLER + RATE LIMIT] Call POST 31 times: 31st call returns HTTP 429 + Retry-After header (133.5846ms)
+[Signaling Server] Connection rejected: Invalid, expired, or already consumed socket ticket
+  ✔ 5) [REAL MODULE & REAL SOCKET] Live Socket.IO client connects with ticket; replay with same ticket is rejected (26.7693ms)
+[Signaling Server] Connection rejected: Invalid, expired, or already consumed socket ticket
+  ✔ 6) [REAL MODULE & REAL SOCKET] Ticket expires after 60 s: expired ticket rejected during live socket handshake (9.77ms)
+[Signaling Server] Connection rejected: Invalid, expired, or already consumed socket ticket
+  ✔ 7) [REAL MODULE & REAL SOCKET] Suspended user is rejected during live Socket.IO handshake (4.2116ms)
+[Signaling Server] Disconnecting socket BNjRkwDOL6Gcn6RrAAAE for revoked/expired session 7471a367-436b-4bdd-b50d-0d27a5d8ec23 (user: p1_real_cust_01)
+  ✔ 8) [PARTLY MOCKED: DIRECT SWEEP CALL] Live socket connection: direct call to shared module sweep disconnects client immediately (510.153ms)
+[Signaling Server] Disconnecting socket LQ1tAqViCxQ0VkKqAAAF for revoked/expired session 1756a4f8-9712-4e3c-8eb6-fcd2c35985ce (user: p1_real_cust_01)
+  ✔ 9) [1s TIMER SWEEP: REAL SOCKET & REAL DB] Live socket connection: real background setInterval (1s timer) automatically sweeps DB, emits 'auth:revoked' and disconnects within timer SLA (1004.9968ms)
+  ✔ 10) [REAL MODULE & REAL DYNAMIC AUTH] Forced reconnect: client fetches a fresh ticket dynamically via auth callback and reconnects (25.1903ms)
+  ✔ 11) [SQL ONLY] Real DB ticket issuance: createSocketTicket writes 32-byte base64url ticket with 60s TTL (5.1071ms)
+  ✔ 12) [COOKIE-PARSE CHECK] Cookie parsing isolation: getSessionTokenFromRequest strictly scopes to requested role (1.5905ms)
+[Signaling Server] Disconnecting socket 5Q1rtEg_FQCkTrkOAAAI for revoked/expired session 927dfca4-c83f-4d55-aaac-6a38f68e6db1 (user: p1_real_cust_deleted_sweep)
+  ✔ 13) [SWEEP DELETED CUSTOMER] Live socket sweep: customer deleted while connected is disconnected by IS DISTINCT FROM 'active' (520.1181ms)
+[Signaling Server] Connection rejected: Invalid, expired, or already consumed socket ticket
+[Signaling Server] Disconnecting socket 0zuXASHdkebhp5B0AAAJ for revoked/expired session 735d5001-e929-4136-ac41-19e6f588650d (user: p1_real_prov_01)
+  ✔ 14) [PROVIDER HANDSHAKE & SWEEP] Service provider ticket handshake (active allowed, suspended rejected) and sweep (suspended & deleted disconnected) (535.6406ms)
+[Signaling Server] Connection rejected: Invalid, expired, or already consumed socket ticket
+[Signaling Server] Disconnecting socket jUfQIHAjTGr23NXuAAAL for revoked/expired session cc65f2d3-380d-42ab-9820-41e1925281e2 (user: p1_real_jobprov_01)
+  ✔ 15) [JOB PROVIDER HANDSHAKE & SWEEP] Job provider ticket handshake (active allowed, suspended rejected) and sweep (suspended & deleted disconnected) (574.1233ms)
+  ✔ 16) [POSTGRES RATE LIMITER 429] PostgresRateLimitStore executes against real rate_limits table, enforces limit, and sets Retry-After (22.7145ms)
+✔ Phase 1 Real PostgreSQL & Live Socket.IO Integration Tests (4449.1472ms)
+ℹ tests 16
+ℹ suites 1
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11975.005
+
+>>> [SUITE] tests/integration/phase2-auth.test.js <<<
+▶ Phase 2 Authentication & Session Integration Tests
+  ✔ 1) Login sets the session cookie with the right name and absolute Max-Age flags (25.1206ms)
+  ✔ 2) Logout revokes session (old cookie -> 401 unauthenticated) (29.547ms)
+  ✔ 3) Suspended account session is rejected immediately upon validation (2.5807ms)
+  ✔ 4) Admin cookie does not authenticate a normal user write route (2.8531ms)
+[Security] Refused Bearer auth: session client is 'web', expected 'android'
+  ✔ 5) Android Bearer token is accepted only on allowlisted routes and only with client='android' (6.0404ms)
+[LEGACY_AUTH_FALLBACK] userId=test_phase2_active_user role=user route=/api/bookings
+  ✔ 6) Dual-validation: legacy JWT fallback logs [LEGACY_AUTH_FALLBACK] when session cookie is absent (4.0738ms)
+(node:332188) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/BELCONNECT/belconnectt/frontend/src/app/api/auth/me/route.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\BELCONNECT\belconnectt\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Database] Creating PostgreSQL pool host=localhost max=20
+  ✔ 7) GET /api/auth/me with valid opaque session cookie returns HTTP 200 OK, user profile, role, no-store, and never a token (647.8274ms)
+  ✔ 8) GET /api/auth/me without session cookie returns HTTP 401 Unauthorized with no-store (3.1783ms)
+[LEGACY_AUTH_FALLBACK] userId=test_phase2_active_user role=user route=/api/auth/me
+  ✔ 9) GET /api/auth/me with legacy JWT fallback returns HTTP 200 OK and user profile (17.3688ms)
+✔ Phase 2 Authentication & Session Integration Tests (1063.4461ms)
+ℹ tests 9
+ℹ suites 1
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11531.9675
+
+>>> [SUITE] tests/integration/phase2-native-session.test.js <<<
+(node:350484) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/BELCONNECT/belconnectt/frontend/src/app/api/auth/native-session/route.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\BELCONNECT\belconnectt\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ Phase 2 Native Android Session Integration Tests (Real PostgreSQL)
+  ✔ 1) [STRICT VALIDATION UPFRONT] Missing deviceId returns HTTP 400 + no-store (7.7377ms)
+  ✔ 2) [STRICT VALIDATION UPFRONT] Malformed deviceId (<8 chars or invalid chars) returns HTTP 400 + no-store (1.8916ms)
+  ✔ 3) [AUTH GUARD] Missing active web cookie returns HTTP 401 + no-store (1.113ms)
+  ✔ 4) [ADMIN GUARD] Admin web session attempting native exchange returns HTTP 403 Forbidden + no-store (145.0084ms)
+[Database] Creating PostgreSQL pool host=localhost max=20
+  ✔ 5) [DUAL COOKIE TEST] User cookie + admin cookie co-existence returns HTTP 200 (171.7161ms)
+  ✔ 6) [FRESH EXCHANGE + REAL DB] Valid web session + valid deviceId issues fresh native session with Cache-Control: no-store (8.7389ms)
+  ✔ 7) [APP-RESUME RESILIENCE & VALIDATION] Idempotent resume validates deviceId upfront and in resume (5.0557ms)
+  ✔ 8) [DEVICE-SCOPED REVOCATION] Re-exchange on device A revokes device A session without affecting device B (14.7466ms)
+  ✔ 9) [CAP QUERY: ACTIVE ROWS ONLY] Expired-but-unrevoked session is not counted against cap (143.2726ms)
+  ✔ 10) [INDEPENDENT RATE LIMIT & PER-USER LIMIT] Rate limits per user+device and per-user with Cache-Control: no-store on 429 (68.4213ms)
+[RateLimit] Warning: Store (postgres) failed during user check for rl:user:native_session:p2_nat_cust_01 (total failures: 1). Action: failing open: getPool(...).query is not a function
+  ✔ 11) [SIMULATED] Database unavailable returns HTTP 503 + Retry-After: 5 (never 401 or 500) with no-store (2.9704ms)
+  ✔ 11b) [REAL UNREACHABLE PORT] Real unreachable port connection returns HTTP 503 + Retry-After: 5 with no-store (4.7646ms)
+[Test 12 Concurrency Status Histogram]: { '200': 20 }
+[Test 12 Measured Breakdown]: single checkUserRateLimit=0.79ms, single tx=0.67ms, 20 concurrent total=1895.17ms, distinct deviceIds=20
+  ✔ 12) [CONCURRENCY] 20 concurrent exchanges for one user leaves exactly 5 active android sessions (1900.7092ms)
+  ✔ 13) [DELETE /api/auth/native-session] Revokes device session in PostgreSQL without cookies, returning 200 + no-store; rejects missing/invalid token with 401 (24.8051ms)
+✔ Phase 2 Native Android Session Integration Tests (Real PostgreSQL) (3048.3138ms)
+ℹ tests 14
+ℹ suites 1
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13482.8352
+
+>>> [SUITE] tests/integration/phase3-csrf-origin.test.js <<<
+[Push Notifications] VAPID keys missing. Web push notifications will be disabled.
+(node:350844) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/BELCONNECT/belconnectt/frontend/src/app/api/auth/socket-ticket/route.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\BELCONNECT\belconnectt\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Database] Creating PostgreSQL pool host=localhost max=20
+▶ Phase 3 CSRF / Origin Defense Integration Tests (Real PostgreSQL)
+  ✔ 1) [GOOD ORIGIN] Allowed Origin header returns HTTP 200 OK + Cache-Control: no-store (296.7044ms)
+  ✔ 2) [BAD ORIGIN] Disallowed Origin returns HTTP 403 Forbidden + no-store (1.2357ms)
+  ✔ 3) [EXACT-MATCH ATTACK] Subdomain/prefix spoofing (https://belconnect.in.evil.com) returns HTTP 403 (0.7487ms)
+  ✔ 4) [ORIGIN NULL] Origin: null returns HTTP 403 Forbidden + no-store (0.6076ms)
+  ✔ 5) [TRAILING SLASH & CASE] Upper case and trailing slash origins match allowlist cleanly (4.4778ms)
+  ✔ 6) [REFERER FALLBACK] Allowed Referer header when Origin missing returns HTTP 200 OK (4.2881ms)
+  ✔ 7) [MISSING HEADERS: LOGIN] POST /api/auth/login without Origin/Referer returns HTTP 403 (0.7083ms)
+  ✔ 8) [MISSING HEADERS: LOGOUT] POST /api/auth/logout without Origin/Referer returns HTTP 403 (0.3723ms)
+  ✔ 9) [MISSING HEADERS: ADMIN LOGIN] POST /api/admin/auth/login without Origin/Referer returns HTTP 403 (0.5682ms)
+  ✔ 10) [CAPACITOR WEBVIEW ORIGIN] https://localhost and capacitor://localhost allowed when dev flag active (5.9243ms)
+  ✔ 11) [PRODUCTION DEFAULT LIST] When CSRF_ALLOW_DEV_ORIGINS is unset in production, localhost is rejected with 403 (0.3571ms)
+[BOOKING_LOOKUP] route=/api/bookings/[id]/provider-location-native method=POST rawId=test_b1 cleanId=test_b1 userId=p3_csrf_user_01 role=user found=false
+  ✔ 12a) [NATIVE EXEMPTION 1: provider-location-native] client='android' passes CSRF (30.4818ms)
+  ✔ 12b) [NATIVE EXEMPTION 1: provider-location-native] client='web' Bearer returns HTTP 403 Forbidden (4.0893ms)
+[CALL-END] authenticated user=p3_csrf_user_01
+  ✔ 13a) [NATIVE EXEMPTION 2: calls/[id]/end] client='android' passes CSRF (57.2495ms)
+  ✔ 13b) [NATIVE EXEMPTION 2: calls/[id]/end] client='web' Bearer returns HTTP 403 Forbidden (4.3866ms)
+[CALL-DECLINE] authenticated user=p3_csrf_user_01
+  ✔ 14a) [NATIVE EXEMPTION 3: calls/[id]/reject] client='android' passes CSRF (8.2604ms)
+  ✔ 14b) [NATIVE EXEMPTION 3: calls/[id]/reject] client='web' Bearer returns HTTP 403 Forbidden (4.1339ms)
+  ✔ 15) [NON-EXEMPT: native-session] Bearer token does NOT bypass CSRF on /api/auth/native-session (returns 403) (0.6789ms)
+  ✔ 16) [NON-EXEMPT: google/mobile/exchange] /api/auth/google/mobile/exchange requires Origin/Referer (returns 403) (0.3884ms)
+  ✔ 17) [ARBITRARY AUTH REJECTION] Arbitrary Bearer header does NOT bypass CSRF on write routes (returns 403) (0.2174ms)
+{"tag":"CRON_CLEANUP_SUCCESS","durationMs":19,"totalSessionsDeleted":0,"totalTicketsDeleted":0,"batchesProcessed":1}
+[CSRF Log-Only Warning] Request would be rejected (CSRF_ENFORCE=0): method=POST origin=https://attacker.evil.com
+  ✔ 18) [SECRET ROUTE EXEMPTION] Secret route (/api/cron/cleanup-sessions) with valid secret executes without Origin (19.3331ms)
+  ✔ 19) [ROLLOUT SAFETY: CSRF_ENFORCE=0] When CSRF_ENFORCE=0, rejected requests proceed (log-only) instead of 403 (5.8803ms)
+  ✔ 20a) [NATIVE EXEMPTION 4: DELETE native-session] client='android' Bearer passes CSRF and revokes device session (15.2606ms)
+  ✔ 20b) [NATIVE EXEMPTION 4: DELETE native-session] client='web' Bearer returns HTTP 403 Forbidden (6.2034ms)
+  ✔ 20c) [DELETE native-session] Missing Authorization returns HTTP 401 Unauthorized with no-store (0.8692ms)
+✔ Phase 3 CSRF / Origin Defense Integration Tests (Real PostgreSQL) (2354.8335ms)
+ℹ tests 25
+ℹ suites 1
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12782.9651
+
+>>> [SUITE] tests/integration/phase4-web-flow.test.js <<<
+(node:300756) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/BELCONNECT/belconnectt/frontend/src/app/api/auth/login/route.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\BELCONNECT\belconnectt\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Database] Creating PostgreSQL pool host=localhost max=20
+▶ Phase 4 Step 1: Web Session Flow End-to-End Tests (Real PostgreSQL)
+  ✔ 1) [PASSWORD LOGIN] Valid credentials issues session cookie with Cache-Control: no-store (373.9294ms)
+  ✔ 2) [PAGE RELOAD / SESSION CHECK] GET /api/auth/me with session cookie restores user state without exposing token (55.9745ms)
+  ✔ 3) [401 HANDLING] GET /api/auth/me without cookie returns HTTP 401 Unauthorized with no-store (4.1226ms)
+  ✔ 4) [GOOGLE OAUTH] verifyOAuthState rejects tampered state and preserves session safety (2.7879ms)
+  ✔ 5) [LOGOUT] POST /api/auth/logout revokes session in DB and subsequent /api/auth/me returns 401 (11.5354ms)
+✔ Phase 4 Step 1: Web Session Flow End-to-End Tests (Real PostgreSQL) (1815.1706ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12216.8113
+
+>>> [SUITE] tests/integration/session-postgres.test.js <<<
+Applying Migration 035 to Test PostgreSQL...
+▶ PostgreSQL Real Integration Tests: Migration 035 & Session Engine
+  ✔ 1) Create and validate session for customer (user role) (12.4159ms)
+  ✔ 2) Create and validate session for service_provider (provider role) (3.0722ms)
+  ✔ 3) Create and validate session for job_provider (2.6245ms)
+  ✔ 4) Create and validate session for admin (without a.name column) (2.7128ms)
+  ✔ 5) Revoked session is rejected immediately (4.0226ms)
+  ✔ 6) Idle-expired session is rejected by database CURRENT_TIMESTAMP (4.9936ms)
+  ✔ 7) Absolute-expired session is rejected by database CURRENT_TIMESTAMP (3.4982ms)
+  ✔ 8) Suspended account session is rejected immediately (2.3646ms)
+  ✔ 9) Deleted row user session is rejected immediately (2.3087ms)
+  ✔ 10) Revoke-all with and without exceptSessionId (9.546ms)
+  ✔ 11) Throttled session touch: no write inside 60s, slides idle after 60s, bounded by absolute cap (8.7201ms)
+  ✔ 12) Single-use WebRTC socket tickets with ticket_hash (6.2194ms)
+✔ PostgreSQL Real Integration Tests: Migration 035 & Session Engine (276.5877ms)
+ℹ tests 12
+ℹ suites 1
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 645.7186

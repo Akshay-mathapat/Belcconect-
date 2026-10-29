@@ -62,6 +62,8 @@ export interface AuthUser {
 interface AuthState {
   currentUser: AuthUser | null;
   usersList: AuthUser[];
+  isCheckingSession: boolean;
+  sessionChecked: boolean;
 
   setAuthUser: (user: AuthUser) => void;
   registerUser: (data: {
@@ -83,6 +85,8 @@ interface AuthState {
     status?: number;
     retryAfterSeconds?: number;
   }>;
+
+  checkSession: () => Promise<AuthUser | null>;
 
   updateProfile: (data: {
     name?: string;
@@ -126,6 +130,8 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       currentUser: null,
       usersList: INITIAL_USERS,
+      isCheckingSession: false,
+      sessionChecked: false,
 
       setAuthUser: (user: AuthUser) => {
         if (typeof window !== "undefined") {
@@ -332,15 +338,15 @@ export const useAuthStore = create<AuthState>()(
         };
 
         // Sync profile changes to PostgreSQL
-        const token = current.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
         const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
+        if (current.token) {
+          headers["Authorization"] = `Bearer ${current.token}`;
         }
 
         fetch("/api/auth/sync", {
           method: "POST",
           headers,
+          credentials: "include",
           body: JSON.stringify({
             name: name !== undefined ? name : current.name,
             phone: phone !== undefined ? phone : current.phone,
@@ -392,15 +398,15 @@ export const useAuthStore = create<AuthState>()(
         if (!current) return;
 
         try {
-          const token = current.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
           const headers: Record<string, string> = {};
-          if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
+          if (current.token) {
+            headers["Authorization"] = `Bearer ${current.token}`;
           }
 
           const res = await fetch(`/api/addresses/${id}`, {
             method: "DELETE",
-            headers
+            headers,
+            credentials: "include"
           });
           if (res.ok) {
             const updatedAddresses = (current.addresses || []).filter((a) => a.id !== id);
@@ -546,7 +552,57 @@ export const useAuthStore = create<AuthState>()(
         }));
       },
 
+      checkSession: async () => {
+        set({ isCheckingSession: true });
+        try {
+          const res = await fetch("/api/auth/me", {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Cache-Control": "no-cache",
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.user) {
+              const currentToken = get().currentUser?.token || getStoredAuthToken() || undefined;
+              const user: AuthUser = {
+                bookings: [],
+                addresses: [],
+                ...data.user,
+                token: currentToken
+              };
+              set({ currentUser: user });
+              return user;
+            }
+          } else if (res.status === 401) {
+            // Explicit unauthenticated signal: clear currentUser
+            set({ currentUser: null, sessionChecked: true });
+            return null;
+          } else {
+            // Transient server error (503, 500, etc.): do NOT log user out
+            console.warn(`[useAuthStore] checkSession returned status ${res.status}: preserving existing user`);
+            return get().currentUser;
+          }
+        } catch (e) {
+          // Network error: do NOT log user out
+          console.warn("[useAuthStore] checkSession network error: preserving existing user", e);
+          return get().currentUser;
+        } finally {
+          set({ isCheckingSession: false, sessionChecked: true });
+        }
+        return null;
+      },
+
       logout: () => {
+        // Revoke server session cookie
+        if (typeof window !== "undefined") {
+          fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "include"
+          }).catch(() => {});
+        }
+
         const currentToken = getStoredAuthToken();
         const currentUid = getStoredUserId();
 
@@ -584,12 +640,16 @@ export const useAuthStore = create<AuthState>()(
           } catch (e) {}
         }
 
-        set({ currentUser: null });
+        set({ currentUser: null, sessionChecked: true });
       }
     }),
     {
       name: "belconnect-auth-store",
-      storage: createJSONStorage(() => localStorage)
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        currentUser: state.currentUser,
+        usersList: state.usersList
+      })
     }
   )
 );

@@ -16,6 +16,7 @@
     "check:auth-await": "npm --prefix frontend run check:auth-await",
     "preflight": "node scripts/preflight.js",
     "smoke": "node scripts/smoke-test.js",
-    "compare-fingerprints": "node scripts/compare-fingerprints.js"
+    "compare-fingerprints": "node scripts/compare-fingerprints.js",
+    "dev:test": "node scripts/start-guarded-test.js"
   }
 }

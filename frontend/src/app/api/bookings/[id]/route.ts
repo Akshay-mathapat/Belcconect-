@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
@@ -261,6 +262,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   const { id } = await params;
   const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
 
@@ -769,6 +773,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   const { id } = await params;
   const { raw: rawId, clean: cleanId } = normalizeBookingId(id);
 

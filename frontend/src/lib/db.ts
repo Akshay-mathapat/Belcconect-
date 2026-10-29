@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import { Pool, type PoolClient } from "pg";
 import crypto from "crypto";
 import argon2 from "argon2";
 
@@ -66,18 +66,24 @@ function readPositiveInt(
 }
 
 export function resolveDatabaseUrl(): string | undefined {
+  const isTestMode = process.env.NODE_ENV === "test" || process.env.BELCONNECT_TEST_MODE === "1";
+  if (isTestMode && process.env.TEST_DATABASE_URL) {
+    return process.env.TEST_DATABASE_URL;
+  }
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   if (process.env.POSTGRES_URL) return process.env.POSTGRES_URL;
   if (process.env.DATABASE_URI) return process.env.DATABASE_URI;
   if (process.env.POSTGRESQL_URL) return process.env.POSTGRESQL_URL;
 
-  // Resilient auto-detection: find ANY env var containing a postgres URL
-  for (const [key, val] of Object.entries(process.env)) {
-    if (
-      typeof val === "string" &&
-      (val.startsWith("postgresql://") || val.startsWith("postgres://"))
-    ) {
-      return val;
+  // Resilient auto-detection: only permitted when ALLOW_PROD_DB=1
+  if (process.env.ALLOW_PROD_DB === "1") {
+    for (const [key, val] of Object.entries(process.env)) {
+      if (
+        typeof val === "string" &&
+        (val.startsWith("postgresql://") || val.startsWith("postgres://"))
+      ) {
+        return val;
+      }
     }
   }
 
@@ -115,6 +121,17 @@ export function getPool(): Pool {
   }
 
   const normalizedHost = hostInfo.toLowerCase();
+
+  // Strict allowlist: In test mode, ONLY localhost / 127.0.0.1 / ::1 permitted unless ALLOW_PROD_DB=1
+  const isTestMode = process.env.NODE_ENV === "test" || process.env.BELCONNECT_TEST_MODE === "1";
+  if (isTestMode && process.env.ALLOW_PROD_DB !== "1") {
+    const ALLOWED_LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+    if (!ALLOWED_LOCAL_HOSTS.has(normalizedHost)) {
+      throw new Error(
+        `FATAL: Refusing connection to non-local host (${hostInfo}) in test mode. Only localhost, 127.0.0.1, and ::1 are permitted without ALLOW_PROD_DB=1.`
+      );
+    }
+  }
 
   /**
    * Prevent Vercel/production from accidentally connecting to
@@ -174,9 +191,10 @@ export function getPool(): Pool {
     defaultPoolMax
   );
 
+  const defaultIdleTimeout = isTestMode ? 1_000 : 60_000;
   const idleTimeoutMillis = readPositiveInt(
     process.env.DB_IDLE_TIMEOUT_MS,
-    60_000
+    defaultIdleTimeout
   );
 
   const connectionTimeoutMillis = readPositiveInt(
@@ -317,6 +335,11 @@ export function isDatabaseUnavailableError(
     message.includes("connection timeout") ||
     message.includes("connection terminated") ||
     message.includes("connection refused") ||
+    message.includes("econnrefused") ||
+    message.includes("econnreset") ||
+    message.includes("etimedout") ||
+    (error as any).code === "ECONNREFUSED" ||
+    (error as any).code === "ETIMEDOUT" ||
     message.includes("too many clients") ||
     message.includes("remaining connection slots") ||
     message.includes("database system is starting up") ||
@@ -494,4 +517,12 @@ export async function query(
  */
 export async function getClient(): Promise<PoolClient> {
   return getPool().connect();
+}
+
+export async function closePool(): Promise<void> {
+  if (globalThis.postgresPool) {
+    const p = globalThis.postgresPool;
+    delete globalThis.postgresPool;
+    await p.end().catch(() => {});
+  }
 }

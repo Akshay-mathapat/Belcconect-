@@ -47,13 +47,15 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
     }
   };
 
-  const completeSuccessfulLogin = (user: any, token: string) => {
-    localStorage.setItem("auth_token", token);
-    localStorage.setItem("cityconnect_token", token);
+  const completeSuccessfulLogin = (user: any, token?: string) => {
+    if (token) {
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("cityconnect_token", token);
+    }
 
     setAuthUser({
       ...user,
-      token,
+      ...(token ? { token } : {}),
     });
 
     registerAndSubscribeUser(user.id).catch((err) =>
@@ -223,8 +225,8 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
     const top = window.screenY + (window.outerHeight - height) / 2;
     const popup = window.open(initUrl, "GoogleSignIn", `width=${width},height=${height},left=${left},top=${top}`);
     if (!popup) {
-      setIsLoading(false);
-      alert("Pop-up blocked. Please allow pop-ups for this site to sign in with Google.");
+      // Pop-up blocked by browser: seamlessly fall back to full-page redirect
+      window.location.href = initUrl;
       return;
     }
 

@@ -138,21 +138,8 @@ export async function authFetch(
   const isProtected = options.protected !== false;
   const token = getClientToken();
 
-  if (isProtected && !token) {
-    triggerAuthExpired();
-    if (options.throwOnMissingToken) {
-      return Promise.reject(new AuthRequiredError());
-    }
-    return new Response(
-      JSON.stringify({ error: "Unauthorized: Missing authentication token" }),
-      {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-  }
-
   const headers = new Headers(init.headers || {});
+  // Attach Bearer token if available (for Android native or legacy compatibility)
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }

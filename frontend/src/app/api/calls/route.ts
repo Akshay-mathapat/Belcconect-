@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { generateLiveKitToken } from "@/lib/livekitToken";
@@ -16,6 +17,9 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 import { sendPushToUser, sendCallPushWakeUp } from "@/lib/pushNotifications";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     // 1. Fire-and-forget background cleanup of stale calls (non-blocking)
     void (async () => {

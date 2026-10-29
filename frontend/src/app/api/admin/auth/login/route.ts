@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query, verifyPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
@@ -5,6 +6,9 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { createSession, setSessionCookie } from "@/lib/session";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     // 1. Strict rate limiting on admin login (max 5 requests per 15 minutes)
     const rateLimit = await checkRateLimit(request, 5, 15 * 60 * 1000);

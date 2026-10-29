@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getAuthenticatedUser } from "@/lib/jwt";
@@ -8,6 +9,9 @@ import { hashOtpWithHmac, sendPasswordResetOtpEmail } from "@/lib/email";
 import { performAccountDeletionTx } from "@/lib/accountDeletion";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     // Rate limit: 20 requests per hour per IP
     const ipRate = await checkIpRateLimit(request, 20, 3600);

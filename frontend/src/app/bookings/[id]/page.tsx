@@ -94,7 +94,10 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(`/api/bookings/${encodeURIComponent(targetBookingId)}/reviews`, { headers });
+      const res = await fetch(`/api/bookings/${encodeURIComponent(targetBookingId)}/reviews`, {
+        headers,
+        credentials: "include"
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.userReview) {
@@ -152,6 +155,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}`, {
         method: "PATCH",
         headers,
+        credentials: "include",
         body: JSON.stringify({
           status: "Cancelled",
           cancellationReason,
@@ -185,6 +189,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/report`, {
         method: "POST",
         headers,
+        credentials: "include",
         body: JSON.stringify({
           reason: reportReason,
           description: reportDescription
@@ -220,6 +225,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}`, {
         method: "PATCH",
         headers,
+        credentials: "include",
         body: JSON.stringify({
           status: "ProviderNoShow",
           noShowReason: noShowReason.trim()
@@ -252,6 +258,7 @@ export default function CustomerTrackingDetailPage({ params }: { params: Promise
       const res = await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/reviews`, {
         method: "POST",
         headers,
+        credentials: "include",
         body: JSON.stringify({
           rating: ratingValue,
           comment: reviewText.trim()

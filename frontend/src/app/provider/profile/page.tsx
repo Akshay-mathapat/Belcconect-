@@ -59,6 +59,7 @@ export default function ProviderProfilePage() {
       const token = getStoredAuthToken();
       const res = await fetch("/api/account/delete", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -85,6 +86,7 @@ export default function ProviderProfilePage() {
       const token = getStoredAuthToken();
       const res = await fetch("/api/account/delete", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -208,10 +210,11 @@ export default function ProviderProfilePage() {
       uploadData.append("file", file);
       uploadData.append("category", "kyc");
 
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_auth_token") : null);
+      const token = currentUser?.token;
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
         body: uploadData
       });
 

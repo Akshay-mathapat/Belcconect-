@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Footer from "@/components/sections/Footer";
 import { useAuthStore } from "@/store/useAuthStore";
+import { authFetch } from "@/lib/authFetch";
 
 interface SimpleBooking {
   id: string;
@@ -40,21 +41,7 @@ function SupportFormContent() {
   const [successData, setSuccessData] = useState<{ ticketId?: string; message?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const getStoredToken = () => {
-    if (currentUser?.token) return currentUser.token;
-    if (typeof window !== "undefined") {
-      return (
-        localStorage.getItem("cityconnect_auth_token") ||
-        localStorage.getItem("cityconnect_token") ||
-        localStorage.getItem("auth_token") ||
-        null
-      );
-    }
-    return null;
-  };
-
-  const token = getStoredToken();
-  const isAuthenticated = Boolean(currentUser || token);
+  const isAuthenticated = Boolean(currentUser);
 
   // Fetch authenticated user's bookings to populate optional selector
   useEffect(() => {
@@ -64,10 +51,7 @@ function SupportFormContent() {
     async function loadBookings() {
       setIsLoadingBookings(true);
       try {
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const res = await fetch("/api/bookings", { headers });
+        const res = await authFetch("/api/bookings");
         if (res.ok) {
           const data = await res.json();
           if (isMounted && Array.isArray(data)) {
@@ -97,7 +81,7 @@ function SupportFormContent() {
     return () => {
       isMounted = false;
     };
-  }, [isAuthenticated, token, queryBookingId]);
+  }, [isAuthenticated, queryBookingId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,16 +115,9 @@ function SupportFormContent() {
     setIsSubmitting(true);
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch("/api/support", {
+      const res = await authFetch("/api/support", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject: subject.trim(),
           message: message.trim(),

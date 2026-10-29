@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { query } from "@/lib/db";
-import { OAuthAccountType } from "@/lib/oauthAccountType";
+import type { OAuthAccountType } from "@/lib/oauthAccountType";
 
 const OAUTH_TRANSACTION_TTL_SECONDS = 10 * 60;
 const MOBILE_HANDOFF_TTL_SECONDS = 2 * 60;

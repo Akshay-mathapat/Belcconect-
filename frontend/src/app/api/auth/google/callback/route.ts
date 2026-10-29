@@ -14,8 +14,9 @@ import {
   createSession,
   getCookieConfig,
   getRoleSessionLifetimes,
-  UserRole
+  type UserRole
 } from "@/lib/session";
+import { serializeJsonForInlineScript } from "@/lib/serializeJson";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -23,6 +24,12 @@ const APP_URL = process.env.APP_URL || (process.env.NODE_ENV === "production" ? 
 const MOBILE_REDIRECT_URI = "com.cityconnect.app://oauth/callback";
 
 export async function GET(request: Request) {
+  let cookieStore: any = null;
+  try {
+    cookieStore = await cookies();
+  } catch {
+    // Non-serverless request context (e.g. unit tests)
+  }
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -51,19 +58,54 @@ export async function GET(request: Request) {
       return NextResponse.redirect(mobileUrl);
     }
 
-    const payloadStr = messagePayload ? JSON.stringify(messagePayload) : "null";
+    const payloadStr = messagePayload ? serializeJsonForInlineScript(messagePayload) : "null";
     const html = `
       <!DOCTYPE html>
       <html>
         <head><title>Authentication Processing</title></head>
         <body>
           <script>
+            const payload = ${payloadStr};
             if (window.opener) {
-              const payload = ${payloadStr};
               if (payload) {
-                window.opener.postMessage(payload, "*");
+                window.opener.postMessage(payload, window.location.origin);
               }
               window.close();
+            } else if (payload && payload.type === "GOOGLE_AUTH_SUCCESS" && payload.user) {
+              try {
+                if (payload.token) {
+                  localStorage.setItem("auth_token", payload.token);
+                  localStorage.setItem("cityconnect_token", payload.token);
+                  localStorage.setItem("cityconnect_auth_token", payload.token);
+                }
+                if (payload.user.id) {
+                  localStorage.setItem("cityconnect_user_id", payload.user.id);
+                  localStorage.setItem("user_id", payload.user.id);
+                }
+                const existingStore = localStorage.getItem("belconnect-auth-store");
+                let parsed = {};
+                try { parsed = existingStore ? JSON.parse(existingStore) : {}; } catch(e) {}
+                parsed.state = {
+                  ...(parsed.state || {}),
+                  currentUser: {
+                    bookings: [],
+                    addresses: [],
+                    ...payload.user,
+                    ...(payload.token ? { token: payload.token } : {})
+                  }
+                };
+                localStorage.setItem("belconnect-auth-store", JSON.stringify(parsed));
+              } catch(e) {}
+
+              var dest = "/";
+              if (payload.user.role === "provider") {
+                dest = payload.user.isFirstLogin ? "/provider/profile" : "/provider";
+              } else if (payload.user.role === "job_provider") {
+                dest = payload.user.isFirstLogin ? "/jobprovider/business-profile" : "/jobprovider/dashboard";
+              }
+              window.location.href = dest;
+            } else if (payload && payload.error) {
+              window.location.href = "${appOrigin}/login?error=" + encodeURIComponent(payload.error);
             } else {
               window.location.href = "${appOrigin}/login";
             }
@@ -72,7 +114,12 @@ export async function GET(request: Request) {
         </body>
       </html>
     `;
-    return new Response(html, { headers: { "Content-Type": "text/html" } });
+    return new Response(html, {
+      headers: {
+        "Content-Type": "text/html",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
+      }
+    });
   };
 
   // 1. Startup & Credential Config Checks
@@ -129,6 +176,26 @@ export async function GET(request: Request) {
       }, stateCheck.mobile);
     }
     const { accountType, codeVerifier } = transaction;
+
+    // Verify OAuth state is bound to the browser by cookie
+    if (!stateCheck.mobile) {
+      let cookieVerifier = cookieStore?.get("google_oauth_verifier")?.value;
+      if (!cookieVerifier) {
+        const cookieHeader = request.headers.get("cookie") || "";
+        const match = cookieHeader.match(/(?:^|;\s*)google_oauth_verifier=([^;]+)/);
+        if (match) {
+          cookieVerifier = decodeURIComponent(match[1]);
+        }
+      }
+      if (!cookieVerifier || cookieVerifier !== codeVerifier) {
+        console.warn("[GOOGLE_OAUTH_CSRF_REJECT] Browser cookie does not match transaction verifier");
+        return renderCloseWindowScript({
+          type: "GOOGLE_AUTH_ERROR",
+          error: "Security validation failed: Browser session mismatch for OAuth transaction.",
+        });
+      }
+      cookieStore?.delete("google_oauth_verifier");
+    }
 
     // 5. Exchange Auth Code for Tokens
     const computedCodeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
@@ -197,17 +264,18 @@ export async function GET(request: Request) {
     });
 
     // 10. Set __Host- server-side session cookie
-    const cookieStore = await cookies();
     const { name: cookieName, isSecure } = getCookieConfig(userObj.role as UserRole);
     const { absoluteSeconds } = getRoleSessionLifetimes(userObj.role as UserRole);
 
-    cookieStore.set(cookieName, session.rawToken, {
-      httpOnly: true,
-      secure: isSecure,
-      sameSite: "lax",
-      maxAge: absoluteSeconds,
-      path: "/",
-    });
+    if (cookieStore) {
+      cookieStore.set(cookieName, session.rawToken, {
+        httpOnly: true,
+        secure: isSecure,
+        sameSite: "lax",
+        maxAge: absoluteSeconds,
+        path: "/",
+      });
+    }
 
     // 11. Dual-issuance: legacy JWT if AUTH_ISSUE_LEGACY_JWT is true (default true)
     const issueLegacy = process.env.AUTH_ISSUE_LEGACY_JWT !== "false";
@@ -221,13 +289,15 @@ export async function GET(request: Request) {
       });
       console.info("[GOOGLE_AUTH] localJwtIssued", true);
 
-      cookieStore.set("auth_token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 3600,
-        path: "/",
-      });
+      if (cookieStore) {
+        cookieStore.set("auth_token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7 * 24 * 3600,
+          path: "/",
+        });
+      }
     }
 
     // 12. Send postMessage targeting STRICT trusted origin (NO WILD CARD "*")

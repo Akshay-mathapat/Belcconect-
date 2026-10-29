@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { query, hashPassword } from "@/lib/db";
@@ -7,6 +8,9 @@ import { parseAndValidate, registerSchema, normalizeIndianPhone } from "@/lib/va
 import { createSession, setSessionCookie, UserRole } from "@/lib/session";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   // 1. Rate Limiting Check (Max 5 attempts per 5 minutes)
   const rateLimit = await checkRateLimit(request, 5, 5 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {
@@ -127,9 +131,6 @@ export async function POST(request: Request) {
       sessionId: session.sessionId
     });
 
-    // Set server-side session cookie (__Host-session)
-    setSessionCookie(response.headers, session.rawToken, userObj.role as UserRole);
-
     // Legacy cookie support during transition
     if (issueLegacy && token) {
       response.cookies.set("auth_token", token, {
@@ -141,6 +142,11 @@ export async function POST(request: Request) {
       });
     }
 
+    // Set server-side session cookie (__Host-session)
+    // Must be set after response.cookies.set to prevent Next.js from overwriting headers
+    setSessionCookie(response.headers, session.rawToken, userObj.role as UserRole);
+
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     return response;
   } catch (error: unknown) {
     console.error("Error in register API:", error);

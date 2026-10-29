@@ -1,8 +1,12 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
 
 export async function POST(req: Request) {
+  const csrfError = await assertCsrfOrigin(req);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(req);
     if (!authUser) {

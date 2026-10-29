@@ -13,7 +13,7 @@ describe("Phase 1: Server-Side Opaque Sessions & Architecture", () => {
     assert.ok(fs.existsSync(migrationPath), "database/migrations/035_server_side_sessions.sql must exist");
     assert.ok(fs.existsSync(mirroredMigrationPath), "migrations/035_server_side_sessions.sql must exist");
 
-    const sql = fs.readFileSync(migrationPath, "utf8");
+    const sql = fs.readFileSync(migrationPath, "utf8").replace(/\r\n/g, "\n");
 
     // Table checks
     assert.ok(sql.includes("CREATE TABLE IF NOT EXISTS public.sessions"), "Must create sessions table");

@@ -1,6 +1,6 @@
 import webpush from "web-push";
-import { initializeApp, getApps, cert, applicationDefault, App } from "firebase-admin/app";
-import { getMessaging, Message } from "firebase-admin/messaging";
+import { initializeApp, getApps, cert, applicationDefault, type App } from "firebase-admin/app";
+import { getMessaging, type Message } from "firebase-admin/messaging";
 import { query } from "@/lib/db";
 
 function getFirebaseAdmin(): App | null {

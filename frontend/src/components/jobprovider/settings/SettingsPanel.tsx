@@ -41,6 +41,7 @@ export function SettingsPanel() {
       const token = getStoredAuthToken();
       const res = await fetch("/api/account/delete", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -67,6 +68,7 @@ export function SettingsPanel() {
       const token = getAuthToken();
       const res = await fetch("/api/account/delete", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})

@@ -9,6 +9,7 @@ const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const { validateTestDatabaseUrl } = require("./db-guard");
 const guard = validateTestDatabaseUrl();
@@ -71,10 +72,18 @@ suite("Phase 2 Authentication & Session Integration Tests", () => {
   });
 
   after(async () => {
-    await pool.query("DELETE FROM public.sessions WHERE user_id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.customers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.query("DELETE FROM public.admins WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
-    await pool.end();
+    try {
+      await pool.query("DELETE FROM public.sessions WHERE user_id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.customers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.query("DELETE FROM public.admins WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
+      await pool.end();
+      if (globalThis.postgresPool) {
+        await globalThis.postgresPool.end().catch(() => {});
+        delete globalThis.postgresPool;
+      }
+    } catch (err) {
+      console.error("[Teardown Error in phase2-auth]:", err);
+    }
   });
 
   test("1) Login sets the session cookie with the right name and absolute Max-Age flags", async () => {
@@ -239,5 +248,79 @@ suite("Phase 2 Authentication & Session Integration Tests", () => {
     } finally {
       console.log = originalLog;
     }
+  });
+
+  // 7. GET /api/auth/me: Valid opaque cookie session
+  test("7) GET /api/auth/me with valid opaque session cookie returns HTTP 200 OK, user profile, role, no-store, and never a token", async () => {
+    const meMod = await import(pathToFileURL(path.join(rootDir, "frontend/src/app/api/auth/me/route.ts")).href);
+    const getMe = meMod.GET;
+
+    const session = await sessionModule.createSession(
+      { userId: TEST_ACTIVE_USER, role: "user", client: "web" },
+      queryRunner
+    );
+
+    const req = new Request("http://localhost:3000/api/auth/me", {
+      method: "GET",
+      headers: {
+        cookie: `__Host-session=${session.rawToken}`
+      }
+    });
+
+    const res = await getMe(req);
+    assert.strictEqual(res.status, 200, "Valid session cookie must return HTTP 200 OK");
+    assert.ok(res.headers.get("Cache-Control").includes("no-store"), "Must have Cache-Control: no-store");
+
+    const json = await res.json();
+    assert.strictEqual(json.success, true);
+    assert.strictEqual(json.user.id, TEST_ACTIVE_USER);
+    assert.strictEqual(json.user.role, "user");
+    assert.strictEqual(json.user.email, "phase2.active@belconnect.com");
+    // Invariant: NEVER expose token in /api/auth/me
+    assert.strictEqual(json.user.token, undefined, "user.token must NOT be present");
+    assert.strictEqual(json.user.rawToken, undefined, "user.rawToken must NOT be present");
+    assert.strictEqual(json.token, undefined, "response.token must NOT be present");
+  });
+
+  // 8. GET /api/auth/me: Missing cookie -> 401
+  test("8) GET /api/auth/me without session cookie returns HTTP 401 Unauthorized with no-store", async () => {
+    const meMod = await import(pathToFileURL(path.join(rootDir, "frontend/src/app/api/auth/me/route.ts")).href);
+    const getMe = meMod.GET;
+
+    const req = new Request("http://localhost:3000/api/auth/me", {
+      method: "GET"
+    });
+
+    const res = await getMe(req);
+    assert.strictEqual(res.status, 401, "Missing session must return HTTP 401 Unauthorized");
+    assert.ok(res.headers.get("Cache-Control").includes("no-store"), "Must have Cache-Control: no-store");
+  });
+
+  // 9. GET /api/auth/me: Dual-validation legacy JWT fallback
+  test("9) GET /api/auth/me with legacy JWT fallback returns HTTP 200 OK and user profile", async () => {
+    const meMod = await import(pathToFileURL(path.join(rootDir, "frontend/src/app/api/auth/me/route.ts")).href);
+    const getMe = meMod.GET;
+
+    const legacyJwt = jwtModule.signJwtToken({
+      userId: TEST_ACTIVE_USER,
+      email: "phase2.active@belconnect.com",
+      role: "user",
+      name: "Phase2 Active"
+    });
+
+    const req = new Request("http://localhost:3000/api/auth/me", {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${legacyJwt}`
+      }
+    });
+
+    const res = await getMe(req);
+    assert.strictEqual(res.status, 200, "Valid legacy JWT must return HTTP 200 OK");
+    assert.ok(res.headers.get("Cache-Control").includes("no-store"));
+    const json = await res.json();
+    assert.strictEqual(json.success, true);
+    assert.strictEqual(json.user.id, TEST_ACTIVE_USER);
+    assert.strictEqual(json.token, undefined);
   });
 });

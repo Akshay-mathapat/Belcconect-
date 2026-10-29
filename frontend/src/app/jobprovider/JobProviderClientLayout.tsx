@@ -29,7 +29,7 @@ import { JobProviderSearchDropdown } from "@/components/jobprovider/layout/JobPr
 export default function JobProviderLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, logout } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, logout, checkSession } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
 
@@ -93,17 +93,17 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
 
   // Redirect unauthorized roles
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !sessionChecked) return;
 
-    const token = getStoredAuthToken();
-    if (!currentUser && !token) {
+    if (!currentUser) {
       router.push("/login");
       return;
     }
-    if (currentUser && currentUser.role !== "job_provider" && currentUser.role !== "admin") {
+
+    if (currentUser.role !== "job_provider" && currentUser.role !== "admin") {
       router.push("/");
     }
-  }, [currentUser, router, isHydrated]);
+  }, [currentUser, sessionChecked, router, isHydrated]);
 
   const themeOptions = [
     { value: "light" as const, icon: Sun, label: "Light" },
@@ -134,7 +134,7 @@ export default function JobProviderLayout({ children }: { children: React.ReactN
     else router.push("/jobprovider/dashboard");
   };
 
-  if (!currentUser || (currentUser.role !== "job_provider" && currentUser.role !== "admin")) {
+  if (!isHydrated || !sessionChecked || isCheckingSession || !currentUser || (currentUser.role !== "job_provider" && currentUser.role !== "admin")) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>

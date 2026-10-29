@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
@@ -49,6 +50,9 @@ export async function GET(request: Request) {
  * Only the authenticated provider can modify their own status.
  */
 export async function PATCH(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {

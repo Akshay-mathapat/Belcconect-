@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { query, isDatabaseUnavailableError } from "@/lib/db";
@@ -115,6 +116,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
@@ -280,6 +284,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {

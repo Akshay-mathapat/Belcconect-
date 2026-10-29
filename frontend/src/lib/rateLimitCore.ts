@@ -157,11 +157,21 @@ export class PostgresRateLimitStore implements IRateLimitStore {
     this.queryFn = queryFn || activePgQueryFn;
   }
 
+  private async getQueryFn(): Promise<QueryFunction> {
+    if (this.queryFn) return this.queryFn;
+    if (activePgQueryFn) return activePgQueryFn;
+    try {
+      const db = await import("./db");
+      if (db && typeof db.query === "function") {
+        activePgQueryFn = db.query;
+        return db.query;
+      }
+    } catch {}
+    throw new Error("PostgreSQL query function not initialized");
+  }
+
   async increment(key: string, windowSeconds: number): Promise<{ points: number; retryAfter: number }> {
-    const query = this.queryFn || activePgQueryFn;
-    if (!query) {
-      throw new Error("PostgreSQL query function not initialized");
-    }
+    const query = await this.getQueryFn();
 
     const sql = `
       INSERT INTO rate_limits (key, points, expire_at)
@@ -195,16 +205,13 @@ export class PostgresRateLimitStore implements IRateLimitStore {
   }
 
   async reset(key: string): Promise<void> {
-    const query = this.queryFn || activePgQueryFn;
-    if (!query) return;
+    let query: QueryFunction | null = null;
+    try { query = await this.getQueryFn(); } catch { return; }
     await query("DELETE FROM rate_limits WHERE key = $1", [key]);
   }
 
   async get(key: string): Promise<{ points: number; retryAfter: number }> {
-    const query = this.queryFn || activePgQueryFn;
-    if (!query) {
-      throw new Error("PostgreSQL query function not initialized");
-    }
+    const query = await this.getQueryFn();
 
     const sql = `
       SELECT points, GREATEST(0, CEIL(EXTRACT(EPOCH FROM (expire_at - NOW()))))::int AS retry_after
@@ -226,6 +233,79 @@ export class PostgresRateLimitStore implements IRateLimitStore {
 export const memoryFallbackStore = new InMemoryStore();
 let hasLoggedMemoryWarning = false;
 
+let storeFailureCount = 0;
+let lastStoreFailureLogTime = 0;
+const STORE_FAILURE_LOG_THROTTLE_MS = 60_000; // Log at most once per minute per instance
+
+export function getStoreFailureCount(): number {
+  return storeFailureCount;
+}
+
+export function resetStoreFailureCount(): void {
+  storeFailureCount = 0;
+  lastStoreFailureLogTime = 0;
+}
+
+async function handleStoreError(
+  storeName: string,
+  op: string,
+  key: string,
+  err: unknown,
+  failClosed: boolean = false,
+  fallbackToMemory: boolean = false,
+  limit: number = 60,
+  windowSeconds: number = 60
+): Promise<RateLimitResult> {
+  storeFailureCount++;
+  const now = Date.now();
+  const msg = err instanceof Error ? err.message : String(err);
+
+  if (now - lastStoreFailureLogTime >= STORE_FAILURE_LOG_THROTTLE_MS) {
+    lastStoreFailureLogTime = now;
+    console.warn(
+      `[RateLimit] Warning: Store (${storeName}) failed during ${op} for ${key} (total failures: ${storeFailureCount}). Action: ${
+        fallbackToMemory ? "falling back to in-memory store" : failClosed ? "failing closed" : "failing open"
+      }: ${msg}`
+    );
+  }
+
+  if (fallbackToMemory) {
+    try {
+      const isPassiveCheck = op === "email check";
+      const { points, retryAfter } = isPassiveCheck
+        ? await memoryFallbackStore.get(key)
+        : await memoryFallbackStore.increment(key, windowSeconds);
+      const isAllowed = (op === "record login failure" || op === "email check")
+        ? points < limit
+        : points <= limit;
+      return {
+        isAllowed,
+        remaining: Math.max(0, limit - points),
+        retryAfter: isAllowed ? 0 : retryAfter,
+        totalPoints: points,
+      };
+    } catch {
+      // In-memory fallback error: continue to fail-closed or fail-open
+    }
+  }
+
+  if (failClosed) {
+    return {
+      isAllowed: false,
+      remaining: 0,
+      retryAfter: 60,
+      totalPoints: 0,
+    };
+  }
+
+  return {
+    isAllowed: true,
+    remaining: 1,
+    retryAfter: 0,
+    totalPoints: 0,
+  };
+}
+
 export function resolveStore(): IRateLimitStore {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -234,7 +314,7 @@ export function resolveStore(): IRateLimitStore {
     return new UpstashRedisStore(upstashUrl, upstashToken);
   }
 
-  if (activePgQueryFn || process.env.DATABASE_URL) {
+  if (activePgQueryFn || process.env.DATABASE_URL || process.env.TEST_DATABASE_URL) {
     return new PostgresRateLimitStore();
   }
 
@@ -277,7 +357,9 @@ export async function checkIpRateLimit(
   limit: number = 120,
   windowSeconds: number = 60,
   storeOverride?: IRateLimitStore,
-  prefix?: string
+  prefix?: string,
+  failClosed: boolean = false,
+  fallbackToMemory: boolean = false
 ): Promise<RateLimitResult> {
   const pfx = prefix ? `rl:${prefix}:` : "rl:ip:";
   let ipKey: string;
@@ -313,24 +395,17 @@ export async function checkIpRateLimit(
       totalPoints: points,
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(
-      `[RateLimit] Warning: Store (${store.name}) failed during IP check for ${ipKey}. Failing open:`,
-      msg
-    );
-    return {
-      isAllowed: true,
-      remaining: 1,
-      retryAfter: 0,
-      totalPoints: 0,
-    };
+    return await handleStoreError(store.name, "IP check", ipKey, err, failClosed, fallbackToMemory, limit, windowSeconds);
   }
 }
 
 export async function checkEmailRateLimit(
   email: string,
   limit: number = 10,
-  storeOverride?: IRateLimitStore
+  storeOverride?: IRateLimitStore,
+  failClosed: boolean = false,
+  fallbackToMemory: boolean = false,
+  windowSeconds: number = 15 * 60
 ): Promise<RateLimitResult> {
   const cleanEmail = email.trim().toLowerCase();
   const key = `rl:fail:email:${cleanEmail}`;
@@ -346,17 +421,7 @@ export async function checkEmailRateLimit(
       totalPoints: points,
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(
-      `[RateLimit] Error checking email limit for ${cleanEmail}; failing open:`,
-      msg
-    );
-    return {
-      isAllowed: true,
-      remaining: 1,
-      retryAfter: 0,
-      totalPoints: 0,
-    };
+    return await handleStoreError(store.name, "email check", key, err, failClosed, fallbackToMemory, limit, windowSeconds);
   }
 }
 
@@ -364,7 +429,9 @@ export async function checkUserRateLimit(
   userId: string,
   limit: number = 60,
   windowSeconds: number = 60,
-  storeOverride?: IRateLimitStore
+  storeOverride?: IRateLimitStore,
+  failClosed: boolean = false,
+  fallbackToMemory: boolean = false
 ): Promise<RateLimitResult> {
   const cleanUserId = (userId || "").trim();
   if (!cleanUserId) {
@@ -389,17 +456,7 @@ export async function checkUserRateLimit(
       totalPoints: points,
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(
-      `[RateLimit] Warning: Store (${store.name}) failed during user check for ${key}. Failing open:`,
-      msg
-    );
-    return {
-      isAllowed: true,
-      remaining: 1,
-      retryAfter: 0,
-      totalPoints: 0,
-    };
+    return await handleStoreError(store.name, "user check", key, err, failClosed, fallbackToMemory, limit, windowSeconds);
   }
 }
 
@@ -407,7 +464,8 @@ export async function recordLoginFailure(
   email: string,
   limit: number = 10,
   windowSeconds: number = 15 * 60,
-  storeOverride?: IRateLimitStore
+  storeOverride?: IRateLimitStore,
+  fallbackToMemory: boolean = true
 ): Promise<RateLimitResult> {
   const cleanEmail = email.trim().toLowerCase();
   const key = `rl:fail:email:${cleanEmail}`;
@@ -423,17 +481,7 @@ export async function recordLoginFailure(
       totalPoints: points,
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(
-      `[RateLimit] Error recording failure for ${cleanEmail}:`,
-      msg
-    );
-    return {
-      isAllowed: true,
-      remaining: 1,
-      retryAfter: 0,
-      totalPoints: 1,
-    };
+    return await handleStoreError(store.name, "record login failure", key, err, false, fallbackToMemory, limit, windowSeconds);
   }
 }
 
@@ -453,5 +501,12 @@ export async function recordLoginSuccess(
       `[RateLimit] Error resetting failure for ${cleanEmail}:`,
       msg
     );
+  }
+
+  // Also reset in-memory fallback store
+  try {
+    await memoryFallbackStore.reset(key);
+  } catch {
+    // ignore
   }
 }

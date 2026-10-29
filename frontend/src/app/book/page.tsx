@@ -111,14 +111,18 @@ function BookingFlow() {
   const handleConfirm = async (overridePhone?: string) => {
     setIsSubmitting(true);
     try {
-      const customerId = currentUser?.id || getStoredUserId();
-      const customerName = currentUser?.name;
-      const customerPhone = overridePhone || currentUser?.phone;
-      const customerPhoto = currentUser?.avatar || "";
+      let activeCustomer = currentUser;
+      if (!activeCustomer) {
+        activeCustomer = await useAuthStore.getState().checkSession();
+      }
+      const customerId = activeCustomer?.id || getStoredUserId();
+      const customerName = activeCustomer?.name;
+      const customerPhone = overridePhone || activeCustomer?.phone;
+      const customerPhoto = activeCustomer?.avatar || "";
       const resolvedProviderId = proId;
-      const token = currentUser?.token || getStoredAuthToken();
+      const token = activeCustomer?.token || getStoredAuthToken();
 
-      if (!customerId || !token) {
+      if (!customerId) {
         const currentPath = `/book?${searchParams.toString()}`;
         router.push(`/auth?mode=login&returnTo=${encodeURIComponent(currentPath)}`);
         setIsSubmitting(false);
@@ -182,6 +186,7 @@ function BookingFlow() {
 
       const res = await fetch("/api/bookings", {
         method: "POST",
+        credentials: "include",
         headers,
         body: JSON.stringify({
           customerId,

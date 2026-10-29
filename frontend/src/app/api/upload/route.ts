@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { put } from "@vercel/blob";
@@ -5,6 +6,9 @@ import { getAuthenticatedUser } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
+  const csrfError = await assertCsrfOrigin(req);
+  if (csrfError) return csrfError;
+
   // 1. Rate Limiting Check (Max 10 upload attempts per 15 minutes)
   const rateLimit = await checkRateLimit(req, 10, 15 * 60 * 1000);
   if (!rateLimit.isAllowed && rateLimit.response) {

@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { CallRecord } from "@/lib/calls";
+import type { CallRecord } from "@/lib/calls";
 
 export type SignalingEventType =
   | "call:initiate"

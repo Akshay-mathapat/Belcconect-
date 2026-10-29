@@ -1,6 +1,7 @@
 "use client";
 
 import { authFetch } from "@/lib/authFetch";
+import { useAuthStore } from "@/store/useAuthStore";
 
 import React, { useEffect, useRef, useState } from "react";
 import { Navigation, Radio, Clock, ShieldCheck, ExternalLink, MapPin, Loader2, AlertCircle } from "lucide-react";
@@ -269,15 +270,11 @@ export default function CustomerTrackingMap({
       }
 
       try {
-        const token = typeof window !== "undefined"
-          ? (localStorage.getItem("cityconnect_auth_token") || localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token"))
-          : null;
-        const userId = typeof window !== "undefined"
-          ? (localStorage.getItem("cityconnect_user_id") || localStorage.getItem("user_id"))
-          : null;
+        const currentUser = useAuthStore.getState().currentUser;
+        const userId = currentUser?.id || null;
 
         const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+        if (currentUser?.token) headers["Authorization"] = `Bearer ${currentUser.token}`;
         if (userId) headers["x-user-id"] = userId;
 
         const res = await authFetch(`/api/bookings/${bookingId}`, { headers });

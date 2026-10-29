@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MessageSquare, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { authFetch } from "@/lib/authFetch";
 import ChatWindow from "./ChatWindow";
 import { useTranslation } from "@/lib/i18n";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -62,12 +63,12 @@ export default function ChatButton({
     }
     try {
       setLoading(true);
-      const token = currentUser?.token || (typeof window !== "undefined" ? localStorage.getItem("cityconnect_token") || localStorage.getItem("auth_token") : null);
+      const token = currentUser?.token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       if (activeUserId) headers["x-user-id"] = activeUserId;
 
-      const res = await fetch("/api/chat/conversations", {
+      const res = await authFetch("/api/chat/conversations", {
         method: "POST",
         headers,
         body: JSON.stringify({

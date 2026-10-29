@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Footer from "@/components/sections/Footer";
 import { useAuthStore } from "@/store/useAuthStore";
+import { authFetch } from "@/lib/authFetch";
 
 const FEEDBACK_CATEGORIES = [
   { value: "general", label: "General" },
@@ -37,21 +38,7 @@ export default function FeedbackPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const getStoredToken = () => {
-    if (currentUser?.token) return currentUser.token;
-    if (typeof window !== "undefined") {
-      return (
-        localStorage.getItem("cityconnect_auth_token") ||
-        localStorage.getItem("cityconnect_token") ||
-        localStorage.getItem("auth_token") ||
-        null
-      );
-    }
-    return null;
-  };
-
-  const token = getStoredToken();
-  const isAuthenticated = Boolean(currentUser || token);
+  const isAuthenticated = Boolean(currentUser);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,16 +62,9 @@ export default function FeedbackPage() {
     setIsSubmitting(true);
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch("/api/feedback", {
+      const res = await authFetch("/api/feedback", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           category,
           rating: rating ?? null,

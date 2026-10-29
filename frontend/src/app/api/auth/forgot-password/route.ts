@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query } from "@/lib/db";
@@ -6,6 +7,9 @@ import { parseAndValidate, forgotPasswordSchema } from "@/lib/validations";
 import { sendPasswordResetOtpEmail, hashOtpWithHmac } from "@/lib/email";
 
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   console.log("[PASSWORD_RESET] request-received");
 
   // 1. Rate Limiting Check (Max 5 requests per 15 minutes per IP)

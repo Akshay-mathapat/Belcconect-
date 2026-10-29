@@ -42,7 +42,7 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      if (!providerId || !getClientToken()) return;
+      if (!providerId) return;
       const res = await authFetch(`/api/chat/conversations?userId=${providerId}`);
       if (res.ok) {
         const data = await res.json();

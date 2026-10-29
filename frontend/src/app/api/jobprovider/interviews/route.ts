@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { query, getClient, isDatabaseUnavailableError } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
@@ -74,6 +75,9 @@ export async function GET(request: Request) {
 
 // ── POST /api/jobprovider/interviews — Schedule an Interview ──────────────
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {
@@ -230,6 +234,9 @@ export async function POST(request: Request) {
 
 // ── PATCH /api/jobprovider/interviews — Update Interview Status ───────────
 export async function PATCH(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {

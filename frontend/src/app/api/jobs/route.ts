@@ -1,3 +1,4 @@
+import { assertCsrfOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { query, isDatabaseUnavailableError } from "@/lib/db";
@@ -149,6 +150,9 @@ export async function GET(request: Request) {
 
 // ── POST /api/jobs — Create New Job Listing (Employer / Job Provider) ─────
 export async function POST(request: Request) {
+  const csrfError = await assertCsrfOrigin(request);
+  if (csrfError) return csrfError;
+
   try {
     const authUser = await getAuthenticatedUser(request);
     if (!authUser) {

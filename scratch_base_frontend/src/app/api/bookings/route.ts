@@ -1,0 +1,546 @@
+import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/jwt";
+import { normalizeIndianPhone } from "@/lib/validations";
+import { throttledExpireStaleBookings, lazyExpireUserBookings } from "@/lib/bookingExpiry";
+
+// Helper to map DB row to Frontend Booking type
+function mapRowToBooking(row: any) {
+  return {
+    id: row.id,
+    customerId: row.customer_id,
+    customerName: row.customer_name || "Customer",
+    customerPhone: "",
+    customerPhoto: row.customer_photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    serviceName: row.service_name,
+    category: row.category,
+    date: row.date,
+    time: row.time,
+    address: row.destination_address || row.address || "No address provided",
+    status: row.status,
+    providerName: row.provider_name || "Service Provider",
+    providerId: row.provider_id || null,
+    uploadedImages: [],
+    rating: row.rating,
+    reviewComment: row.review_comment || "",
+    cancellationReason: row.cancellation_reason || null,
+    cancellationNote: row.cancellation_note || null,
+    cancelledBy: row.cancelled_by || null,
+    cancelledAt: row.cancelled_at ? new Date(row.cancelled_at).toISOString() : null,
+    serviceAddressId: row.service_address_id || null,
+    destinationLatitude: row.destination_latitude != null ? parseFloat(row.destination_latitude) : null,
+    destinationLongitude: row.destination_longitude != null ? parseFloat(row.destination_longitude) : null,
+    destinationPlaceId: row.destination_place_id || null,
+    destinationAddress: row.destination_address || null,
+    destinationLandmark: row.destination_landmark || null,
+    destinationInstructions: row.destination_instructions || null,
+    providerCurrentLatitude: row.provider_current_latitude != null ? parseFloat(row.provider_current_latitude) : null,
+    providerCurrentLongitude: row.provider_current_longitude != null ? parseFloat(row.provider_current_longitude) : null,
+    providerLocationUpdatedAt: row.provider_location_updated_at ? new Date(row.provider_location_updated_at).toISOString() : null,
+    acceptedAt: row.accepted_at ? new Date(row.accepted_at).toISOString() : null,
+    arrivedAt: row.arrived_at ? new Date(row.arrived_at).toISOString() : null,
+    startedAt: row.started_at ? new Date(row.started_at).toISOString() : null,
+    completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
+    expiredAt: row.expired_at ? new Date(row.expired_at).toISOString() : null,
+    noShowAt: row.no_show_at ? new Date(row.no_show_at).toISOString() : null,
+    noShowType: row.no_show_type || null,
+    noShowReason: row.no_show_reason || null,
+    noShowReportedBy: row.no_show_reported_by || null,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
+  };
+}
+
+export async function GET(request: Request) {
+  try {
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = authUser.userId;
+
+    // Trigger throttled lazy auto-expiry sweep across server instance (at most once per 60s)
+    await throttledExpireStaleBookings().catch(() => {});
+    // Trigger lazy auto-expiry sweep on pending bookings for this user
+    await lazyExpireUserBookings(userId).catch(() => {});
+
+    // Retrieve bookings strictly for this specific customer or provider
+    let bookingsRes;
+    try {
+      bookingsRes = await query(
+        `SELECT 
+          b.id, 
+          b.customer_id, 
+          b.provider_id, 
+          b.provider_name,
+          b.service_name, 
+          b.category, 
+          b.date, 
+          b.time, 
+          b.status, 
+          b.rating,
+          b.review_comment,
+          b.cancellation_reason,
+          b.cancellation_note,
+          b.cancelled_by,
+          b.cancelled_at,
+          b.created_at,
+          b.service_address_id,
+          b.destination_latitude,
+          b.destination_longitude,
+          b.destination_place_id,
+          b.destination_address,
+          b.destination_landmark,
+          b.destination_instructions,
+          b.provider_current_latitude,
+          b.provider_current_longitude,
+          b.provider_location_updated_at,
+          b.accepted_at,
+          b.arrived_at,
+          b.started_at,
+          b.completed_at,
+          b.expired_at,
+          b.no_show_at,
+          b.no_show_type,
+          b.no_show_reason,
+          b.no_show_reported_by,
+          COALESCE(c.name, 'Customer') AS customer_name,
+          COALESCE(c.phone, '') AS customer_phone,
+          COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
+          COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+        FROM bookings b
+        LEFT JOIN customers c ON b.customer_id = c.id
+        LEFT JOIN (
+          SELECT DISTINCT ON (user_id) user_id, text 
+          FROM addresses 
+          ORDER BY user_id, created_at ASC
+        ) addr ON b.customer_id = addr.user_id
+        WHERE b.customer_id = $1 OR b.provider_id = $1
+        ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
+        [userId]
+      );
+    } catch (queryErr: any) {
+      // If lifecycle columns from migration 030 do not exist yet, safely fallback
+      if (queryErr?.code === "42703" || queryErr?.message?.includes("accepted_at")) {
+        console.warn("[Bookings] Lifecycle columns missing, using fallback query with NULL lifecycle timestamps");
+        bookingsRes = await query(
+          `SELECT 
+            b.id, 
+            b.customer_id, 
+            b.provider_id, 
+            b.provider_name,
+            b.service_name, 
+            b.category, 
+            b.date, 
+            b.time, 
+            b.status, 
+            b.rating,
+            b.review_comment,
+            b.cancellation_reason,
+            b.cancellation_note,
+            b.cancelled_by,
+            b.cancelled_at,
+            b.created_at,
+            b.service_address_id,
+            b.destination_latitude,
+            b.destination_longitude,
+            b.destination_place_id,
+            b.destination_address,
+            b.destination_landmark,
+            b.destination_instructions,
+            b.provider_current_latitude,
+            b.provider_current_longitude,
+            b.provider_location_updated_at,
+            NULL::timestamp with time zone AS accepted_at,
+            NULL::timestamp with time zone AS arrived_at,
+            NULL::timestamp with time zone AS started_at,
+            NULL::timestamp with time zone AS completed_at,
+            NULL::timestamp with time zone AS expired_at,
+            NULL::timestamp with time zone AS no_show_at,
+            NULL::character varying AS no_show_type,
+            NULL::text AS no_show_reason,
+            NULL::character varying AS no_show_reported_by,
+            COALESCE(c.name, 'Customer') AS customer_name,
+            COALESCE(c.phone, '') AS customer_phone,
+            COALESCE(c.avatar, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80') AS customer_photo,
+            COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+          FROM bookings b
+          LEFT JOIN customers c ON b.customer_id = c.id
+          LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, text 
+            FROM addresses 
+            ORDER BY user_id, created_at ASC
+          ) addr ON b.customer_id = addr.user_id
+          WHERE b.customer_id = $1 OR b.provider_id = $1
+          ORDER BY b.created_at DESC NULLS LAST, b.id DESC`,
+          [userId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
+
+    const bookings = bookingsRes.rows.map(mapRowToBooking);
+    return NextResponse.json(bookings);
+  } catch (error: any) {
+    console.error("Error retrieving bookings:", error);
+    return NextResponse.json({ error: "Failed to retrieve bookings" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // 1. Authenticate requester exclusively using centralized auth helper
+    const authUser = await getAuthenticatedUser(request);
+
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const requesterId = authUser.userId;
+
+    const body = await request.json().catch(() => ({}));
+    const {
+      customerId,
+      providerId,
+      providerName,
+      serviceName,
+      category,
+      date,
+      time,
+      address,
+      serviceAddressId,
+      destinationLatitude,
+      destinationLongitude,
+      destinationPlaceId,
+      destinationAddress,
+      destinationLandmark,
+      destinationInstructions
+    } = body;
+
+    // Enforce that authenticated user ID is used as customer_id (cannot spoof customerId)
+    const validCustomerId = requesterId;
+
+    if (customerId && customerId !== requesterId && authUser?.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden: Cannot create a booking on behalf of another customer" },
+        { status: 403 }
+      );
+    }
+
+    // Require valid Indian mobile number for customer before booking (e.g. Google OAuth signups)
+    const custRes = await query("SELECT id, phone FROM customers WHERE id = $1 LIMIT 1", [validCustomerId]);
+    let custPhone = custRes.rows[0]?.phone;
+    if (!custPhone || custPhone.trim().length === 0 || custPhone.includes("98765 00000")) {
+      const payloadPhone = normalizeIndianPhone(body.customerPhone || body.phone);
+      if (payloadPhone) {
+        await query(
+          "UPDATE customers SET phone = $1 WHERE id = $2 AND (phone IS NULL OR phone = '' OR phone LIKE '%98765 00000%')",
+          [payloadPhone, validCustomerId]
+        );
+        custPhone = payloadPhone;
+      } else {
+        return NextResponse.json(
+          {
+            error: "A valid 10-digit Indian mobile number is required to make a booking. Please add your phone number.",
+            code: "PHONE_REQUIRED"
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (!providerId || !serviceName || !date) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Canonical provider validation: do not trust client-supplied or demo placeholder IDs.
+    // A booking must always reference a real service_providers row, otherwise the provider
+    // dashboard will never be able to find it by the same provider_id used at login.
+    const requestedProviderId = typeof providerId === "string" ? providerId.trim() : "";
+    const blockedProviderIds = new Set(["provider-1", "1", "demo-provider", "demo-pro"]);
+
+    if (!requestedProviderId || blockedProviderIds.has(requestedProviderId)) {
+      return NextResponse.json(
+        { error: "Invalid service provider selection. Please choose a real provider from the marketplace." },
+        { status: 400 }
+      );
+    }
+
+    const validProviderId = requestedProviderId;
+    try {
+      const proCheck = await query("SELECT id, is_available, verification_status FROM service_providers WHERE id = $1 LIMIT 1", [validProviderId]);
+      if (proCheck.rows.length === 0) {
+        return NextResponse.json({ error: "Invalid service provider account" }, { status: 400 });
+      }
+      if (proCheck.rows[0].verification_status !== "verified") {
+        return NextResponse.json(
+          { error: "This service provider has not been verified yet and cannot accept bookings." },
+          { status: 400 }
+        );
+      }
+      if (!proCheck.rows[0].is_available) {
+        return NextResponse.json(
+          { error: "This provider is currently unavailable for new bookings. Please select another service provider." },
+          { status: 409 }
+        );
+      }
+    } catch (e: unknown) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Invalid service provider account" }, { status: 400 });
+    }
+
+    // Validate destination coordinates strictly if supplied (-90 <= lat <= 90, -180 <= lng <= 180)
+    let validDestLat: number | null = null;
+    let validDestLng: number | null = null;
+
+    if (destinationLatitude !== undefined && destinationLatitude !== null && destinationLatitude !== "") {
+      const nLat = Number(destinationLatitude);
+      if (!Number.isFinite(nLat) || nLat < -90 || nLat > 90) {
+        return NextResponse.json({ error: "Invalid destination latitude coordinate (-90 to 90)" }, { status: 400 });
+      }
+      validDestLat = nLat;
+    }
+
+    if (destinationLongitude !== undefined && destinationLongitude !== null && destinationLongitude !== "") {
+      const nLng = Number(destinationLongitude);
+      if (!Number.isFinite(nLng) || nLng < -180 || nLng > 180) {
+        return NextResponse.json({ error: "Invalid destination longitude coordinate (-180 to 180)" }, { status: 400 });
+      }
+      validDestLng = nLng;
+    }
+
+    let snapServiceAddressId: string | null = null;
+    let snapDestLat: number | null = validDestLat;
+    let snapDestLng: number | null = validDestLng;
+    let snapDestPlaceId: string | null = destinationPlaceId || null;
+    let snapDestAddress: string = destinationAddress || address || "No address provided";
+    let snapDestLandmark: string | null = destinationLandmark || null;
+    let snapDestInstructions: string | null = destinationInstructions || null;
+
+    const cleanServiceAddressId =
+      typeof serviceAddressId === "string"
+        ? serviceAddressId.trim()
+        : "";
+
+    if (cleanServiceAddressId) {
+      const addressResult = await query(
+        `SELECT
+           id,
+           user_id,
+           text,
+           latitude,
+           longitude,
+           place_id,
+           landmark,
+           delivery_instructions
+         FROM addresses
+         WHERE id = $1
+           AND user_id = $2
+         LIMIT 1`,
+        [cleanServiceAddressId, validCustomerId]
+      );
+
+      if (addressResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid service address" },
+          { status: 400 }
+        );
+      }
+
+      const savedAddress = addressResult.rows[0];
+
+      let savedLat: number | null = null;
+      let savedLng: number | null = null;
+
+      if (
+        savedAddress.latitude !== null &&
+        savedAddress.latitude !== undefined &&
+        savedAddress.latitude !== ""
+      ) {
+        const parsedLat = Number(savedAddress.latitude);
+
+        if (
+          !Number.isFinite(parsedLat) ||
+          parsedLat < -90 ||
+          parsedLat > 90
+        ) {
+          return NextResponse.json(
+            { error: "Saved service address has invalid latitude" },
+            { status: 400 }
+          );
+        }
+
+        savedLat = parsedLat;
+      }
+
+      if (
+        savedAddress.longitude !== null &&
+        savedAddress.longitude !== undefined &&
+        savedAddress.longitude !== ""
+      ) {
+        const parsedLng = Number(savedAddress.longitude);
+
+        if (
+          !Number.isFinite(parsedLng) ||
+          parsedLng < -180 ||
+          parsedLng > 180
+        ) {
+          return NextResponse.json(
+            { error: "Saved service address has invalid longitude" },
+            { status: 400 }
+          );
+        }
+
+        savedLng = parsedLng;
+      }
+
+      snapServiceAddressId = cleanServiceAddressId;
+      snapDestLat = savedLat;
+      snapDestLng = savedLng;
+      snapDestPlaceId = savedAddress.place_id || null;
+      snapDestAddress =
+        savedAddress.text ||
+        destinationAddress ||
+        address ||
+        "No address provided";
+      snapDestLandmark = savedAddress.landmark || null;
+      snapDestInstructions =
+        savedAddress.delivery_instructions || null;
+    }
+
+    // Check if the requested time slot is already booked for this date & provider
+    if (date && time) {
+      const existingCheck = await query(
+        `SELECT id FROM bookings 
+         WHERE date = $1 
+           AND (time = $2 OR time ILIKE $3)
+           AND provider_id = $4
+           AND (status IS NULL OR LOWER(status) NOT IN ('cancelled', 'rejected'))
+         LIMIT 1`,
+        [date, time, `%${time}%`, validProviderId]
+      );
+
+      if (existingCheck.rows.length > 0) {
+        return NextResponse.json(
+          { error: "This time slot has already been booked. Please select a different timing." },
+          { status: 409 }
+        );
+      }
+    }
+
+    let finalCategory = category || "General";
+
+    try {
+      const serviceLookup = await query(
+        "SELECT category FROM services WHERE name = $1 OR name ILIKE $2 LIMIT 1",
+        [serviceName, serviceName]
+      );
+      if (serviceLookup.rows.length > 0) {
+        finalCategory = serviceLookup.rows[0].category;
+      } else {
+        const lowerName = serviceName.toLowerCase();
+        if (lowerName.includes("electric") || lowerName.includes("fan") || lowerName.includes("wiring") || lowerName.includes("switch")) {
+          finalCategory = "electrical";
+        } else if (lowerName.includes("plumb") || lowerName.includes("leak") || lowerName.includes("pipe") || lowerName.includes("tap") || lowerName.includes("water")) {
+          finalCategory = "plumbing";
+        } else if (lowerName.includes("clean") || lowerName.includes("dust") || lowerName.includes("sofa") || lowerName.includes("sweep") || lowerName.includes("maid")) {
+          finalCategory = "cleaning";
+        } else if (lowerName.includes("ac ") || lowerName.includes("air condition") || lowerName.includes("filter")) {
+          finalCategory = "ac repair";
+        } else {
+          finalCategory = "general";
+        }
+      }
+    } catch (e) {
+      console.error("Error looking up service category:", e);
+    }
+
+    const seqRes = await query("SELECT nextval('booking_number_seq') AS n");
+const bookingId = `B-${seqRes.rows[0].n}`;
+
+    const finalDestAddress = destinationAddress || address || "No address provided";
+
+    const insertRes = await query(
+      `INSERT INTO bookings (
+        id, customer_id, provider_id, provider_name, service_name, category, 
+        date, time, status, service_address_id, destination_latitude, destination_longitude,
+        destination_place_id, destination_address, destination_landmark, destination_instructions
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      RETURNING id`,
+      [
+        bookingId,
+        validCustomerId,
+        validProviderId,
+        providerName || "Ramesh Sharma",
+        serviceName,
+        finalCategory,
+        date,
+        time || "10:00 AM",
+        "Requested",
+        snapServiceAddressId,
+snapDestLat,
+snapDestLng,
+snapDestPlaceId,
+snapDestAddress,
+snapDestLandmark,
+snapDestInstructions
+      ]
+    );
+
+    if (insertRes.rowCount !== 1) {
+      return NextResponse.json({ error: "Booking creation failed" }, { status: 503 });
+    }
+
+    // Auto-create a brand new clean conversation for this booking
+    const convId = `conv-${bookingId}`;
+    await query(
+      `INSERT INTO conversations (id, customer_id, provider_id, booking_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING`,
+      [convId, validCustomerId, validProviderId, bookingId]
+    ).catch((e) => console.warn("Failed to pre-create conversation for booking:", e));
+
+    const insertedRes = await query(
+      `SELECT 
+        b.id, 
+        b.customer_id, 
+        b.provider_id, 
+        b.provider_name,
+        b.service_name, 
+        b.category, 
+        b.date, 
+        b.time, 
+        b.status, 
+        b.rating,
+        b.review_comment,
+        b.created_at,
+        b.service_address_id,
+        b.destination_latitude,
+        b.destination_longitude,
+        b.destination_place_id,
+        b.destination_address,
+        b.destination_landmark,
+        b.destination_instructions,
+        c.name AS customer_name,
+        c.phone AS customer_phone,
+        c.avatar AS customer_photo,
+        COALESCE(b.destination_address, addr.text, 'No address provided') AS address
+      FROM bookings b
+      LEFT JOIN customers c ON b.customer_id = c.id
+      LEFT JOIN (
+        SELECT DISTINCT ON (user_id) user_id, text 
+        FROM addresses 
+        ORDER BY user_id, created_at ASC
+      ) addr ON b.customer_id = addr.user_id
+      WHERE b.id = $1`,
+      [bookingId]
+    );
+
+    return NextResponse.json({ success: true, booking: mapRowToBooking(insertedRes.rows[0]) });
+  } catch (error: any) {
+    console.error("Error creating booking:", error);
+    return NextResponse.json({ error: "Could not create booking" }, { status: 500 });
+  }
+}
