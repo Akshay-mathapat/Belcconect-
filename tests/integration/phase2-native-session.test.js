@@ -68,7 +68,6 @@ suite("Phase 2 Native Android Session Integration Tests (Real PostgreSQL)", () =
     await pool.query("DELETE FROM public.customers WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
     await pool.query("DELETE FROM public.admins WHERE id LIKE $1", [`${TEST_PREFIX}%`]);
     await pool.query("DELETE FROM public.rate_limits WHERE key LIKE 'rl:user:native_session:%'");
-
     // 2. Insert test customer & admin
     await pool.query(
       `INSERT INTO public.customers (id, email, name, phone, account_status)
@@ -554,6 +553,15 @@ suite("Phase 2 Native Android Session Integration Tests (Real PostgreSQL)", () =
       "UPDATE public.sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND client = 'android'",
       [TEST_USER_ID]
     );
+    await pool.query("DELETE FROM public.rate_limits WHERE key LIKE 'rl:user:native_session:%'");
+
+    // Seed 4 initial active sessions so subsequent concurrent inserts race on the cap boundary
+    for (let s = 0; s < 4; s++) {
+      await sessionModule.createSession(
+        { userId: TEST_USER_ID, role: "user", client: "android", device_id: `seed_dev_${s}`, ip: "127.0.0.1" },
+        queryRunner
+      );
+    }
 
     // 1. Measure standalone rate-limit check duration
     const t0_rl = performance.now();
@@ -573,20 +581,27 @@ suite("Phase 2 Native Android Session Integration Tests (Real PostgreSQL)", () =
     const duration_tx_ms = performance.now() - t0_tx;
 
     // 3. Confirm 20 requests use 20 distinct deviceIds
+    const runDevPrefix = "dev_conc_" + Date.now().toString(36);
     const devIdList = [];
     for (let i = 0; i < 20; i++) {
-      devIdList.push(`device_conc_${String(i).padStart(3, "0")}`);
+      devIdList.push(`${runDevPrefix}_${String(i).padStart(2, "0")}`);
     }
     assert.strictEqual(devIdList.length, 20, "Must generate exactly 20 device IDs");
     assert.strictEqual(new Set(devIdList).size, 20, "All 20 device IDs must be distinct");
 
+    await pool.query("DELETE FROM public.rate_limits WHERE key LIKE 'rl:user:native_session:%'");
+    const concWebSess = await sessionModule.createSession(
+      { userId: TEST_USER_ID, role: "user", client: "web", ip: "127.0.0.1" },
+      queryRunner
+    );
+    rateLimitCore.setStoreOverride(new rateLimitCore.InMemoryStore());
     // 4. Launch 20 concurrent exchanges simultaneously
     const t0_concurrent = performance.now();
     const promises = devIdList.map((devId) => {
       const req = new Request("http://localhost:3000/api/auth/native-session", {
         method: "POST",
         headers: {
-          "cookie": `__Host-session=${webSessionRawToken}`,
+          "cookie": `__Host-session=${concWebSess.rawToken}`,
           "origin": "http://localhost:3000",
           "x-device-id": devId
         }
@@ -620,11 +635,15 @@ suite("Phase 2 Native Android Session Integration Tests (Real PostgreSQL)", () =
       [TEST_USER_ID]
     );
 
-    assert.strictEqual(
-      activeRows.rows.length,
-      5,
-      `Active android sessions must be exactly 5, found: ${activeRows.rows.length}`
-    );
+    try {
+      assert.strictEqual(
+        activeRows.rows.length,
+        5,
+        `Active android sessions must be exactly 5, found: ${activeRows.rows.length}`
+      );
+    } finally {
+      rateLimitCore.setStoreOverride(null);
+    }
   });
 
   // 13. DELETE /api/auth/native-session: Revokes device sessions in PostgreSQL without cookies

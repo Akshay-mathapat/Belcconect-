@@ -12,7 +12,6 @@ import {
   LogOut,
   Plus,
   Trash2,
-  Camera,
   Lock,
   CheckCircle2,
   AlertCircle,
@@ -88,7 +87,7 @@ function getBookingTimestamp(booking: { date: string; time?: string }) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { currentUser, isCheckingSession, sessionChecked, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings, fetchUserAddresses, checkSession } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, updateProfile, addAddress, deleteAddress, logout, fetchUserBookings, fetchUserAddresses } = useAuthStore();
   const { replayTour } = useOnboardingTour();
   const [activeTab, setActiveTab] = useState<"bookings" | "addresses" | "profile" | "applications">("bookings");
   const { t } = useTranslation();
@@ -137,14 +136,14 @@ export default function AccountPage() {
           fetchUserBookings().catch(() => {});
         }
       };
-    } catch (e) {}
+    } catch {}
 
     return () => {
       if (syncChannel) {
-        try { syncChannel.close(); } catch (e) {}
+        try { syncChannel.close(); } catch {}
       }
     };
-  }, [fetchUserBookings, fetchUserAddresses, currentUserId, router, logout, isHydrated]);
+  }, [fetchUserBookings, fetchUserAddresses, currentUserId, router, logout, isHydrated, currentUser, sessionChecked]);
 
   // Profile Settings Form State
   const [name, setName] = useState(currentUser?.name || "");
@@ -153,7 +152,7 @@ export default function AccountPage() {
 
   // Address Modal State
   const [showAddressModal, setShowAddressModal] = useState(false);
-  const [addressType, setAddressType] = useState("Home");
+  const [addressType] = useState("Home");
   const [addressText, setAddressText] = useState("");
 
   // Reschedule Modal State
@@ -166,7 +165,7 @@ export default function AccountPage() {
   // Rate & Review Modal State
   const [showRateModal, setShowRateModal] = useState(false);
   const [rateBookingId, setRateBookingId] = useState<string | null>(null);
-  const [currentBookingIdToMarkReviewed, setCurrentBookingIdToMarkReviewed] = useState<string | null>(null);
+  const [_currentBookingIdToMarkReviewed, setCurrentBookingIdToMarkReviewed] = useState<string | null>(null);
   const [selectedRating, setSelectedRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -189,7 +188,7 @@ export default function AccountPage() {
   const [isGoogleAccount, setIsGoogleAccount] = useState(false);
 
   useEffect(() => {
-    if (currentUser?.google_id || (currentUser as any)?.googleId) {
+    if (currentUser?.google_id || currentUser?.googleId) {
       setIsGoogleAccount(true);
     }
   }, [currentUser]);
@@ -214,8 +213,9 @@ export default function AccountPage() {
       }
       setOtpSentMessage(data.message || `Verification code sent to ${currentUser?.email || activeUser?.email || "your email"}`);
       setIsGoogleAccount(true);
-    } catch (err: any) {
-      setDeleteError(err.message || "Failed to send verification code. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send verification code. Please try again.";
+      setDeleteError(msg);
     } finally {
       setIsSendingOtp(false);
     }
@@ -248,8 +248,9 @@ export default function AccountPage() {
       }
       logout();
       router.push("/?deleted=true");
-    } catch (err: any) {
-      setDeleteError(err.message || "Failed to delete account. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete account. Please try again.";
+      setDeleteError(msg);
     } finally {
       setIsDeletingAccount(false);
     }
@@ -273,15 +274,6 @@ export default function AccountPage() {
     updateProfile({ name, phone });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
-  // Handle Add Address Submit
-  const handleAddAddressSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addressText.trim()) return;
-    addAddress({ type: addressType, text: addressText.trim() });
-    setAddressText("");
-    setShowAddressModal(false);
   };
 
   // Handle Cancel Booking Modal Open
@@ -395,7 +387,7 @@ export default function AccountPage() {
           const syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
           syncChannel.postMessage({ type: "REFRESH_BOOKINGS" });
           syncChannel.close();
-        } catch (e) {}
+        } catch {}
 
         alert(`Service "${serviceName}" has been rebooked successfully! It is now sent to the service provider dashboard.`);
         fetchUserBookings();
@@ -420,7 +412,7 @@ export default function AccountPage() {
             const syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
             syncChannel.postMessage({ type: "REFRESH_BOOKINGS" });
             syncChannel.close();
-          } catch (e) {}
+          } catch {}
         }
       } catch (err) {
         console.error("Error deleting booking:", err);

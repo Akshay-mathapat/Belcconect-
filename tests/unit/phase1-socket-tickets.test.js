@@ -1,4 +1,3 @@
-
 /**
  * Phase 1 Unit & Contract Tests:
  * - POST /api/auth/socket-ticket endpoint
@@ -31,32 +30,44 @@ describe("Phase 1: Single-Use Socket Tickets & Signaling Server Auth", () => {
     return sCode + "\n" + aCode;
   };
 
-  test("1) Socket ticket endpoint enforces dynamic config and no-store", () => {
+  test("1) Socket ticket route file exists and enforces dynamic = \"force-dynamic\"", () => {
     assert.ok(fs.existsSync(socketTicketRoutePath), "Route file must exist");
-
     const code = fs.readFileSync(socketTicketRoutePath, "utf-8");
-
-    for (const [fragment, message] of [
-      ['dynamic = "force-dynamic"', "Must be force-dynamic"],
-      ["getSessionTokenFromRequest", "Must authenticate via session cookie"],
-      ["createSocketTicket", "Must call createSocketTicket helper"],
-      ["checkUserRateLimit", "Must rate-limit per user"],
-      ["Cache-Control", "Must set Cache-Control headers"],
-      ["no-store", "Must prevent caching socket tickets"],
-    ]) {
-      assert.ok(code.includes(fragment), message);
-    }
+    assert.ok(code.includes('dynamic = "force-dynamic"'), "Must be force-dynamic");
   });
 
-  test("2) Secure random ticket generation and SHA-256 hashing work", () => {
-    const rawTicket = crypto.randomBytes(32).toString("base64url");
+  test("2) Socket ticket route authenticates requester via session cookie (getSessionTokenFromRequest)", () => {
+    const code = fs.readFileSync(socketTicketRoutePath, "utf-8");
+    assert.ok(code.includes("getSessionTokenFromRequest"), "Must authenticate via session cookie");
+  });
 
+  test("3) Socket ticket route invokes createSocketTicket helper to create ephemeral ticket", () => {
+    const code = fs.readFileSync(socketTicketRoutePath, "utf-8");
+    assert.ok(code.includes("createSocketTicket"), "Must call createSocketTicket helper");
+  });
+
+  test("4) Socket ticket route enforces per-user rate limiting (checkUserRateLimit)", () => {
+    const code = fs.readFileSync(socketTicketRoutePath, "utf-8");
+    assert.ok(code.includes("checkUserRateLimit"), "Must rate-limit per user");
+  });
+
+  test("5) Socket ticket route sets Cache-Control: no-store on successful ticket responses", () => {
+    const code = fs.readFileSync(socketTicketRoutePath, "utf-8");
+    assert.ok(code.includes("Cache-Control"), "Must set Cache-Control headers");
+    assert.ok(code.includes("no-store"), "Must prevent caching socket tickets");
+  });
+
+  test("6) Secure random ticket generation produces 32-byte base64url tokens", () => {
+    const rawTicket = crypto.randomBytes(32).toString("base64url");
     assert.strictEqual(
       Buffer.from(rawTicket, "base64url").length,
       32,
       "Ticket must contain 32 random bytes"
     );
+  });
 
+  test("7) Ticket SHA-256 hashing produces unique, non-reversible 64-character hex digests", () => {
+    const rawTicket = crypto.randomBytes(32).toString("base64url");
     const ticketHash = crypto
       .createHash("sha256")
       .update(rawTicket)
@@ -66,7 +77,7 @@ describe("Phase 1: Single-Use Socket Tickets & Signaling Server Auth", () => {
     assert.notStrictEqual(rawTicket, ticketHash);
   });
 
-  test("3) Signaling server supports ticket consumption and replay rejection", () => {
+  test("8) Signaling server consumes ticket and returns session identity fields", () => {
     const serverCode = getCombinedSignalingCode();
 
     for (const [fragment, message] of [
@@ -84,8 +95,9 @@ describe("Phase 1: Single-Use Socket Tickets & Signaling Server Auth", () => {
     ]) {
       assert.ok(serverCode.includes(fragment), message);
     }
+  });
 
-    // Simulate one-time consumption. This does not exercise the real database.
+  test("9) Signaling server rejects replayed or already-consumed tickets", () => {
     const mockDbTickets = new Map();
     const sessionId = crypto.randomUUID();
     const userId = "usr_test_123";
@@ -129,7 +141,7 @@ describe("Phase 1: Single-Use Socket Tickets & Signaling Server Auth", () => {
     );
   });
 
-  test("4) Revoked-session sweep notifies and disconnects sockets", () => {
+  test("10) Signaling server schedules periodic revoked-session sweep and disconnects revoked sockets", () => {
     const serverCode = getCombinedSignalingCode();
 
     for (const [fragment, message] of [
@@ -148,7 +160,7 @@ describe("Phase 1: Single-Use Socket Tickets & Signaling Server Auth", () => {
     }
   });
 
-  test("5) Legacy JWT fallback is controlled by its environment flag", () => {
+  test("11) Signaling server legacy JWT fallback is controlled by SIGNALING_ACCEPT_LEGACY_JWT", () => {
     const serverCode = fs.readFileSync(signalingServerPath, "utf-8");
 
     assert.ok(serverCode.includes("SIGNALING_ACCEPT_LEGACY_JWT"));
@@ -160,7 +172,7 @@ describe("Phase 1: Single-Use Socket Tickets & Signaling Server Auth", () => {
     );
   });
 
-  test("6) CallProvider and socketChat fetch socket tickets using auth callbacks", () => {
+  test("12) CallProvider and socketChat configure auth callback with session cookies (credentials: include)", () => {
     const callProviderCode = fs.readFileSync(
       path.join(rootDir, "frontend/src/components/calls/CallProvider.tsx"),
       "utf-8"

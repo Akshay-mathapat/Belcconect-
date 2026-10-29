@@ -239,7 +239,7 @@ export const useAuthStore = create<AuthState>()(
               // Immediately reconnect chat socket with fresh credentials
               try {
                 recreateChatSocket(user.id);
-              } catch (e) {}
+              } catch {}
             }
 
             set((state) => {
@@ -491,7 +491,7 @@ export const useAuthStore = create<AuthState>()(
               };
             });
           }
-        } catch (e) {
+        } catch (_e) {
           // Ignore transient network errors during dev server compilation or restarts
         }
       },
@@ -554,10 +554,16 @@ export const useAuthStore = create<AuthState>()(
 
       checkSession: async () => {
         set({ isCheckingSession: true });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 8000);
+
         try {
           const res = await fetch("/api/auth/me", {
             method: "GET",
             credentials: "include",
+            signal: controller.signal,
             headers: {
               "Cache-Control": "no-cache",
             }
@@ -584,11 +590,17 @@ export const useAuthStore = create<AuthState>()(
             console.warn(`[useAuthStore] checkSession returned status ${res.status}: preserving existing user`);
             return get().currentUser;
           }
-        } catch (e) {
-          // Network error: do NOT log user out
-          console.warn("[useAuthStore] checkSession network error: preserving existing user", e);
+        } catch (e: unknown) {
+          // Network error or timeout abort: do NOT log user out
+          const isAbort = e instanceof Error && e.name === "AbortError";
+          if (isAbort) {
+            console.warn("[useAuthStore] checkSession timed out (network hang): preserving existing user");
+          } else {
+            console.warn("[useAuthStore] checkSession network error: preserving existing user", e);
+          }
           return get().currentUser;
         } finally {
+          clearTimeout(timeoutId);
           set({ isCheckingSession: false, sessionChecked: true });
         }
         return null;
@@ -616,9 +628,9 @@ export const useAuthStore = create<AuthState>()(
             localStorage.removeItem("user_id");
             try {
               disconnectChatSocket();
-            } catch (e) {}
+            } catch {}
           }
-        } catch (e) {}
+        } catch {}
 
         // Unregister device push token and clear native bridge credentials
         if (typeof window !== "undefined") {
@@ -637,7 +649,7 @@ export const useAuthStore = create<AuthState>()(
                 }).catch(() => {});
               }).catch(() => {});
             }
-          } catch (e) {}
+          } catch {}
         }
 
         set({ currentUser: null, sessionChecked: true });
@@ -678,14 +690,14 @@ export function getStoredAuthToken(): string | null {
           return storeToken.trim();
         }
       }
-    } catch (e) {}
+    } catch {}
     // 3. Check cookie
     try {
       const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
       if (match && match[1] && match[1] !== "undefined" && match[1] !== "null" && match[1].trim().length > 10) {
         return decodeURIComponent(match[1].trim());
       }
-    } catch (e) {}
+    } catch {}
   }
   return null;
 }
@@ -705,7 +717,7 @@ export function getStoredUserId(): string | null {
         const storeId = parsed?.state?.currentUser?.id;
         if (storeId) return storeId;
       }
-    } catch (e) {}
+    } catch {}
   }
   return null;
 }

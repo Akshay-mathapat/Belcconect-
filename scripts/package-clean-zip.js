@@ -25,6 +25,7 @@ const IGNORE_PATTERNS = [
 
 function isIgnored(relPath) {
   const normalized = relPath.replace(/\\/g, "/");
+  if (['unit.log', 'run1.log', 'run2.log'].includes(normalized)) return false;
   return IGNORE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 

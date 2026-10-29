@@ -306,7 +306,15 @@ async function handleStoreError(
   };
 }
 
+let activeStoreOverride: IRateLimitStore | null = null;
+export function setStoreOverride(store: IRateLimitStore | null): void {
+  activeStoreOverride = store;
+}
+
 export function resolveStore(): IRateLimitStore {
+  if (activeStoreOverride) {
+    return activeStoreOverride;
+  }
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 

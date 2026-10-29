@@ -96,7 +96,7 @@ export async function POST(request: Request) {
   } catch (err: unknown) {
     const isDbUnavailable =
       err instanceof Error &&
-      (err.name === "DatabaseUnavailableError" || (err as any).isDatabaseUnavailable);
+      (err.name === "DatabaseUnavailableError" || Boolean(typeof err === "object" && err !== null && "isDatabaseUnavailable" in err && (err as { isDatabaseUnavailable?: boolean }).isDatabaseUnavailable));
 
     if (isDbUnavailable) {
       return NextResponse.json(
