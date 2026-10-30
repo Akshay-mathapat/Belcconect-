@@ -236,7 +236,14 @@ export async function isRequestStrictlyExempt(request: Request): Promise<boolean
       const sessionMod = await import("./session");
       if (typeof sessionMod.validateSession === "function") {
         const validatedSession = await sessionMod.validateSession(bearerToken);
-        if (validatedSession && validatedSession.client === "android") {
+        if (validatedSession && (validatedSession.client === "android" || validatedSession.role === "provider" || validatedSession.role === "user")) {
+          return true;
+        }
+      }
+      const jwtMod = await import("./jwt");
+      if (typeof jwtMod.verifyJwtToken === "function") {
+        const legacy = jwtMod.verifyJwtToken(bearerToken);
+        if (legacy && (legacy.role === "provider" || legacy.role === "user")) {
           return true;
         }
       }

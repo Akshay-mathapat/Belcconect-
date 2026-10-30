@@ -167,6 +167,7 @@ public class BelConnectLocationService extends Service {
                 }
                 acquireWakeLock();
                 requestLocationUpdates();
+                fetchImmediateLastLocation();
                 isServiceRunning = true;
                 Log.i(TAG, "[LocationService] Started foreground tracking for booking: " + bookingId);
             } else if ("STOP_TRACKING".equals(action)) {
@@ -186,6 +187,7 @@ public class BelConnectLocationService extends Service {
                 }
                 acquireWakeLock();
                 requestLocationUpdates();
+                fetchImmediateLastLocation();
                 isServiceRunning = true;
                 Log.i(TAG, "[LocationService] Restored tracking from preferences for booking: " + bookingId);
             }
@@ -230,6 +232,23 @@ public class BelConnectLocationService extends Service {
             Log.i(TAG, "[LocationService] Location updates requested with high accuracy 4s interval on background HandlerThread.");
         } catch (SecurityException e) {
             Log.e(TAG, "[LocationService] Lost location permission. Could not request updates. " + e);
+        }
+    }
+
+    private void fetchImmediateLastLocation() {
+        try {
+            if (fusedLocationClient != null) {
+                fusedLocationClient.getLastLocation().addOnSuccessListener(loc -> {
+                    if (loc != null) {
+                        Log.i(TAG, "[LocationService] Immediate lastKnownLocation acquired: lat=" + loc.getLatitude() + ", lng=" + loc.getLongitude());
+                        sendLocationToBackend(loc);
+                    }
+                });
+            }
+        } catch (SecurityException e) {
+            Log.w(TAG, "[LocationService] Security exception fetching last location: " + e.getMessage());
+        } catch (Exception e) {
+            Log.w(TAG, "[LocationService] Error fetching immediate location: " + e.getMessage());
         }
     }
 
@@ -286,10 +305,8 @@ public class BelConnectLocationService extends Service {
 
             RequestBody body = RequestBody.create(jsonBody.toString(), MediaType.parse("application/json; charset=utf-8"));
             
-            if (apiUrl == null || apiUrl.trim().isEmpty()) {
-                Log.e(TAG, "LOCATION_NATIVE: apiUrl is missing from configuration");
-                isRequestPending = false;
-                return;
+            if (apiUrl == null || apiUrl.trim().isEmpty() || apiUrl.contains("localhost") || apiUrl.contains("127.0.0.1")) {
+                apiUrl = "https://belcconect.vercel.app/api";
             }
             String base = apiUrl.trim();
             while (base.endsWith("/")) {

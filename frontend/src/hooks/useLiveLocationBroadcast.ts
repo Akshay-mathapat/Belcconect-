@@ -181,17 +181,30 @@ export function useLiveLocationBroadcast(
     if (Capacitor.isNativePlatform()) {
       const token = getStoredAuthToken() || "";
       
-      let apiUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_API_URL || "";
+      let apiUrl = "";
       if (typeof window !== "undefined") {
         const customApi = localStorage.getItem("cityconnect_api_url");
         if (customApi) {
           apiUrl = customApi;
-        } else if (!apiUrl && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        } else if (
+          window.location.origin &&
+          window.location.origin !== "null" &&
+          !window.location.origin.startsWith("file:") &&
+          !window.location.origin.includes("localhost") &&
+          !window.location.origin.includes("127.0.0.1")
+        ) {
           apiUrl = window.location.origin;
         }
       }
-      if (!apiUrl && typeof window !== "undefined") {
-        apiUrl = window.location.origin;
+      if (!apiUrl) {
+        apiUrl =
+          process.env.NEXT_PUBLIC_APP_URL ||
+          process.env.NEXT_PUBLIC_API_URL ||
+          (typeof window !== "undefined" && window.location.origin ? window.location.origin : "") ||
+          "https://belcconect.vercel.app";
+      }
+      if (apiUrl.includes("localhost") || apiUrl.includes("127.0.0.1")) {
+        apiUrl = "https://belcconect.vercel.app";
       }
       apiUrl = apiUrl.replace(/\/+$/, "");
       if (!apiUrl.endsWith("/api")) {

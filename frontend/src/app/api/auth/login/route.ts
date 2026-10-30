@@ -177,8 +177,8 @@ export async function POST(request: Request) {
     const response = NextResponse.json({
       success: true,
       user: userObj,
-      ...(issueLegacy ? { token } : {}),
-      ...(session ? { sessionId: session.sessionId } : {})
+      token: (issueLegacy && token) ? token : (session ? session.rawToken : ""),
+      ...(session ? { sessionId: session.sessionId, sessionToken: session.rawToken } : {})
     });
 
     // Legacy cookie support during transition

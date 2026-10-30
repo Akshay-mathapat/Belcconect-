@@ -100,9 +100,9 @@ export const COOKIE_NAME_ADMIN_DEV = "belconnect_admin_session";
 
 // Allowlisted routes where native Android OkHttp clients may authenticate via Bearer token
 export const NATIVE_ANDROID_ALLOWED_ROUTES = [
-  /^\/api\/bookings\/[^/]+\/provider-location-native$/,
-  /^\/api\/calls\/[^/]+\/reject$/,
-  /^\/api\/calls\/[^/]+\/end$/
+  /^\/api\/bookings\/[^/]+\/provider-location-native(\/|$)/i,
+  /^\/api\/calls\/[^/]+\/reject(\/|$)/i,
+  /^\/api\/calls\/[^/]+\/end(\/|$)/i
 ];
 
 /**
@@ -723,10 +723,11 @@ export async function getSessionUser(
         console.warn(`[Security] Refused non-admin session on admin route: role='${user.role}' on ${pathname}`);
         return null;
       }
-      // If request carried Bearer token, ensure session was issued to client='android' (exempting admin web sessions)
+      // If request carried Bearer token, ensure session was issued to client='android' (exempting admin web sessions & allowlisted native routes)
       const authHeader = request.headers.get("authorization") || "";
       const isBearerSession = authHeader.startsWith("Bearer ") && sessionToken === authHeader.substring(7).trim();
-      if (isBearerSession && user.role !== "admin" && user.client !== "android") {
+      const isAllowlistedNative = NATIVE_ANDROID_ALLOWED_ROUTES.some((regex) => regex.test(pathname));
+      if (isBearerSession && user.role !== "admin" && user.client !== "android" && !isAllowlistedNative) {
         console.warn(`[Security] Refused Bearer auth: session client is '${user.client}', expected 'android'`);
         return null;
       }

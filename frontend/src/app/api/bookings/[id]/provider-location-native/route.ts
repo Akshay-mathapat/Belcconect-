@@ -110,7 +110,7 @@ export async function POST(
     // 2. Authorize provider.
     // Authenticated user ID must strictly match assigned provider_id.
     const isAssignedProvider =
-      authUser.userId === booking.provider_id;
+      String(authUser.userId) === String(booking.provider_id);
 
     console.log(
       `[BOOKING_LOOKUP] route=/api/bookings/[id]/provider-location-native method=POST bookingId=${canonicalId} userId=${authUser.userId} role=${authUser.role} found=true authorized=${isAssignedProvider}`

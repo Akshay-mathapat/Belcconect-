@@ -169,7 +169,7 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            const user: AuthUser = { bookings: [], isFirstLogin: true, ...data.user, token: data.token };
+            const user: AuthUser = { bookings: [], isFirstLogin: true, ...data.user, token: data.token || data.sessionToken };
             if (typeof window !== "undefined") {
               if (data.token) {
                 localStorage.setItem("auth_token", data.token);
@@ -223,7 +223,7 @@ export const useAuthStore = create<AuthState>()(
               bookings: [],
               addresses: [],
               ...data.user,
-              token: data.token
+              token: data.token || data.sessionToken
             };
 
             if (typeof window !== "undefined") {
