@@ -71,7 +71,7 @@ export async function registerAndSubscribeUser(userId: string): Promise<boolean>
 
     // 4. Verify authenticated token exists before sending
     const token = getClientToken();
-    if (!token) {
+    if (!token && !userId) {
       console.warn("[WebPush] No authenticated token available. Skipping push subscription registration.");
       return false;
     }

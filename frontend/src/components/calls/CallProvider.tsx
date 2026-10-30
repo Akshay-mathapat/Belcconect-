@@ -480,7 +480,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
 
     const token = userTokenRef.current || getClientToken();
-    if (!token) {
+    if (!token && !uid) {
       console.warn("[SIGNALING] Aborting socket connection: No valid authentication token available.");
       return Promise.reject(new Error("No valid authentication token"));
     }

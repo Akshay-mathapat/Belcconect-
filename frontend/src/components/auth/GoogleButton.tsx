@@ -14,7 +14,7 @@ import { OAuthAccountType } from "@/lib/oauthAccountType";
 
 declare global {
   interface Window {
-    google?: any;
+    google?: Record<string, unknown>;
   }
 }
 
@@ -47,7 +47,7 @@ export const GoogleButton = memo(function GoogleButton({ accountType, roleNeutra
     }
   };
 
-  const completeSuccessfulLogin = (user: any, token?: string) => {
+  const completeSuccessfulLogin = (user: import("@/store/useAuthStore").AuthUser, token?: string) => {
     if (token) {
       localStorage.setItem("auth_token", token);
       localStorage.setItem("cityconnect_token", token);

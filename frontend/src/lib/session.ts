@@ -217,18 +217,58 @@ export async function createSession(
     RETURNING id;
   `;
 
-  const result = await runner(insertSql, [
-    tokenHash,
-    String(userId),
-    role,
-    idleExpiresAt,
-    absoluteExpiresAt,
-    ip || null,
-    user_agent || null,
-    device_label || null,
-    client,
-    device_id || null
-  ]);
+  let result;
+  try {
+    result = await runner(insertSql, [
+      tokenHash,
+      String(userId),
+      role,
+      idleExpiresAt,
+      absoluteExpiresAt,
+      ip || null,
+      user_agent || null,
+      device_label || null,
+      client,
+      device_id || null
+    ]);
+  } catch (insertErr: any) {
+    // Schema tolerance: If migration 037 (device_id column) has not yet been applied, fallback cleanly
+    if (
+      insertErr?.code === "42703" ||
+      (typeof insertErr?.message === "string" && insertErr.message.includes("device_id"))
+    ) {
+      const fallbackInsertSql = `
+        INSERT INTO public.sessions (
+          token_hash,
+          user_id,
+          role,
+          created_at,
+          last_seen_at,
+          idle_expires_at,
+          absolute_expires_at,
+          revoked_at,
+          ip,
+          user_agent,
+          device_label,
+          client
+        ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $4, $5, NULL, $6, $7, $8, $9)
+        RETURNING id;
+      `;
+      result = await runner(fallbackInsertSql, [
+        tokenHash,
+        String(userId),
+        role,
+        idleExpiresAt,
+        absoluteExpiresAt,
+        ip || null,
+        user_agent || null,
+        device_label || null,
+        client
+      ]);
+    } else {
+      throw insertErr;
+    }
+  }
 
   const sessionId = result.rows[0]?.id;
   if (!sessionId) {
@@ -314,9 +354,26 @@ export async function validateSession(
     result = await runner(validateSql, [tokenHash]);
   } catch (err: unknown) {
     if (err instanceof DatabaseUnavailableError) throw err;
-    const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("[Session Engine] Database query failure in validateSession:", errMsg);
-    throw new DatabaseUnavailableError(`Database unavailable during session validation: ${errMsg}`);
+    const anyErr = err as any;
+    // Schema tolerance: If migration 037 (s.device_id) has not yet been applied, fallback cleanly
+    if (
+      anyErr?.code === "42703" ||
+      (typeof anyErr?.message === "string" && anyErr.message.includes("device_id"))
+    ) {
+      try {
+        const fallbackValidateSql = validateSql.replace("s.device_id,", "NULL AS device_id,");
+        result = await runner(fallbackValidateSql, [tokenHash]);
+      } catch (retryErr: unknown) {
+        if (retryErr instanceof DatabaseUnavailableError) throw retryErr;
+        const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+        console.error("[Session Engine] Database query failure in fallback validateSession:", retryMsg);
+        throw new DatabaseUnavailableError(`Database unavailable during session validation: ${retryMsg}`);
+      }
+    } else {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("[Session Engine] Database query failure in validateSession:", errMsg);
+      throw new DatabaseUnavailableError(`Database unavailable during session validation: ${errMsg}`);
+    }
   }
 
   if (!result || result.rows.length === 0) {

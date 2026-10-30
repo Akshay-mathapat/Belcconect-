@@ -21,7 +21,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
-import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
 import { JobProviderSearchDropdown } from "@/components/jobprovider/layout/JobProviderSearchDropdown";
@@ -29,7 +29,11 @@ import { JobProviderSearchDropdown } from "@/components/jobprovider/layout/JobPr
 export default function JobProviderLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, isCheckingSession, sessionChecked, logout, checkSession } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, checkSession, logout } = useAuthStore();
+
+  useEffect(() => {
+    checkSession().catch(() => {});
+  }, [checkSession]);
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
 

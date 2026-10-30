@@ -101,5 +101,4 @@ loadtest/*token*.json
 tests/fixtures/*token*.json
 tests/fixtures/*.tokens.json
 tests/fixtures/customer_100_tokens.json
-
-
+unit.log

@@ -18,17 +18,13 @@ import {
   CalendarDays, 
   MessageSquare, 
   Wrench, 
-  User, 
-  Bell,
+  User,
   Settings,
   LogOut,
-  ArrowRight,
-  ShieldCheck,
-  Sparkles,
-  Video
+  ArrowRight
 } from "lucide-react";
 import { useProviderStore } from "@/store/useProviderStore";
-import { useAuthStore, getStoredAuthToken } from "@/store/useAuthStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
@@ -43,8 +39,12 @@ export default function ProviderLayout({
   const pathname = usePathname();
   const router = useRouter();
 
-  const { isOnline, toggleOnlineStatus, profile, fetchProviderBookings, fetchProviderServices } = useProviderStore();
-  const { currentUser, isCheckingSession, sessionChecked, logout, checkSession } = useAuthStore();
+  const { profile, fetchProviderBookings, fetchProviderServices } = useProviderStore();
+  const { currentUser, isCheckingSession, sessionChecked, checkSession, logout } = useAuthStore();
+
+  useEffect(() => {
+    checkSession().catch(() => {});
+  }, [checkSession]);
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
 

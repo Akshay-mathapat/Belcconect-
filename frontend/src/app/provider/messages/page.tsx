@@ -6,12 +6,11 @@ import {
   Search, 
   ChevronLeft,
   Loader2,
-  User
 } from "lucide-react";
 import ChatWindow from "@/components/chat/ChatWindow";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTranslation } from "@/lib/i18n";
-import { authFetch, getClientToken } from "@/lib/authFetch";
+import { authFetch } from "@/lib/authFetch";
 import { getSocket } from "@/lib/socket";
 
 interface ConversationMeta {

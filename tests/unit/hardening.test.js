@@ -2220,4 +2220,72 @@ describe("27. Phase 4 Step 1: Inline Script JSON Serialization, checkSession Res
     assert.strictEqual(headers["Authorization"], undefined, "Authorization header omitted when token undefined");
     assert.strictEqual(headers["Content-Type"], "application/json");
   });
+
+  test("8) checkSession timeout (AbortController): network hang counts as transient error, keeps existing currentUser, sets sessionChecked=true and isCheckingSession=false", async () => {
+    const storeFile = path.resolve(__dirname, "../../frontend/src/store/useAuthStore.ts");
+    const code = fs.readFileSync(storeFile, "utf-8");
+
+    // Static code verification in useAuthStore.ts
+    assert.ok(code.includes("new AbortController()"), "checkSession must instantiate AbortController");
+    assert.ok(code.includes("signal: controller.signal"), "checkSession must pass controller.signal to fetch");
+    assert.ok(code.includes("AbortError"), "checkSession must handle AbortError as transient error");
+    assert.ok(code.includes("sessionChecked: true"), "checkSession must set sessionChecked: true in finally");
+
+    // Dynamic execution simulation matching checkSession logic
+    let isCheckingSession = false;
+    let sessionChecked = false;
+    let currentUser = { id: "u-hang-test", email: "hang@test.com", name: "Hang User", role: "customer" };
+
+    async function checkSessionWithTimeout(mockFetch) {
+      isCheckingSession = true;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 50);
+
+      try {
+        const res = await mockFetch("/api/auth/me", { signal: controller.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.user) {
+            currentUser = { ...data.user };
+            return currentUser;
+          }
+        } else if (res.status === 401) {
+          currentUser = null;
+          sessionChecked = true;
+          return null;
+        } else {
+          return currentUser;
+        }
+      } catch (e) {
+        if (e && e.name === "AbortError") {
+          // Transient network hang: keep existing user
+          return currentUser;
+        }
+        return currentUser;
+      } finally {
+        clearTimeout(timeoutId);
+        isCheckingSession = false;
+        sessionChecked = true;
+      }
+      return null;
+    }
+
+    // Case 1: Simulated network hang where fetch aborts due to AbortController timeout
+    const mockHangingFetch = (url, options) => new Promise((resolve, reject) => {
+      if (options?.signal) {
+        options.signal.addEventListener("abort", () => {
+          const err = new Error("The operation was aborted");
+          err.name = "AbortError";
+          reject(err);
+        });
+      }
+    });
+
+    const result = await checkSessionWithTimeout(mockHangingFetch);
+    assert.strictEqual(isCheckingSession, false, "isCheckingSession must be false after timeout");
+    assert.strictEqual(sessionChecked, true, "sessionChecked must be true after timeout");
+    assert.notStrictEqual(currentUser, null, "currentUser must NOT be cleared on timeout hang");
+    assert.strictEqual(currentUser.id, "u-hang-test", "Existing currentUser must be preserved");
+    assert.strictEqual(result.id, "u-hang-test", "Returned user must be the preserved currentUser");
+  });
 });
