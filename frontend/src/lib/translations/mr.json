@@ -748,7 +748,9 @@
       "callTitle": "खाजगी आणि सुरक्षित कॉलिंग",
       "callDesc": "तुमचा वैयक्तिक फोन नंबर न दाखवता थेट ॲप-मधील कॉल करा.",
       "menuTitle": "खाते आणि बुकिंग",
-      "menuDesc": "सक्रिय बुकिंग पहा, सेव्ह केलेले पत्ते व्यवस्थापित करा आणि तुमची प्रोफाइल अपडेट करा."
+      "menuDesc": "सक्रिय बुकिंग पहा, सेव्ह केलेले पत्ते व्यवस्थापित करा आणि तुमची प्रोफाइल अपडेट करा.",
+      "readyTitle": "You're All Set!",
+      "readyDesc": "Explore services and book trusted local professionals across Belagavi today."
     },
     "provider": {
       "dashboardTitle": "प्रदाता कार्यक्षेत्र",
@@ -758,11 +760,15 @@
       "bookingsTitle": "बुकिंग व्यवस्थापन",
       "bookingsDesc": "येणाऱ्या विनंत्या स्वीकारा, काम सुरू करा आणि पूर्णतेची स्थिती सहज अपडेट करा.",
       "kycTitle": "वेरीफाइड प्रो बॅज",
-      "kycDesc": "वेरीफाइड ट्रस्ट बॅज मिळवण्यासाठी तुमची ओळख आणि प्रमाणपत्रे अपलोड करा."
+      "kycDesc": "वेरीफाइड ट्रस्ट बॅज मिळवण्यासाठी तुमची ओळख आणि प्रमाणपत्रे अपलोड करा.",
+      "readyTitle": "Ready to Earn!",
+      "readyDesc": "Turn your availability ON and start accepting local service requests."
     },
     "watchVideoGuide": "व्हिडिओ मार्गदर्शक पहा",
     "videoGuideTitle": "व्हिडिओ ट्यूटोरियल्स आणि मार्गदर्शक",
-    "videoGuideDesc": "बेलकनेक्ट प्लॅटफॉर्मसाठी टप्प्याटप्प्याने व्हिडिओ मार्गदर्शक पहा."
+    "videoGuideDesc": "बेलकनेक्ट प्लॅटफॉर्मसाठी टप्प्याटप्प्याने व्हिडिओ मार्गदर्शक पहा.",
+    "done": "समजले!",
+    "close": "Close"
   },
   "quickGuide": {
     "title": "त्वरित मार्गदर्शक",

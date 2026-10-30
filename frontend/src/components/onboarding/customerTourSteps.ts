@@ -3,11 +3,11 @@ import { TourStep } from "./types";
 export const customerTourSteps: TourStep[] = [
   {
     id: "search",
-    targetDataAttr: "customer-search",
+    targetDataAttr: "customer-search, search-bar",
     title: "tour.customer.searchTitle",
     description: "tour.customer.searchDesc",
     allowTargetInteraction: true,
-    advanceOnTargetClick: true,
+    advanceOnTargetClick: false,
   },
   {
     id: "categories",
@@ -15,30 +15,29 @@ export const customerTourSteps: TourStep[] = [
     title: "tour.customer.categoryTitle",
     description: "tour.customer.categoryDesc",
     allowTargetInteraction: true,
-    advanceOnTargetClick: true,
+    advanceOnTargetClick: false,
   },
   {
-    id: "sort-by",
-    targetDataAttr: "sort-by",
-    title: "tour.customer.filterTitle",
-    description: "tour.customer.filterDesc",
+    id: "language",
+    targetDataAttr: "language-switcher",
+    title: "tour.customer.langTitle",
+    description: "tour.customer.langDesc",
     allowTargetInteraction: true,
-    advanceOnTargetClick: true,
+    advanceOnTargetClick: false,
   },
   {
-    id: "book",
-    targetDataAttr: "providers-list",
-    title: "tour.customer.bookTitle",
-    description: "tour.customer.bookDesc",
+    id: "menu",
+    targetDataAttr: "my-bookings, nav-user-menu, mobile-menu",
+    title: "tour.customer.menuTitle",
+    description: "tour.customer.menuDesc",
     allowTargetInteraction: true,
-    advanceOnTargetClick: true,
-    hideStickyCard: true,
+    advanceOnTargetClick: false,
   }
 ];
 
 export const customerFinishContent = {
   title: "tour.customer.readyTitle",
   description: "tour.customer.readyDesc",
-  actionText: "tour.done",
+  actionText: "tour.finish",
   actionRoute: "/services"
 };

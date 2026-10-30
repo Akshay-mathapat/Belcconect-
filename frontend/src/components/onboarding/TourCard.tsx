@@ -26,7 +26,12 @@ export function TourCard() {
 
   const updatePosition = () => {
     if (!isOpen || isFinishedScreen || !currentStep) return;
-    const element = document.querySelector(`[data-tour="${currentStep.targetDataAttr}"]`) as HTMLElement;
+    const attr = currentStep.targetDataAttr;
+    const selectors = attr.split(',').map(s => {
+      const trimmed = s.trim();
+      return (trimmed.startsWith('#') || trimmed.startsWith('.')) ? trimmed : `[data-tour="${trimmed}"]`;
+    }).join(',');
+    const element = document.querySelector(selectors) as HTMLElement;
     if (element) {
       const rect = element.getBoundingClientRect();
       setTargetRect(rect);

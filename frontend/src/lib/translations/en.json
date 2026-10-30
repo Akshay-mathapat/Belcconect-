@@ -742,7 +742,9 @@
       "callDesc": "Call verified service providers directly in-app without revealing your personal phone number.",
       "menuTitle": "Account & Bookings",
       "menuDesc": "View active bookings, manage saved addresses, and update your profile.",
-      "searchExamples": "Electrician,Plumber,Cleaning,AC Repair"
+      "searchExamples": "Electrician,Plumber,Cleaning,AC Repair",
+      "readyTitle": "You're All Set!",
+      "readyDesc": "Explore services and book trusted local professionals across Belagavi today."
     },
     "provider": {
       "dashboardTitle": "Provider Workspace",
@@ -752,14 +754,18 @@
       "bookingsTitle": "Booking Management",
       "bookingsDesc": "Accept incoming requests, start jobs, and update completion status easily.",
       "kycTitle": "Verified Pro Badge",
-      "kycDesc": "Upload your identification and credentials to get a verified trust badge."
+      "kycDesc": "Upload your identification and credentials to get a verified trust badge.",
+      "readyTitle": "Ready to Earn!",
+      "readyDesc": "Turn your availability ON and start accepting local service requests."
     },
     "watchVideoGuide": "Watch Video Guide",
     "videoGuideTitle": "Video Walkthrough & Tutorials",
     "videoGuideDesc": "Watch step-by-step video guides for BelConnect platform.",
     "quickGuide": "Quick Guide",
     "listen": "Listen",
-    "stop": "Stop"
+    "stop": "Stop",
+    "done": "Got it!",
+    "close": "Close"
   },
   "quickGuide": {
     "title": "Quick Guide",

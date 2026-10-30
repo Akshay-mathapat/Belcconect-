@@ -254,7 +254,7 @@ export default function ProviderDashboardPage() {
         <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-transparent to-transparent pointer-events-none" />
 
         <div className="relative z-10 space-y-4">
-          <div className="flex items-center gap-2">
+          <div data-tour="provider-kyc" className="flex items-center gap-2">
             {profile.verificationStatus === "verified" ? (
               <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-200 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-400/30 flex items-center gap-1.5">
                 <CheckCircle className="w-3 h-3 text-emerald-400" />
@@ -302,7 +302,7 @@ export default function ProviderDashboardPage() {
             <button
               type="button"
               disabled={togglingAvailability}
-              onClick={handleToggleAvailability}
+              data-tour="provider-availability" onClick={handleToggleAvailability}
               className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-md transition-all cursor-pointer ${
                 isOnline
                   ? "bg-emerald-500 text-white hover:bg-emerald-600 border border-emerald-400/30"
@@ -316,6 +316,7 @@ export default function ProviderDashboardPage() {
 
             <Link
               href="/provider/services/new"
+              data-tour="add-service"
               className="inline-flex items-center gap-2 bg-white text-blue-900 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all hover:scale-105"
             >
               <PlusCircle className="h-4 w-4 text-blue-700" />
@@ -324,6 +325,7 @@ export default function ProviderDashboardPage() {
 
             <Link
               href="/provider/bookings"
+              data-tour="provider-bookings"
               className="inline-flex items-center gap-2 bg-blue-600/30 hover:bg-blue-600/50 text-white px-4 py-2.5 rounded-xl font-semibold text-xs border border-white/20 backdrop-blur-sm transition-all"
             >
               <span>{t("serviceProvider.viewBookings")}</span>
@@ -539,7 +541,7 @@ export default function ProviderDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Active Published Services */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between">
+        <div data-tour="provider-services" className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-5">
               <div>

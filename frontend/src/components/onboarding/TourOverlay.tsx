@@ -37,7 +37,11 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
     }
 
     const attr = currentStep.targetDataAttr;
-    const element = document.querySelector(`[data-tour="${attr}"]`) as HTMLElement | null;
+    const selectors = attr.split(',').map(s => {
+      const trimmed = s.trim();
+      return (trimmed.startsWith('#') || trimmed.startsWith('.')) ? trimmed : `[data-tour="${trimmed}"]`;
+    }).join(',');
+    const element = document.querySelector(selectors) as HTMLElement | null;
 
     if (element && element.offsetParent !== null && !isOnBookPage) {
       const clientRect = element.getBoundingClientRect();
