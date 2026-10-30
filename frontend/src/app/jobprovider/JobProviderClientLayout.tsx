@@ -29,7 +29,11 @@ import { JobProviderSearchDropdown } from "@/components/jobprovider/layout/JobPr
 export default function JobProviderLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, isCheckingSession, sessionChecked, logout } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, checkSession, logout } = useAuthStore();
+
+  useEffect(() => {
+    checkSession().catch(() => {});
+  }, [checkSession]);
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
 

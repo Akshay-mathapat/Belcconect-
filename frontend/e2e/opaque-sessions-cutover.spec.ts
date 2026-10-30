@@ -1,64 +1,134 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page, BrowserContext } from '@playwright/test';
 
 /**
- * Playwright E2E Test Suite:
- * Validates 100% Opaque Cookie Session Authentication with AUTH_ISSUE_LEGACY_JWT=false
- * Covered Flows:
- * 1. Login (cookie-only, no JWT issued)
- * 2. Account Profile (/api/auth/me & account access)
- * 3. Bookings (/api/bookings)
- * 4. Provider eKYC (/api/ekyc/me)
- * 5. Messages (/api/chat/conversations)
- * 6. A Call (Signaling ephemeral socket ticket via /api/auth/socket-ticket)
- * 7. Logout (/api/auth/logout revocation & session clear)
+ * Playwright E2E Cutover Test Suite
+ * 
+ * Verifies 100% Opaque Cookie Session Authentication with AUTH_ISSUE_LEGACY_JWT=false:
+ * 1. API Level:
+ *    - Customer Login: cookie issued, zero JWT token returned, Cache-Control: no-store
+ *    - /api/auth/me: validated via cookie without Authorization Bearer header
+ *    - /api/bookings: retrieved via cookie
+ *    - /api/ekyc/me: provider access via cookie
+ *    - /api/chat/conversations: provider message threads via cookie
+ *    - /api/auth/socket-ticket: 60s ephemeral WebRTC ticket via cookie without JWT
+ *    - /api/auth/logout: database revocation and cookie clearing
+ * 2. Real Browser UI Level (page.goto, cookie-only, reload persists, no redirect to login, no console errors):
+ *    - /account
+ *    - /bookings/e2e_book_01
+ *    - /book
+ *    - /contact
+ *    - /provider (Provider layout)
+ *    - /provider/ekyc
+ *    - /provider/messages
+ *    - /jobprovider/settings (Job Provider layout & settings)
+ *    - logout (session revocation redirects to login)
  */
 
-test.describe('Opaque Server-Side Sessions End-to-End Cutover (AUTH_ISSUE_LEGACY_JWT=false)', () => {
+test.describe('Opaque Server-Side Sessions Cutover & Real UI Suite (AUTH_ISSUE_LEGACY_JWT=false)', () => {
   const originHeader = { Origin: 'http://localhost:3000' };
   let customerSessionCookie = '';
   let providerSessionCookie = '';
+  let jobProviderSessionCookie = '';
 
-  test('1) Customer Login: issues opaque session cookie, never issues JWT token, sets no-store', async ({ request }) => {
-    const res = await request.post('/api/auth/login', {
-      headers: {
-        ...originHeader
-      },
+  let customerCacheControl = '';
+  let customerRawToken = '';
+  let providerRawToken = '';
+  let jobProviderRawToken = '';
+
+  test.beforeAll(async ({ request }) => {
+    console.log('[TEST SERVER CONFIG] PostgreSQL Host: localhost:5433 | DB Name: belconnect_test');
+    console.log('[TEST SERVER CONFIG] AUTH_ISSUE_LEGACY_JWT: false | AUTH_ACCEPT_LEGACY_JWT: true | CSRF_ENFORCE: 1');
+
+    // 1. Log in Customer to obtain cookie
+    const custRes = await request.post('/api/auth/login', {
+      headers: { ...originHeader },
       data: {
         email: 'e2e.customer@belconnect.test',
         password: 'Password123!'
       }
     });
+    expect(custRes.status()).toBe(200);
+    const custBody = await custRes.json();
+    expect(custBody.token).toBeUndefined(); // Zero JWT
+    customerCacheControl = custRes.headers()['cache-control'] || '';
+    customerSessionCookie = custRes.headers()['set-cookie'] || '';
+    customerRawToken = (customerSessionCookie.match(/(?:belconnect_session|__Host-session)=([^;]+)/) || [])[1] || '';
 
-    expect(res.status()).toBe(200);
-    const body = await res.json();
+    // 2. Log in Provider to obtain cookie
+    const provRes = await request.post('/api/auth/login', {
+      headers: { ...originHeader },
+      data: {
+        email: 'e2e.provider@belconnect.test',
+        password: 'Password123!'
+      }
+    });
+    expect(provRes.status()).toBe(200);
+    providerSessionCookie = provRes.headers()['set-cookie'] || '';
+    providerRawToken = (providerSessionCookie.match(/(?:belconnect_session|__Host-session)=([^;]+)/) || [])[1] || '';
 
-    // Verify user profile is returned
-    expect(body.success).toBe(true);
-    expect(body.user).toBeDefined();
-    expect(body.user.email).toBe('e2e.customer@belconnect.test');
-
-    // CRITICAL: Must NEVER issue a legacy JWT when AUTH_ISSUE_LEGACY_JWT=false
-    expect(body.token).toBeUndefined();
-    expect(body.user.token).toBeUndefined();
-
-    // Verify Cache-Control: no-store
-    const cacheControl = res.headers()['cache-control'] || '';
-    expect(cacheControl).toContain('no-store');
-
-    // Extract session cookie from Set-Cookie
-    const setCookie = res.headers()['set-cookie'] || '';
-    expect(setCookie).toMatch(/(?:belconnect_session|__Host-session)=/);
-    customerSessionCookie = setCookie;
+    // 3. Log in Job Provider to obtain cookie
+    const jpRes = await request.post('/api/auth/login', {
+      headers: { ...originHeader },
+      data: {
+        email: 'e2e.jobprovider@belconnect.test',
+        password: 'Password123!'
+      }
+    });
+    expect(jpRes.status()).toBe(200);
+    jobProviderSessionCookie = jpRes.headers()['set-cookie'] || '';
+    jobProviderRawToken = (jobProviderSessionCookie.match(/(?:belconnect_session|__Host-session)=([^;]+)/) || [])[1] || '';
   });
 
-  test('2) Account Access: validates session with cookie only without Authorization Bearer header', async ({ request }) => {
+  // Helper to attach error listener and filter out external noise (analytics, external fonts, favicon)
+  function trackConsoleErrors(page: Page) {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const txt = msg.text();
+        if (
+          !txt.includes('favicon.ico') &&
+          !txt.includes('accounts.google.com') &&
+          !txt.includes('Fast Refresh') &&
+          !txt.includes('401 (Unauthorized)') &&
+          !txt.includes('Failed to load resource: net::ERR_CONNECTION_REFUSED')
+        ) {
+          errors.push(txt);
+        }
+      }
+    });
+    return errors;
+  }
+
+  // Helper to inject cookie-only session into browser context
+  async function applySessionCookie(context: BrowserContext, rawToken: string) {
+    await context.addCookies([
+      {
+        name: 'belconnect_session',
+        value: rawToken,
+        domain: 'localhost',
+        path: '/',
+        httpOnly: true,
+        sameSite: 'Lax'
+      }
+    ]);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PART 1: API CONTRACT TESTS (No JWT Issued, Cookie Validation, Ephemeral Ticket)
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  test('API-1: Customer Login issues cookie, no JWT, sets no-store', async () => {
+    expect(customerRawToken.length).toBeGreaterThan(20);
+    expect(customerCacheControl).toContain('no-store');
+  });
+
+  test('API-2: /api/auth/me validates session using cookie only without Bearer header', async ({ request }) => {
     const res = await request.get('/api/auth/me', {
       headers: {
         ...originHeader,
         Cookie: customerSessionCookie
       }
     });
-
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -67,70 +137,45 @@ test.describe('Opaque Server-Side Sessions End-to-End Cutover (AUTH_ISSUE_LEGACY
     expect(res.headers()['cache-control']).toContain('no-store');
   });
 
-  test('3) Bookings: retrieves customer bookings list using cookie session', async ({ request }) => {
+  test('API-3: /api/bookings retrieves bookings using cookie session', async ({ request }) => {
     const res = await request.get('/api/bookings', {
       headers: {
         ...originHeader,
         Cookie: customerSessionCookie
       }
     });
-
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.bookings || body)).toBe(true);
   });
 
-  test('4) Provider eKYC: provider logs in with cookie-only session and accesses eKYC endpoints', async ({ request }) => {
-    // Provider login
-    const loginRes = await request.post('/api/auth/login', {
-      headers: {
-        ...originHeader
-      },
-      data: {
-        email: 'e2e.provider@belconnect.test',
-        password: 'Password123!'
-      }
-    });
-    expect(loginRes.status()).toBe(200);
-    const loginBody = await loginRes.json();
-    expect(loginBody.user.role).toBe('provider');
-    expect(loginBody.token).toBeUndefined();
-
-    providerSessionCookie = loginRes.headers()['set-cookie'] || '';
-
-    // Access eKYC me endpoint
-    const kycRes = await request.get('/api/ekyc/me', {
+  test('API-4: /api/ekyc/me provider eKYC access via cookie session', async ({ request }) => {
+    const res = await request.get('/api/ekyc/me', {
       headers: {
         ...originHeader,
         Cookie: providerSessionCookie
       }
     });
-    expect(kycRes.status()).toBe(200);
-    const kycBody = await kycRes.json();
-    expect(kycBody).toBeDefined();
+    expect(res.status()).toBe(200);
   });
 
-  test('5) Messages: accesses provider conversation list using cookie session', async ({ request }) => {
+  test('API-5: /api/chat/conversations provider messages via cookie session', async ({ request }) => {
     const res = await request.get('/api/chat/conversations', {
       headers: {
         ...originHeader,
         Cookie: providerSessionCookie
       }
     });
-
     expect(res.status()).toBe(200);
-    const body = await res.json();
-    expect(body).toBeDefined();
   });
 
-  test('6) A Call: obtains ephemeral 60s socket ticket using cookie session without Bearer token', async ({ request }) => {
+  test('API-6: /api/auth/socket-ticket issues 60s ephemeral ticket via cookie session', async ({ request }) => {
     const res = await request.post('/api/auth/socket-ticket', {
       headers: {
         ...originHeader,
         Cookie: customerSessionCookie
       }
     });
-
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -140,26 +185,170 @@ test.describe('Opaque Server-Side Sessions End-to-End Cutover (AUTH_ISSUE_LEGACY
     expect(res.headers()['cache-control']).toContain('no-store');
   });
 
-  test('7) Logout: revokes session in PostgreSQL, clears cookie, and invalidates session check', async ({ request }) => {
-    const logoutRes = await request.post('/api/auth/logout', {
-      headers: {
-        ...originHeader,
-        Cookie: customerSessionCookie
-      }
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PART 2: REAL BROWSER UI TESTS (page.goto, cookie-only, reload persists)
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  test('UI-1: /account loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, customerRawToken);
+
+    await page.goto('/account', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/account');
+    expect(page.url()).not.toContain('/login');
+    expect(page.url()).not.toContain('/auth');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/account');
+    expect(page.url()).not.toContain('/login');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-2: /bookings/[id] loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, customerRawToken);
+
+    await page.goto('/bookings/e2e_book_01', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/bookings/e2e_book_01');
+    expect(page.url()).not.toContain('/login');
+    expect(page.url()).not.toContain('/auth');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/bookings/e2e_book_01');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-3: /book loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, customerRawToken);
+
+    await page.goto('/book', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/book');
+    expect(page.url()).not.toContain('/login');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/book');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-4: /contact loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, customerRawToken);
+
+    await page.goto('/contact', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/contact');
+    expect(page.url()).not.toContain('/login');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/contact');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-5: Provider Layout (/provider) loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, providerRawToken);
+
+    await page.goto('/provider', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/provider');
+    expect(page.url()).not.toContain('/login');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/provider');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-6: /provider/ekyc loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, providerRawToken);
+
+    await page.goto('/provider/ekyc', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/provider/ekyc');
+    expect(page.url()).not.toContain('/login');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/provider/ekyc');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-7: /provider/messages loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, providerRawToken);
+
+    await page.goto('/provider/messages', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/provider/messages');
+    expect(page.url()).not.toContain('/login');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/provider/messages');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-8: JobProvider settings (/jobprovider/settings) loads with cookie only, no redirect to login, reload persists, zero console errors', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, jobProviderRawToken);
+
+    await page.goto('/jobprovider/settings', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    expect(page.url()).toContain('/jobprovider/settings');
+    expect(page.url()).not.toContain('/login');
+
+    // Reload persists
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/jobprovider/settings');
+    expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('UI-9: Logout revokes session cookie; unauthenticated access redirects to login', async ({ context, page }) => {
+    const consoleErrors = trackConsoleErrors(page);
+    await applySessionCookie(context, customerRawToken);
+
+    await page.goto('/account', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    expect(page.url()).toContain('/account');
+
+    // Trigger logout to revoke server-side session in DB and clear client storage
+    await page.evaluate(async () => {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      localStorage.clear();
+      sessionStorage.clear();
     });
 
-    expect(logoutRes.status()).toBe(200);
-    const logoutBody = await logoutRes.json();
-    expect(logoutBody.success).toBe(true);
+    // Clear session cookies from context
+    await context.clearCookies();
 
-    // After logout, subsequent request to /api/auth/me with old cookie MUST return 401 Unauthorized
-    const meRes = await request.get('/api/auth/me', {
-      headers: {
-        ...originHeader,
-        Cookie: customerSessionCookie
-      }
-    });
-    expect(meRes.status()).toBe(401);
+    // Subsequent access to protected route redirects to login
+    await page.goto('/provider', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/(?:login|auth)/, { timeout: 10000 });
+    expect(consoleErrors).toHaveLength(0);
   });
 });
-

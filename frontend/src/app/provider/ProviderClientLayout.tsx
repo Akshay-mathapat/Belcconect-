@@ -40,7 +40,11 @@ export default function ProviderLayout({
   const router = useRouter();
 
   const { profile, fetchProviderBookings, fetchProviderServices } = useProviderStore();
-  const { currentUser, isCheckingSession, sessionChecked, logout } = useAuthStore();
+  const { currentUser, isCheckingSession, sessionChecked, checkSession, logout } = useAuthStore();
+
+  useEffect(() => {
+    checkSession().catch(() => {});
+  }, [checkSession]);
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
 
