@@ -65,31 +65,84 @@ export async function GET(request: Request) {
       try {
         const validated = await validateSession(token);
         if (validated) {
-          const uRes = await query(
-            `SELECT id, email, name, phone, avatar, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM customers WHERE id = $1
-             UNION ALL
-             SELECT id, email, name, phone, avatar, 'provider' AS role, is_verified, verification_status, kyc_status, account_status FROM service_providers WHERE id = $1
-             UNION ALL
-             SELECT id, email, name, phone, avatar, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM job_providers WHERE id = $1
-             LIMIT 1`,
-            [validated.userId]
-          );
-          if (uRes.rows.length > 0) {
-            const row: UserDbRow = uRes.rows[0];
-            if (row.account_status === "active") {
-              user = {
-                id: String(row.id),
-                email: String(row.email),
-                role: row.role,
-                name: String(row.name),
-                phone: row.phone,
-                avatar: row.avatar,
-                isVerified: row.is_verified,
-                verificationStatus: row.verification_status,
-                kycStatus: row.kyc_status,
-                sessionId: validated.sessionId
-              };
+          try {
+            const uRes = await query(
+              `SELECT id, email, name, phone, avatar, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM customers WHERE id = $1
+               UNION ALL
+               SELECT id, email, name, phone, avatar, 'provider' AS role, is_verified, verification_status, kyc_status, account_status FROM service_providers WHERE id = $1
+               UNION ALL
+               SELECT id, email, name, phone, avatar, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM job_providers WHERE id = $1
+               LIMIT 1`,
+              [validated.userId]
+            );
+            if (uRes.rows.length > 0) {
+              const row: UserDbRow = uRes.rows[0];
+              const isSuspended = String(row.account_status || "").toLowerCase() === "suspended";
+              if (!isSuspended) {
+                user = {
+                  id: String(row.id),
+                  email: String(row.email),
+                  role: row.role,
+                  name: String(row.name),
+                  phone: row.phone,
+                  avatar: row.avatar,
+                  isVerified: row.is_verified,
+                  verificationStatus: row.verification_status,
+                  kycStatus: row.kyc_status,
+                  sessionId: validated.sessionId
+                };
+              }
             }
+          } catch (queryErr: any) {
+            // Schema tolerance: If account_status column is absent, query without it
+            if (queryErr?.code === "42703" || (typeof queryErr?.message === "string" && queryErr.message.includes("account_status"))) {
+              try {
+                const fallbackRes = await query(
+                  `SELECT id, email, name, phone, avatar, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM customers WHERE id = $1
+                   UNION ALL
+                   SELECT id, email, name, phone, avatar, 'provider' AS role, is_verified, verification_status, kyc_status FROM service_providers WHERE id = $1
+                   UNION ALL
+                   SELECT id, email, name, phone, avatar, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM job_providers WHERE id = $1
+                   LIMIT 1`,
+                  [validated.userId]
+                );
+                if (fallbackRes.rows.length > 0) {
+                  const row = fallbackRes.rows[0];
+                  user = {
+                    id: String(row.id),
+                    email: String(row.email),
+                    role: row.role,
+                    name: String(row.name),
+                    phone: row.phone,
+                    avatar: row.avatar,
+                    isVerified: row.is_verified,
+                    verificationStatus: row.verification_status,
+                    kycStatus: row.kyc_status,
+                    sessionId: validated.sessionId
+                  };
+                }
+              } catch (fallbackErr) {
+                console.warn("[/api/auth/me] Fallback profile lookup warning:", fallbackErr);
+              }
+            } else {
+              console.warn("[/api/auth/me] Detail query warning:", queryErr?.message);
+            }
+          }
+
+          // Defensive fallback: If detailed profile query did not resolve, populate from validated session
+          if (!user) {
+            user = {
+              id: validated.userId,
+              email: validated.email,
+              role: validated.role,
+              name: validated.name,
+              phone: null,
+              avatar: null,
+              isVerified: null,
+              verificationStatus: null,
+              kycStatus: null,
+              sessionId: validated.sessionId
+            };
           }
         }
       } catch (sessErr: unknown) {
@@ -111,30 +164,79 @@ export async function GET(request: Request) {
       if (acceptLegacy) {
         const legacyUser = await getAuthenticatedUser(request);
         if (legacyUser && legacyUser.userId) {
-          const uRes = await query(
-            `SELECT id, email, name, phone, avatar, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM customers WHERE id = $1
-             UNION ALL
-             SELECT id, email, name, phone, avatar, 'provider' AS role, is_verified, verification_status, kyc_status, account_status FROM service_providers WHERE id = $1
-             UNION ALL
-             SELECT id, email, name, phone, avatar, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM job_providers WHERE id = $1
-             LIMIT 1`,
-            [legacyUser.userId]
-          );
-          if (uRes.rows.length > 0) {
-            const row: UserDbRow = uRes.rows[0];
-            if (row.account_status === "active") {
-              user = {
-                id: String(row.id),
-                email: String(row.email),
-                role: row.role,
-                name: String(row.name),
-                phone: row.phone,
-                avatar: row.avatar,
-                isVerified: row.is_verified,
-                verificationStatus: row.verification_status,
-                kycStatus: row.kyc_status
-              };
+          try {
+            const uRes = await query(
+              `SELECT id, email, name, phone, avatar, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM customers WHERE id = $1
+               UNION ALL
+               SELECT id, email, name, phone, avatar, 'provider' AS role, is_verified, verification_status, kyc_status, account_status FROM service_providers WHERE id = $1
+               UNION ALL
+               SELECT id, email, name, phone, avatar, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status, account_status FROM job_providers WHERE id = $1
+               LIMIT 1`,
+              [legacyUser.userId]
+            );
+            if (uRes.rows.length > 0) {
+              const row: UserDbRow = uRes.rows[0];
+              const isSuspended = String(row.account_status || "").toLowerCase() === "suspended";
+              if (!isSuspended) {
+                user = {
+                  id: String(row.id),
+                  email: String(row.email),
+                  role: row.role,
+                  name: String(row.name),
+                  phone: row.phone,
+                  avatar: row.avatar,
+                  isVerified: row.is_verified,
+                  verificationStatus: row.verification_status,
+                  kycStatus: row.kyc_status
+                };
+              }
             }
+          } catch (queryErr: any) {
+            // Schema tolerance fallback for legacy
+            if (queryErr?.code === "42703" || (typeof queryErr?.message === "string" && queryErr.message.includes("account_status"))) {
+              try {
+                const fallbackRes = await query(
+                  `SELECT id, email, name, phone, avatar, 'user' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM customers WHERE id = $1
+                   UNION ALL
+                   SELECT id, email, name, phone, avatar, 'provider' AS role, is_verified, verification_status, kyc_status FROM service_providers WHERE id = $1
+                   UNION ALL
+                   SELECT id, email, name, phone, avatar, 'job_provider' AS role, NULL::boolean AS is_verified, NULL::text AS verification_status, NULL::text AS kyc_status FROM job_providers WHERE id = $1
+                   LIMIT 1`,
+                  [legacyUser.userId]
+                );
+                if (fallbackRes.rows.length > 0) {
+                  const row = fallbackRes.rows[0];
+                  user = {
+                    id: String(row.id),
+                    email: String(row.email),
+                    role: row.role,
+                    name: String(row.name),
+                    phone: row.phone,
+                    avatar: row.avatar,
+                    isVerified: row.is_verified,
+                    verificationStatus: row.verification_status,
+                    kycStatus: row.kyc_status
+                  };
+                }
+              } catch (fallbackErr) {
+                console.warn("[/api/auth/me] Fallback legacy lookup warning:", fallbackErr);
+              }
+            }
+          }
+
+          // Defensive fallback from legacy user payload
+          if (!user && legacyUser) {
+            user = {
+              id: legacyUser.userId,
+              email: legacyUser.email || '',
+              role: legacyUser.role,
+              name: legacyUser.name || 'User',
+              phone: null,
+              avatar: null,
+              isVerified: null,
+              verificationStatus: null,
+              kycStatus: null
+            };
           }
         }
       }
