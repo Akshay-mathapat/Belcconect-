@@ -664,10 +664,15 @@ export function getSessionTokenFromRequest(
     }
   }
 
-  // Admin routes: ONLY accept admin cookies (no fallback to user cookie)
+  // Admin routes: accept admin cookies or valid admin Bearer token
   if (isAdminRoute) {
     if (cookies[COOKIE_NAME_ADMIN]) return cookies[COOKIE_NAME_ADMIN];
     if (cookies[COOKIE_NAME_ADMIN_DEV]) return cookies[COOKIE_NAME_ADMIN_DEV];
+    const authHeader = request.headers.get("authorization") || "";
+    if (authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7).trim();
+      if (token) return token;
+    }
     return null;
   }
 

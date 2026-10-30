@@ -113,12 +113,27 @@ export default function AdminPage() {
   const [deletionRejectReason, setDeletionRejectReason] = useState("");
   const [completeModalDeletion, setCompleteModalDeletion] = useState<DeletionRequestItem | null>(null);
 
+  // Helper for authenticated admin requests
+  const adminFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const token = typeof window !== "undefined" ? sessionStorage.getItem("belconnect_admin_token") : null;
+    const headers = new Headers(init.headers || {});
+    if (!headers.has("Accept")) headers.set("Accept", "application/json");
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    return fetch(input, {
+      ...init,
+      headers,
+      credentials: init.credentials || "include",
+    });
+  }, []);
+
   // Check current admin session on mount
   useEffect(() => {
     let ignore = false;
     const verifySession = async () => {
       try {
-        const res = await fetch("/api/admin/auth/me", {
+        const res = await adminFetch("/api/admin/auth/me", {
           headers: { Accept: "application/json" }
         });
         if (!ignore && res.ok) {
@@ -152,7 +167,7 @@ export default function AdminPage() {
       setLoadingProviders(true);
       setActionError(null);
       const statusParam = activeTab === "all" ? "" : `?status=${activeTab}`;
-      const res = await fetch(`/api/admin/providers${statusParam}`);
+      const res = await adminFetch(`/api/admin/providers${statusParam}`);
       if (res.ok) {
         const data = await res.json();
         setProviders(data.providers || []);
@@ -174,7 +189,7 @@ export default function AdminPage() {
       setLoadingDeletions(true);
       setActionError(null);
       const statusParam = deletionTab === "all" ? "" : `?status=${deletionTab}`;
-      const res = await fetch(`/api/admin/deletion-requests${statusParam}`);
+      const res = await adminFetch(`/api/admin/deletion-requests${statusParam}`);
       if (res.ok) {
         const data = await res.json();
         const list: DeletionRequestItem[] = data.requests || [];
@@ -198,7 +213,7 @@ export default function AdminPage() {
     if (!isAuthenticated) return;
     const loadCount = async () => {
       try {
-        const res = await fetch("/api/admin/deletion-requests?status=pending");
+        const res = await adminFetch("/api/admin/deletion-requests?status=pending");
         if (res.ok) {
           const data = await res.json();
           setPendingDeletionCount((data.requests || []).length);
@@ -225,6 +240,7 @@ export default function AdminPage() {
 
     try {
       const res = await fetch("/api/admin/auth/login", {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -236,6 +252,11 @@ export default function AdminPage() {
         return;
       }
 
+      if (data.sessionToken || data.token) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("belconnect_admin_token", data.sessionToken || data.token);
+        }
+      }
       setIsAuthenticated(true);
       setAdminUser(data.admin);
       setEmail("");
@@ -250,7 +271,8 @@ export default function AdminPage() {
   // Handle Admin Logout
   const handleLogout = async () => {
     try {
-      await fetch("/api/admin/auth/logout", { method: "POST" });
+      await adminFetch("/api/admin/auth/logout", { method: "POST" });
+      if (typeof window !== "undefined") sessionStorage.removeItem("belconnect_admin_token");
     } catch (_) {}
     setIsAuthenticated(false);
     setAdminUser(null);
@@ -263,7 +285,7 @@ export default function AdminPage() {
       setActionError(null);
       setActionSuccess(null);
 
-      const res = await fetch(`/api/admin/providers/${encodeURIComponent(provider.id)}/approve`, {
+      const res = await adminFetch(`/api/admin/providers/${encodeURIComponent(provider.id)}/approve`, {
         method: "POST"
       });
 
@@ -291,7 +313,7 @@ export default function AdminPage() {
       setActionError(null);
       setActionSuccess(null);
 
-      const res = await fetch(`/api/admin/providers/${encodeURIComponent(rejectModalProvider.id)}/reject`, {
+      const res = await adminFetch(`/api/admin/providers/${encodeURIComponent(rejectModalProvider.id)}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: rejectReason.trim() })
@@ -322,7 +344,7 @@ export default function AdminPage() {
       setActionError(null);
       setActionSuccess(null);
 
-      const res = await fetch(`/api/admin/deletion-requests/${encodeURIComponent(req.id)}/complete`, {
+      const res = await adminFetch(`/api/admin/deletion-requests/${encodeURIComponent(req.id)}/complete`, {
         method: "POST"
       });
 
@@ -350,7 +372,7 @@ export default function AdminPage() {
       setActionError(null);
       setActionSuccess(null);
 
-      const res = await fetch(`/api/admin/deletion-requests/${encodeURIComponent(rejectModalDeletion.id)}/reject`, {
+      const res = await adminFetch(`/api/admin/deletion-requests/${encodeURIComponent(rejectModalDeletion.id)}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: deletionRejectReason.trim() })

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { query, verifyPassword } from "@/lib/db";
 import { signJwtToken } from "@/lib/jwt";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { createSession, setSessionCookie } from "@/lib/session";
+import { createSession, setSessionCookie, getCookieConfig, getRoleSessionLifetimes } from "@/lib/session";
 
 export async function POST(request: Request) {
   const csrfError = await assertCsrfOrigin(request);
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const response = NextResponse.json({
       success: true,
       ...(issueLegacy ? { token } : {}),
-      ...(session ? { sessionId: session.sessionId } : {}),
+      ...(session ? { sessionId: session.sessionId, sessionToken: session.rawToken } : {}),
       admin: {
         id: admin.id,
         email: admin.email,
@@ -101,12 +101,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // Set server-side session cookie (__Host-admin_session) when session was created
-    if (session) {
-      setSessionCookie(response.headers, session.rawToken, "admin");
-    }
-
-    // Legacy cookie support during transition
+    // Legacy cookie support during transition (must be set BEFORE setSessionCookie to prevent Next.js overwriting headers)
     if (issueLegacy && token) {
       response.cookies.set("auth_token", token, {
         httpOnly: true,
@@ -115,6 +110,20 @@ export async function POST(request: Request) {
         path: "/",
         maxAge: 7 * 24 * 3600
       });
+    }
+
+    // Set server-side session cookie (__Host-admin_session) when session was created
+    if (session) {
+      const { name: adminCookieName, isSecure: adminCookieSecure } = getCookieConfig("admin");
+      const { absoluteSeconds: adminAbsoluteSec } = getRoleSessionLifetimes("admin");
+      response.cookies.set(adminCookieName, session.rawToken, {
+        httpOnly: true,
+        secure: adminCookieSecure,
+        sameSite: "lax",
+        path: "/",
+        maxAge: adminAbsoluteSec
+      });
+      setSessionCookie(response.headers, session.rawToken, "admin");
     }
 
     return response;
