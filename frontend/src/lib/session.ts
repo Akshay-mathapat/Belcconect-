@@ -723,10 +723,10 @@ export async function getSessionUser(
         console.warn(`[Security] Refused non-admin session on admin route: role='${user.role}' on ${pathname}`);
         return null;
       }
-      // If request carried Bearer token, ensure session was issued to client='android'
+      // If request carried Bearer token, ensure session was issued to client='android' (exempting admin web sessions)
       const authHeader = request.headers.get("authorization") || "";
       const isBearerSession = authHeader.startsWith("Bearer ") && sessionToken === authHeader.substring(7).trim();
-      if (isBearerSession && user.client !== "android") {
+      if (isBearerSession && user.role !== "admin" && user.client !== "android") {
         console.warn(`[Security] Refused Bearer auth: session client is '${user.client}', expected 'android'`);
         return null;
       }
