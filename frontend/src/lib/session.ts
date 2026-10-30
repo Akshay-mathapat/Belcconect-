@@ -720,7 +720,8 @@ export async function getSessionUser(
       }
       // If request carried Bearer token, ensure session was issued to client='android'
       const authHeader = request.headers.get("authorization") || "";
-      if (authHeader.startsWith("Bearer ") && user.client !== "android") {
+      const isBearerSession = authHeader.startsWith("Bearer ") && sessionToken === authHeader.substring(7).trim();
+      if (isBearerSession && user.client !== "android") {
         console.warn(`[Security] Refused Bearer auth: session client is '${user.client}', expected 'android'`);
         return null;
       }
