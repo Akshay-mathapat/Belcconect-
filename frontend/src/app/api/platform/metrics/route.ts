@@ -11,15 +11,25 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
-    const [bookingsRes, providersRes, reviewsRes] = await Promise.all([
+    let reviewsRes: any = { rows: [{ avg_rating: null, review_count: "0" }] };
+    const [bookingsRes, providersRes] = await Promise.all([
       query("SELECT COUNT(*) AS count FROM public.bookings WHERE status = 'Completed'"),
       query("SELECT COUNT(*) AS count FROM public.service_providers WHERE verification_status = 'verified' AND is_available = true"),
-      query("SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) as review_count FROM public.reviews")
     ]);
+
+    try {
+      reviewsRes = await query("SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) as review_count FROM public.booking_reviews");
+    } catch {
+      try {
+        reviewsRes = await query("SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) as review_count FROM public.reviews");
+      } catch {
+        // Table not migrated yet; graceful 0 count
+      }
+    }
 
     const completedBookings = parseInt(bookingsRes.rows[0]?.count || "0", 10);
     const verifiedProviders = parseInt(providersRes.rows[0]?.count || "0", 10);
-    const reviewCount = parseInt(reviewsRes.rows[0]?.review_count || "0", 10);
+    const reviewCount = parseInt(String(reviewsRes.rows[0]?.review_count || "0"), 10);
     const avgRating = reviewCount > 0 && reviewsRes.rows[0]?.avg_rating ? parseFloat(reviewsRes.rows[0].avg_rating) : null;
     const categoryCount = SERVICE_CATEGORIES.length;
 
