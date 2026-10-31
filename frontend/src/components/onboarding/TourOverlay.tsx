@@ -41,9 +41,13 @@ export function TourOverlay({ currentStep, isOpen, isFinishedScreen }: TourOverl
       const trimmed = s.trim();
       return (trimmed.startsWith('#') || trimmed.startsWith('.')) ? trimmed : `[data-tour="${trimmed}"]`;
     }).join(',');
-    const element = document.querySelector(selectors) as HTMLElement | null;
+    const elements = Array.from(document.querySelectorAll(selectors)) as HTMLElement[];
+    const element = elements.find(el => {
+      const r = el.getBoundingClientRect();
+      return (r.width > 0 || r.height > 0) && el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
+    }) || null;
 
-    if (element && element.offsetParent !== null && !isOnBookPage) {
+    if (element && !isOnBookPage) {
       const clientRect = element.getBoundingClientRect();
       const padding = 8;
 

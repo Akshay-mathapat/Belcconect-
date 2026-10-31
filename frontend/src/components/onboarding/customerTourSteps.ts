@@ -19,7 +19,7 @@ export const customerTourSteps: TourStep[] = [
   },
   {
     id: "language",
-    targetDataAttr: "language-switcher",
+    targetDataAttr: "language-switcher, mobile-menu",
     title: "tour.customer.langTitle",
     description: "tour.customer.langDesc",
     allowTargetInteraction: true,
@@ -27,7 +27,7 @@ export const customerTourSteps: TourStep[] = [
   },
   {
     id: "menu",
-    targetDataAttr: "my-bookings, nav-user-menu, mobile-menu",
+    targetDataAttr: "mobile-menu, my-bookings, nav-user-menu",
     title: "tour.customer.menuTitle",
     description: "tour.customer.menuDesc",
     allowTargetInteraction: true,

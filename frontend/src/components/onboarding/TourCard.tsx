@@ -24,14 +24,21 @@ export function TourCard() {
   const [placement, setPlacement] = useState<"top" | "bottom" | "left" | "right">("bottom");
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const updatePosition = () => {
-    if (!isOpen || isFinishedScreen || !currentStep) return;
-    const attr = currentStep.targetDataAttr;
-    const selectors = attr.split(',').map(s => {
+  const getVisibleElement = (targetAttr: string): HTMLElement | null => {
+    const selectors = targetAttr.split(',').map(s => {
       const trimmed = s.trim();
       return (trimmed.startsWith('#') || trimmed.startsWith('.')) ? trimmed : `[data-tour="${trimmed}"]`;
     }).join(',');
-    const element = document.querySelector(selectors) as HTMLElement;
+    const elements = Array.from(document.querySelectorAll(selectors)) as HTMLElement[];
+    return elements.find(el => {
+      const r = el.getBoundingClientRect();
+      return (r.width > 0 || r.height > 0) && el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
+    }) || null;
+  };
+
+  const updatePosition = () => {
+    if (!isOpen || isFinishedScreen || !currentStep) return;
+    const element = getVisibleElement(currentStep.targetDataAttr);
     if (element) {
       const rect = element.getBoundingClientRect();
       setTargetRect(rect);
@@ -61,6 +68,17 @@ export function TourCard() {
 
   useEffect(() => {
     updatePosition();
+
+    if (currentStep) {
+      const el = getVisibleElement(currentStep.targetDataAttr);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const isInView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+        if (!isInView) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    }
 
     let animationFrameId: number;
     const handleScrollOrResize = () => {
@@ -143,6 +161,10 @@ export function TourCard() {
     left = window.innerWidth - tooltipWidth - 16;
   }
 
+  // Dynamically position arrow mark pointer towards target element's center
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const arrowLeft = Math.max(18, Math.min(tooltipWidth - 32, targetCenterX - left - 8));
+
   const getTransform = () => {
     if (placement === "top") return "translateY(-100%)";
     if (placement === "left") return "translate(-100%, -50%)";
@@ -164,8 +186,8 @@ export function TourCard() {
       <div 
         className="absolute w-4 h-4 bg-primary rotate-45 border-t border-l border-white/30 z-20"
         style={{
-          ...(placement === "bottom" && { top: -8, left: 36 }),
-          ...(placement === "top" && { bottom: -8, left: 36, transform: "rotate(225deg)" }),
+          ...(placement === "bottom" && { top: -8, left: arrowLeft }),
+          ...(placement === "top" && { bottom: -8, left: arrowLeft, transform: "rotate(225deg)" }),
           ...(placement === "right" && { left: -8, top: "calc(50% - 8px)", transform: "rotate(315deg)" }),
           ...(placement === "left" && { right: -8, top: "calc(50% - 8px)", transform: "rotate(135deg)" }),
         }}
