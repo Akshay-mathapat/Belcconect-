@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Download, CheckCircle2, Smartphone, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { useTranslation } from "@/lib/i18n";
+import { Capacitor } from "@capacitor/core";
 
 interface InstallAppButtonProps {
   className?: string;
@@ -15,10 +16,31 @@ export function InstallAppButton({ className = "", isMobileOnly = false }: Insta
   const { isInstalled, installApp, installSuccess, setInstallSuccess } = usePWAInstall();
   const [showGuide, setShowGuide] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
   const { t } = useTranslation();
 
-  // If already installed, show success toast when triggered, but don't show prompt button
-  if (isInstalled && !installSuccess) {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const isNative =
+          Capacitor.isNativePlatform() ||
+          Boolean((window as any).Capacitor?.isNativePlatform?.()) ||
+          ((window as any).Capacitor?.getPlatform?.() !== "web" && Boolean((window as any).Capacitor));
+        setIsNativeApp(Boolean(isNative));
+      } catch {
+        setIsNativeApp(false);
+      }
+    }
+  }, []);
+
+  const isCurrentlyNative =
+    typeof window !== "undefined" &&
+    (Capacitor.isNativePlatform() ||
+      Boolean((window as any).Capacitor?.isNativePlatform?.()) ||
+      ((window as any).Capacitor?.getPlatform?.() !== "web" && Boolean((window as any).Capacitor)));
+
+  // If already inside the native Android/iOS APK, or already installed as standalone PWA
+  if (isCurrentlyNative || isNativeApp || (isInstalled && !installSuccess)) {
     return null;
   }
 

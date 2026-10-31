@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 
 export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -30,14 +31,40 @@ if (typeof window !== "undefined") {
 
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(globalDeferredPrompt);
-  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+  const [isInstalled, setIsInstalled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (
+          Capacitor.isNativePlatform() ||
+          Boolean((window as any).Capacitor?.isNativePlatform?.()) ||
+          ((window as any).Capacitor?.getPlatform?.() !== "web" && Boolean((window as any).Capacitor))
+        ) {
+          return true;
+        }
+        if (
+          window.matchMedia("(display-mode: standalone)").matches ||
+          (window.navigator as any).standalone === true ||
+          document.referrer.includes("android-app://")
+        ) {
+          return true;
+        }
+      } catch {}
+    }
+    return false;
+  });
   const [installSuccess, setInstallSuccess] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check if app is running in standalone mode (already installed)
+    // Check if app is running in standalone mode (already installed) or native APK
     const checkInstalled = () => {
       if (typeof window === "undefined") return;
+      const isNative =
+        Capacitor.isNativePlatform() ||
+        Boolean((window as any).Capacitor?.isNativePlatform?.()) ||
+        ((window as any).Capacitor?.getPlatform?.() !== "web" && Boolean((window as any).Capacitor));
+
       const isStandalone =
+        isNative ||
         window.matchMedia("(display-mode: standalone)").matches ||
         (window.navigator as any).standalone === true ||
         document.referrer.includes("android-app://");
