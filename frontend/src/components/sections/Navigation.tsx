@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Menu, X, Search, Sun, Moon, Monitor, ArrowRight, Globe, User, LogOut, LayoutDashboard, Settings, Video, Calendar, HelpCircle } from "lucide-react";
+import { Menu, X, Search, Sun, Moon, Monitor, ArrowRight, Globe, User, LogOut, LayoutDashboard, Settings, Video, Calendar, HelpCircle, Briefcase } from "lucide-react";
 
 import { useTheme } from "@/components/providers/ThemeProvider";
 
@@ -1089,22 +1089,24 @@ export default function Navigation() {
             */}
             <NotificationBell />
 
-            {/* Mobile search button */}
-            <button
-              type="button"
-              onClick={() => {
-                setMobileOpen(false);
-                setTimeout(() => {
-                  const mobileInput = document.getElementById("mobile-search-input");
-                  mobileInput?.focus();
-                }, 100);
-              }}
-              className="lg:hidden flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5F5B]"
-              aria-label="Search"
-              suppressHydrationWarning
-            >
-              <Search className="h-5 w-5" />
-            </button>
+            {/* Mobile prominent Sign In button or User Avatar */}
+            {!currentUser ? (
+              <Link
+                href="/login"
+                data-tour="mobile-nav-login"
+                className="lg:hidden inline-flex items-center justify-center rounded-full bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all whitespace-nowrap"
+              >
+                {t("nav.signIn")}
+              </Link>
+            ) : (
+              <Link
+                href={currentUser.role === "provider" ? "/provider" : "/account"}
+                className="lg:hidden flex h-9 w-9 items-center justify-center rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-xs hover:bg-blue-600/20 transition-colors"
+                aria-label="User Account"
+              >
+                {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+              </Link>
+            )}
 
             {/* Mobile menu button */}
             <button
@@ -1179,6 +1181,82 @@ export default function Navigation() {
           >
 
             <div className="px-4 py-6 space-y-1">
+
+              {/* Mobile Guest Account & Provider Portal Card */}
+              {!currentUser ? (
+                <div className="mb-5 rounded-2xl border border-border bg-gradient-to-br from-card via-card to-muted/40 p-4 shadow-sm">
+                  <div className="mb-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      BelConnect Account
+                    </p>
+                    <h3 className="text-base font-bold text-foreground">
+                      Welcome to BelConnect
+                    </h3>
+                  </div>
+
+                  {/* Customer actions */}
+                  <div className="grid grid-cols-2 gap-2 mb-3.5">
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all text-center"
+                    >
+                      {t("nav.signIn")}
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-bold text-foreground hover:bg-muted transition-all text-center"
+                    >
+                      {t("nav.getStarted")}
+                    </Link>
+                  </div>
+
+                  {/* Service Professional & Partner section */}
+                  <div className="pt-3 border-t border-border/70 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Briefcase className="h-3.5 w-3.5 text-[#1F5F5B]" />
+                      <span>Are you a Service Professional?</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <Link
+                        href="/login?accountType=provider"
+                        onClick={() => setMobileOpen(false)}
+                        className="font-bold text-[#1F5F5B] hover:underline"
+                      >
+                        Provider Login
+                      </Link>
+                      <Link
+                        href="/register?accountType=provider"
+                        onClick={() => setMobileOpen(false)}
+                        className="font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <span>Join as Partner</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-5 rounded-2xl border border-border bg-gradient-to-br from-card to-muted/30 p-4 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/10 text-blue-600 font-bold text-base">
+                      {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground leading-tight">{currentUser.name || "My Account"}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{currentUser.role || "Customer"}</p>
+                    </div>
+                  </div>
+                  <Link
+                    href={currentUser.role === "provider" ? "/provider" : "/account"}
+                    onClick={() => setMobileOpen(false)}
+                    className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    Dashboard →
+                  </Link>
+                </div>
+              )}
 
               {/* Mobile search bar */}
 
