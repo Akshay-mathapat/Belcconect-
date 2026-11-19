@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
-def envVersionCode = System.getenv("ANDROID_VERSION_CODE") ? Integer.parseInt(System.getenv("ANDROID_VERSION_CODE")) : 1
-def envVersionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.0.0"
+def envVersionCode = System.getenv("ANDROID_VERSION_CODE") ? Integer.parseInt(System.getenv("ANDROID_VERSION_CODE")) : 2
+def envVersionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.0.1"
 
 android {
     namespace = "com.cityconnect.app"
@@ -20,6 +20,10 @@ android {
         }
     }
     signingConfigs {
+        debug {
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
         release {
             if (project.hasProperty('RELEASE_STORE_FILE') && file(project.property('RELEASE_STORE_FILE')).exists()) {
                 storeFile file(project.property('RELEASE_STORE_FILE'))
@@ -30,6 +34,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled true
             shrinkResources true
