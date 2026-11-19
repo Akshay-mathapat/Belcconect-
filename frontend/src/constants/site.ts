@@ -48,16 +48,18 @@ export const NAV_LINKS = [
   { i18nKey: "nav.providers", href: "/auth?mode=signup&role=provider", label: "Join as Provider" },
 ] as const;
 
+/* ═══════ Feature Toggles ═══════ */
+export const SHOW_JOBS_NEW_TAG = true;
+
 /* ═══════ Search Placeholder Suggestions ═══════ */
 export const SEARCH_SUGGESTIONS = [
   "Painter",
   "Electrician",
   "Plumber",
-  "Tutor",
+  "Carpenter",
   "Technician",
   "AC Repair",
   "Salon at Home",
-  "Carpenter",
   "Pest Control",
   "Pet Care",
   "IT Support",

@@ -92,7 +92,6 @@ export const metadata: Metadata = {
 };
 
 import { AppTour } from "@/components/onboarding/AppTour";
-import { StickyJobsPill } from "@/components/layout/StickyJobsPill";
 
 export default function RootLayout({
   children,
@@ -115,7 +114,6 @@ export default function RootLayout({
               <Navigation />
               <AppTour />
               {children}
-              <StickyJobsPill />
             </CallProvider>
           </ThemeProvider>
         </I18nProvider>

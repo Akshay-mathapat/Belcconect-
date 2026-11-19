@@ -91,6 +91,8 @@ export function Hero() {
           className="max-w-4xl mx-auto mb-12 sm:mb-16"
         >
           <form 
+            role="search"
+            aria-label="Find local services in Belagavi"
             data-tour="customer-search"
             onSubmit={handleSearch}
             className="flex flex-col sm:flex-row items-stretch gap-2 p-2 rounded-2xl sm:rounded-full bg-card border-2 border-primary/20 shadow-xl shadow-primary/5 hover:border-primary/40 transition-all"
@@ -205,7 +207,7 @@ export function Hero() {
                     <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {catName}
                     </span>
-                    <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">
+                    <span className="text-[11px] text-muted-foreground dark:text-zinc-300 mt-0.5 font-medium">
                       Local Services
                     </span>
                   </Link>

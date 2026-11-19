@@ -189,6 +189,25 @@ async function run() {
       );
     `);
 
+    // Auto-initialize base schema if database is fresh (e.g. brand new Render / staging / test DB)
+    const { rows: baseTableCheck } = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'calls'"
+    );
+
+    if (baseTableCheck.length === 0) {
+      const schemaPath = path.resolve(__dirname, "../database/schema.sql");
+      if (fs.existsSync(schemaPath)) {
+        if (isDryRun) {
+          console.log("[MIGRATIONS] [DRY RUN] Fresh database detected ('calls' table missing). Would initialize with database/schema.sql");
+        } else {
+          console.log("[MIGRATIONS] Fresh database detected ('calls' table missing). Initializing base schema from database/schema.sql...");
+          const schemaSql = fs.readFileSync(schemaPath, "utf-8");
+          await client.query(schemaSql);
+          console.log("[MIGRATIONS] Base schema successfully applied.");
+        }
+      }
+    }
+
     const { rows: appliedRows } = await client.query("SELECT name FROM public.schema_migrations");
     const appliedSet = new Set(appliedRows.map((r) => r.name));
 

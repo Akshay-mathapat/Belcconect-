@@ -81,23 +81,23 @@ export const LeftBrandPanel = memo(function LeftBrandPanel() {
             </div>
           </div>
 
-          {/* Trust Metrics Footer */}
+          {/* Trust Metrics Footer — Truthful Non-numeric Value Points */}
           <div className="relative z-10 pt-3 border-t border-white/20 grid grid-cols-4 gap-1 text-white text-left shrink-0 mt-3">
             <div>
-              <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">4.9★</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.rating")}</div>
+              <div className="text-xs sm:text-sm font-extrabold font-heading">ID-Verified</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">Identity Checked</div>
             </div>
             <div>
-              <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">50K+</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.professionals")}</div>
+              <div className="text-xs sm:text-sm font-extrabold font-heading">0% Fee</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">No Commission</div>
             </div>
             <div>
-              <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">100+</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.categories")}</div>
+              <div className="text-xs sm:text-sm font-extrabold font-heading">Direct Pay</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">Pay Provider</div>
             </div>
             <div>
-              <div className="text-xs sm:text-sm xl:text-base font-extrabold font-heading">1M+</div>
-              <div className="text-[9px] sm:text-[10px] text-blue-100">{t("trust.bookings")}</div>
+              <div className="text-xs sm:text-sm font-extrabold font-heading">4 Langs</div>
+              <div className="text-[9px] sm:text-[10px] text-blue-100">EN, HI, KN, MR</div>
             </div>
           </div>
         </div>

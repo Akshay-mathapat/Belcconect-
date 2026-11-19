@@ -237,7 +237,7 @@ export default function ProviderProfilePage() {
                 {provider.verificationStatus === "verified" && (
                   <span className="mt-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-teal-600 bg-teal-500/10 border border-teal-500/20">
                     <CheckCircle2 className="h-3 w-3" />
-                    Verified Expert
+                    VERIFIED EXPERT
                   </span>
                 )}
 

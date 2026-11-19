@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SERVICE_CATEGORIES, SERVICE_TAXONOMY } from "@/constants/site";
+import { SERVICE_CATEGORIES, SERVICE_TAXONOMY, SHOW_JOBS_NEW_TAG } from "@/constants/site";
 import { useTranslation } from "@/lib/i18n";
 
 const iconMap: Record<string, any> = {
@@ -110,10 +110,10 @@ export default function CategoryBar() {
           <div ref={megaRef} className="relative flex-shrink-0">
             <button
               onClick={() => setMegaOpen(!megaOpen)}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all duration-200 ${
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 megaOpen
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:shadow-primary/25"
+                  : "bg-blue-50 dark:bg-blue-950/40 text-[#1D4ED8] dark:text-blue-300 hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:shadow-primary/25"
               }`}
               suppressHydrationWarning
             >
@@ -297,18 +297,20 @@ export default function CategoryBar() {
           <div ref={jobsRef} className="relative flex-shrink-0">
             <button
               onClick={() => setJobsOpen(!jobsOpen)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-200 border ${
+              className={`group flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 jobsOpen
-                  ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
-                  : "bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-600 hover:text-white hover:border-blue-600"
+                  ? "bg-primary/10 text-[#1D4ED8] dark:text-blue-400 font-semibold"
+                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
               }`}
               suppressHydrationWarning
             >
-              <Briefcase className="h-3.5 w-3.5" />
+              <Briefcase className="h-3.5 w-3.5 text-primary opacity-80 group-hover:opacity-100 transition-opacity" />
               <span>Jobs</span>
-              <span className="rounded-full bg-blue-600 dark:bg-blue-500 text-white px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wider">
-                NEW
-              </span>
+              {SHOW_JOBS_NEW_TAG && (
+                <span className="rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-blue-300 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                  NEW
+                </span>
+              )}
               <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${jobsOpen ? "rotate-180" : ""}`} />
             </button>
 

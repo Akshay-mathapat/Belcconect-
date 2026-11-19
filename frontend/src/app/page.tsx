@@ -1,6 +1,6 @@
 import { Hero } from "@/components/sections/Hero";
 import { TrustMetrics } from "@/components/sections/TrustMetrics";
-import { ServiceCategories } from "@/components/sections/ServiceCategories";
+import { JobPortalBanner } from "@/components/sections/JobPortalBanner";
 import Footer from "@/components/sections/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL, DEFAULT_DESCRIPTION, SUPPORT_EMAIL, SOCIAL_PROFILES } from "@/lib/seo";
@@ -86,7 +86,9 @@ export default function Home() {
       <JsonLd data={[websiteSchema, organizationSchema]} />
       <Hero />
       <TrustMetrics />
-      <ServiceCategories />
+      <div className="px-4 sm:px-6 lg:px-8 mt-12 sm:mt-16">
+        <JobPortalBanner />
+      </div>
       <Footer />
     </>
   );

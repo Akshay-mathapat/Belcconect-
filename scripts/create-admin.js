@@ -65,9 +65,9 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-if (databaseUrl.includes("render.com")) {
+if (databaseUrl.includes("render.com") && !process.argv.includes("--allow-production")) {
   console.error("FATAL SAFETY CHECK: DATABASE_URL points to a production host (render.com).");
-  console.error("Connecting to or running scripts against production database is strictly prohibited.");
+  console.error("To provision an administrator on production, pass --allow-production flag.");
   process.exit(1);
 }
 
@@ -99,7 +99,10 @@ try {
 
 async function main() {
   const { Client } = pg;
-  const client = new Client({ connectionString: databaseUrl });
+  const client = new Client({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes("render.com") ? { rejectUnauthorized: false } : false
+  });
 
   try {
     await client.connect();

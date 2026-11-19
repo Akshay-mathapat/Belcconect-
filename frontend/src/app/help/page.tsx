@@ -23,7 +23,7 @@ export default function HelpPage() {
     },
     {
       q: "Are the professionals verified?",
-      a: "Professionals who complete the required verification process display a verified badge on their profile.",
+      a: "We check each provider's government ID before they appear in search. Verified professionals display an ID-verified badge on their profile.",
     },
   ];
 

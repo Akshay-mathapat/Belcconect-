@@ -233,7 +233,7 @@ export default function ServicesCategoryPage() {
                             )}
                             {pro.isVerified && (
                               <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 border border-emerald-500/20">
-                                Verified
+                                ID-Verified
                               </span>
                             )}
                           </h3>

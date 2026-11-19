@@ -571,7 +571,8 @@ export default function Navigation() {
 
           {/* ═══════ Clean Simple Search Bar ═══════ */}
 
-          <div ref={searchRef} data-tour="search-bar" className="hidden lg:block flex-1 max-w-2xl relative">
+          {pathname !== "/" && (
+            <div ref={searchRef} data-tour="search-bar" role="search" aria-label="Sitewide service search" className="hidden lg:block flex-1 max-w-2xl relative">
 
             <div className={`relative flex items-center rounded-full border-2 transition-all duration-200 ${searchFocused
 
@@ -654,6 +655,7 @@ export default function Navigation() {
             />
 
           </div>
+          )}
 
 
 
@@ -1094,7 +1096,7 @@ export default function Navigation() {
               <Link
                 href="/login"
                 data-tour="mobile-nav-login"
-                className="lg:hidden inline-flex items-center justify-center rounded-full bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all whitespace-nowrap"
+                className="lg:hidden inline-flex items-center justify-center rounded-full bg-[#1D4ED8] hover:bg-blue-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all whitespace-nowrap"
               >
                 {t("nav.signIn")}
               </Link>
@@ -1272,7 +1274,7 @@ export default function Navigation() {
 
                     type="text"
 
-                    placeholder="Find a Painter, Electrician, Tutor..."
+                    placeholder="Find a Painter, Electrician, Carpenter..."
 
                     className="w-full bg-transparent pl-11 pr-4 py-3.5 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none"
 
