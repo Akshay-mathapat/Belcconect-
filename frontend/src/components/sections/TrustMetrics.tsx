@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, BadgePercent, Wallet, Languages, Info } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 export const MIN_VERIFIED_COUNT_THRESHOLD = 25;
 
@@ -15,6 +16,7 @@ interface MetricData {
 }
 
 export function TrustMetrics() {
+  const { t } = useTranslation();
   const [data, setData] = useState<MetricData | null>(null);
   const [showIdExplanation, setShowIdExplanation] = useState(false);
 
@@ -60,7 +62,7 @@ export function TrustMetrics() {
               </p>
             ) : null}
             <h3 className="text-base font-bold text-foreground mt-1 flex items-center justify-center gap-1.5">
-              <span>ID-verified providers</span>
+              <span>{t("trust.idVerified") !== "trust.idVerified" ? t("trust.idVerified") : "ID-verified providers"}</span>
               <button
                 type="button"
                 onClick={() => setShowIdExplanation(!showIdExplanation)}
@@ -72,7 +74,7 @@ export function TrustMetrics() {
               </button>
             </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
-              We check each provider's ID before they appear in search.
+              {t("trust.idVerifiedDesc") !== "trust.idVerifiedDesc" ? t("trust.idVerifiedDesc") : "We check each provider's ID before they appear in search."}
             </p>
             {hasSubstantialProviders && (
               <span className="text-[10px] text-muted-foreground/75 mt-1">Source: Active database records</span>
@@ -91,10 +93,10 @@ export function TrustMetrics() {
               <BadgePercent className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-foreground mt-1">
-              No commission
+              {t("trust.noCommission") !== "trust.noCommission" ? t("trust.noCommission") : "No commission"}
             </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
-              0% fee taken from workers or customers. Fair and direct.
+              {t("trust.noCommissionDesc") !== "trust.noCommissionDesc" ? t("trust.noCommissionDesc") : "0% fee taken from workers or customers. Fair and direct."}
             </p>
           </motion.div>
 
@@ -110,14 +112,14 @@ export function TrustMetrics() {
               <Wallet className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-foreground mt-1">
-              Pay the provider directly
+              {t("trust.directPay") !== "trust.directPay" ? t("trust.directPay") : "Pay the provider directly"}
             </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
-              Settle payment directly via cash or UPI after job completion.
+              {t("trust.directPayDesc") !== "trust.directPayDesc" ? t("trust.directPayDesc") : "Settle payment directly via cash or UPI after job completion."}
             </p>
           </motion.div>
 
-          {/* Card 4: English, Hindi, Kannada, Marathi */}
+          {/* Card 4: Available in 4 languages */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -129,10 +131,10 @@ export function TrustMetrics() {
               <Languages className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-foreground mt-1">
-              English, Hindi, Kannada, Marathi
+              {t("trust.availableLanguages") !== "trust.availableLanguages" ? t("trust.availableLanguages") : "Available in 4 languages"}
             </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
-              Full platform experience available in 4 languages.
+              {t("trust.languageList") !== "trust.languageList" ? t("trust.languageList") : "English, Hindi, Kannada, Marathi"}
             </p>
           </motion.div>
         </div>

@@ -79,7 +79,7 @@ export async function LatestJobsSection() {
             Latest Job Openings
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Verified hiring positions from local employers in Belagavi & surroundings.
+            Hiring positions from local employers in Belagavi and surroundings.
           </p>
         </div>
         <Link

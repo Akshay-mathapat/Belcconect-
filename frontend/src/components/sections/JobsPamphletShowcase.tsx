@@ -36,7 +36,7 @@ export function JobsPamphletShowcase() {
           </h2>
 
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-            Beyond home services, we connect local job seekers with verified employers across Belagavi.
+            Beyond home services, we connect local job seekers with employers across Belagavi.
           </p>
         </div>
 
@@ -77,14 +77,14 @@ export function JobsPamphletShowcase() {
                 </h3>
 
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  Browse verified vacancies in electrical, plumbing, HVAC, carpentry, cleaning, office admin, sales, and retail. Apply directly with zero commission.
+                  Browse job openings in electrical, plumbing, HVAC, carpentry, cleaning, office admin, sales, and retail. Apply directly with zero commission.
                 </p>
 
                 {/* Key Benefits Checklist */}
                 <div className="mt-6 space-y-3">
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm text-foreground/90 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Direct chat & interview calls with local verified business owners</span>
+                    <span>Direct chat & interview calls with local business owners</span>
                   </div>
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm text-foreground/90 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />

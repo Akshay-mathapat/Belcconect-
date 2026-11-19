@@ -430,7 +430,7 @@ export default function JobsPage() {
           <h4 className="text-xs font-bold uppercase tracking-wider">Hiring in Belagavi?</h4>
         </div>
         <p className="text-[11px] text-blue-100 leading-relaxed">
-          Connect with skilled technicians, craftsmen, and local professionals.
+          Connect with local technicians, craftsmen, and professionals.
         </p>
         <Link
           href={currentUser?.role === "job_provider" ? "/jobprovider/post-job" : "/register"}
@@ -458,7 +458,7 @@ export default function JobsPage() {
             Find Your Next Career Opportunity in Belagavi
           </h1>
           <p className="text-sm sm:text-base text-blue-100/80 max-w-2xl mx-auto">
-            Discover verified full-time, part-time, and technician roles posted by top local businesses, contractors, and workshops.
+            Discover full-time, part-time, and technician roles posted by local businesses, contractors, and workshops.
           </p>
 
           {/* Search Bar Container */}

@@ -163,7 +163,7 @@ export function Hero() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all flex-shrink-0"
+              className="flex items-center justify-center gap-2 rounded-xl sm:rounded-full bg-[#1D4ED8] hover:bg-blue-700 px-8 py-3 text-sm font-bold text-white shadow-md transition-all flex-shrink-0 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               suppressHydrationWarning
             >
               <Search className="h-4 w-4" />
@@ -199,16 +199,13 @@ export function Hero() {
                   <Link
                     href={`/services/${category.id}`}
                     data-tour-category={category.id}
-                    className="group flex flex-col items-center justify-center p-4 rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 text-center h-full"
+                    className="group flex flex-col items-center justify-center p-4 rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 text-center h-full min-h-[96px] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${category.gradient} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
                       <IconComponent className={`h-6 w-6 ${category.iconColor}`} />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {catName}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground dark:text-zinc-300 mt-0.5 font-medium">
-                      Local Services
                     </span>
                   </Link>
                 </motion.div>

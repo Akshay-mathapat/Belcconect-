@@ -202,7 +202,15 @@
     "bookings": "Bookings",
     "professionals": "Verified Pros",
     "rating": "Avg Rating",
-    "categories": "Service Categories"
+    "categories": "Service Categories",
+    "idVerified": "ID-verified providers",
+    "idVerifiedDesc": "We check each provider's ID before they appear in search.",
+    "noCommission": "No commission",
+    "noCommissionDesc": "0% fee taken from workers or customers. Fair and direct.",
+    "directPay": "Pay the provider directly",
+    "directPayDesc": "Settle payment directly via cash or UPI after job completion.",
+    "availableLanguages": "Available in 4 languages",
+    "languageList": "English, Hindi, Kannada, Marathi"
   },
   "services": {
     "label": "Popular Services",

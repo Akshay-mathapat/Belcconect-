@@ -64,20 +64,17 @@ export function InstallAppButton({ className = "", isMobileOnly = false }: Insta
             title="Install BelConnect App"
             aria-label="Install BelConnect App"
             data-tour="install-app-button"
-            className={`group relative flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-3 py-1.5 shadow-md hover:shadow-blue-500/25 transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 border border-blue-400/20 cursor-pointer ${
-              isMobileOnly ? "p-2 sm:px-3" : ""
+            className={`group relative inline-flex items-center justify-center gap-1.5 rounded-full border border-[#1D4ED8]/60 dark:border-blue-400/60 bg-transparent text-[#1D4ED8] dark:text-blue-300 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 hover:border-[#1D4ED8] dark:hover:border-blue-400 text-xs font-bold transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 cursor-pointer min-h-[44px] h-[44px] ${
+              isMobileOnly ? "px-3 py-2" : "px-3.5 py-2"
             }`}
           >
-            {/* Animated Icon */}
-            <Download className="h-3.5 w-3.5 text-white shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-110" />
+            {/* Outline Download Icon */}
+            <Download className="h-4 w-4 text-[#1D4ED8] dark:text-blue-300 shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5" />
 
             {/* Button Text */}
-            <span className={`${isMobileOnly ? "hidden sm:inline" : "hidden sm:inline-block"} font-medium tracking-tight whitespace-nowrap`}>
+            <span className={`${isMobileOnly ? "inline" : "hidden sm:inline-block"} font-bold tracking-tight whitespace-nowrap`}>
               Install App
             </span>
-
-            {/* Subtle Glow */}
-            <span className="absolute -inset-0.5 rounded-full bg-blue-500/20 blur-xs opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </button>
 
           {/* Tooltip on Hover */}
