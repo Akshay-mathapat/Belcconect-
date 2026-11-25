@@ -6,33 +6,19 @@ import {
   MapPin, 
   Search, 
   ChevronDown, 
-  Zap, 
-  Droplets, 
-  Sparkles, 
-  Bug, 
-  Wind, 
-  PaintBucket, 
-  Scissors, 
-  Hammer, 
-  GraduationCap, 
-  Monitor, 
-  PawPrint,
-  ArrowRight,
-  LucideIcon
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SERVICE_CATEGORIES, BELAGAVI_AREAS } from "@/constants/site";
+import { SERVICE_CATEGORIES, SERVICE_TAXONOMY, BELAGAVI_AREAS } from "@/constants/site";
+import { getCategoryIcon } from "@/constants/categoryIcons";
 import { useTranslation } from "@/lib/i18n";
-
-const iconMap: Record<string, LucideIcon> = {
-  Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
-};
 
 export function Hero() {
   const { t } = useTranslation();
   const [selectedArea, setSelectedArea] = useState<string>("Belagavi (All Areas)");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedSection, setSelectedSection] = useState<string>("all");
   const [areaDropdownOpen, setAreaDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -174,19 +160,59 @@ export function Hero() {
 
         {/* OLX-Style Category Tiles Grid — Immediate visual orientation */}
         <div data-tour="browse-services">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-heading font-bold text-foreground">{t("nav.browseAllCategories")}</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-heading font-bold text-foreground">{t("nav.browseAllCategories")}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Explore 33+ verified home & personal services across Belagavi</p>
+            </div>
             <Link 
               href="/services" 
-              className="text-sm font-semibold text-primary hover:underline flex items-center gap-1"
+              className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 self-start sm:self-auto"
             >
-              {t("nav.viewAll")} <ArrowRight className="h-4 w-4" />
+              {t("nav.viewAll")} ({SERVICE_CATEGORIES.length}) <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
+          {/* Category Group Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => setSelectedSection("all")}
+              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                selectedSection === "all"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              All Services ({SERVICE_CATEGORIES.length})
+            </button>
+            {SERVICE_TAXONOMY.map((tax) => {
+              const count = tax.items[0]?.services?.length || 0;
+              const isActive = selectedSection === tax.section;
+              return (
+                <button
+                  key={tax.section}
+                  type="button"
+                  onClick={() => setSelectedSection(tax.section)}
+                  className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                      : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {tax.section} ({count})
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-            {SERVICE_CATEGORIES.slice(0, 12).map((category, index) => {
-              const IconComponent = iconMap[category.icon] || Sparkles;
+            {SERVICE_CATEGORIES.filter((category) => {
+              if (selectedSection === "all") return true;
+              const targetTax = SERVICE_TAXONOMY.find((t) => t.section === selectedSection);
+              return (targetTax?.items[0]?.services as readonly string[] | undefined)?.includes(category.id);
+            }).map((category, index) => {
+              const IconComponent = getCategoryIcon(category.icon);
               const catName = t("categories." + category.id) !== ("categories." + category.id) ? t("categories." + category.id) : (t(category.i18nKey) !== category.i18nKey ? t(category.i18nKey) : category.name);
 
               return (
@@ -194,14 +220,14 @@ export function Hero() {
                   key={category.id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.03 }}
+                  transition={{ duration: 0.25, delay: Math.min(index * 0.02, 0.3) }}
                 >
                   <Link
                     href={`/services/${category.id}`}
                     data-tour-category={category.id}
-                    className="group flex flex-col items-center justify-center p-4 rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 text-center h-full min-h-[96px] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    className="group flex flex-col items-center justify-center p-4 rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 text-center h-full min-h-[104px] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${category.gradient} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${category.gradient} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-xs`}>
                       <IconComponent className={`h-6 w-6 ${category.iconColor}`} />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">

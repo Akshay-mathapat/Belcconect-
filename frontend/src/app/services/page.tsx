@@ -2,15 +2,12 @@
 
 import Footer from "@/components/sections/Footer";
 import { motion } from "framer-motion";
-import { Search, Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint, ChevronRight } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { SERVICE_CATEGORIES, SERVICE_TAXONOMY } from "@/constants/site";
-
-const iconMap: Record<string, any> = {
-  Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
-};
+import { getCategoryIcon } from "@/constants/categoryIcons";
 
 function ServicesContent() {
   const searchParams = useSearchParams();
@@ -174,7 +171,7 @@ function ServicesContent() {
                             <div className="flex items-start justify-between mb-4">
                               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${category.gradient} flex items-center justify-center transition-transform group-hover:scale-110`}>
                                 {(() => {
-                                  const IconComponent = iconMap[category.icon] || Sparkles;
+                                  const IconComponent = getCategoryIcon(category.icon);
                                   return <IconComponent className={`h-7 w-7 ${category.iconColor}`} />;
                                 })()}
                               </div>
@@ -246,7 +243,7 @@ function ServicesContent() {
                                     <div className="flex items-start justify-between mb-4">
                                       <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${category.gradient} flex items-center justify-center transition-transform group-hover:scale-110`}>
                                         {(() => {
-                                          const IconComponent = iconMap[category.icon] || Sparkles;
+                                          const IconComponent = getCategoryIcon(category.icon);
                                           return <IconComponent className={`h-7 w-7 ${category.iconColor}`} />;
                                         })()}
                                       </div>

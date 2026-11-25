@@ -7,17 +7,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Zap,
-  Droplets,
-  Sparkles,
-  Bug,
-  Wind,
-  PaintBucket,
-  Scissors,
-  Hammer,
-  GraduationCap,
-  Monitor,
-  PawPrint,
   ArrowRight,
   TrendingUp,
   Briefcase,
@@ -27,11 +16,8 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SERVICE_CATEGORIES, SERVICE_TAXONOMY, SHOW_JOBS_NEW_TAG } from "@/constants/site";
+import { getCategoryIcon } from "@/constants/categoryIcons";
 import { useTranslation } from "@/lib/i18n";
-
-const iconMap: Record<string, any> = {
-  Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
-};
 
 export default function CategoryBar() {
   const pathname = usePathname();
@@ -152,28 +138,27 @@ export default function CategoryBar() {
 
                   <div className="flex">
                     {/* Left Pane - Category Groups */}
-                    <div className="w-[260px] bg-muted/30 border-r border-border p-4 flex flex-col gap-5">
+                    <div className="w-[260px] bg-muted/30 border-r border-border p-4 flex flex-col gap-4">
                       {(SERVICE_TAXONOMY as unknown as any[]).map((section: any) => (
                         <div key={section.section}>
-                          <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-3">
-                            {section.section === "Home & Property" ? t("taxonomy.homeProperty") : section.section === "Lifestyle & Professional" ? t("taxonomy.lifestyle") : section.section}
+                          <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-1.5 px-3">
+                            {section.section}
                           </h4>
                           <ul className="space-y-0.5">
                             {section.items.map((group: any) => {
-                              const localizedGroupName = group.name === "Home Repairs & Maintenance" ? t("taxonomy.repairs") : group.name === "Cleaning & Pest Control" ? t("taxonomy.cleaningPest") : group.name === "Renovations & Improvements" ? t("taxonomy.renovations") : group.name === "Personal Care" ? t("taxonomy.personalCare") : group.name === "Tech & Education" ? t("taxonomy.techEdu") : group.name;
                               return (
                                 <li key={group.id}>
                                   <button
                                     onMouseEnter={() => setActiveGroup(group.id)}
                                     onClick={() => setActiveGroup(group.id)}
-                                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all duration-150 text-left ${
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 text-left ${
                                       activeGroup === group.id
-                                        ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                                        ? "bg-primary/10 text-primary font-semibold shadow-xs"
                                         : "text-foreground hover:bg-muted hover:text-foreground"
                                     }`}
                                     suppressHydrationWarning
                                   >
-                                    <span>{localizedGroupName}</span>
+                                    <span>{group.name}</span>
                                     <ChevronRight className={`h-4 w-4 transition-all duration-150 ${activeGroup === group.id ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"}`} />
                                   </button>
                                 </li>
@@ -190,7 +175,7 @@ export default function CategoryBar() {
                         {(SERVICE_TAXONOMY as unknown as any[]).flatMap(s => s.items).find(g => g.id === activeGroup)?.services.map((serviceId: string) => {
                           const service = SERVICE_CATEGORIES.find(s => s.id === serviceId);
                           if (!service) return null;
-                          const IconComponent = iconMap[service.icon] || Sparkles;
+                          const IconComponent = getCategoryIcon(service.icon);
 
                           const localizedName = t("categories." + service.id) !== ("categories." + service.id) ? t("categories." + service.id) : (t(service.i18nKey) !== service.i18nKey ? t(service.i18nKey) : service.name);
                           const localizedDesc = t("categoryDesc." + service.id) !== ("categoryDesc." + service.id) ? t("categoryDesc." + service.id) : service.description;
@@ -273,7 +258,7 @@ export default function CategoryBar() {
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
               {quickCategories.map((category) => {
-                const IconComponent = iconMap[category.icon] || Sparkles;
+                const IconComponent = getCategoryIcon(category.icon);
                 const pillName = t("categories." + category.id) !== ("categories." + category.id) ? t("categories." + category.id) : (t(category.i18nKey) !== category.i18nKey ? t(category.i18nKey) : category.name);
                 return (
                   <Link

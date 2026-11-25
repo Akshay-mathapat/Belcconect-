@@ -18,9 +18,11 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { useTranslation, LOCALES } from "@/lib/i18n";
 
-import { ChevronRight, Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, PawPrint } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { SERVICE_TAXONOMY, SERVICE_CATEGORIES } from "@/constants/site";
+
+import { getCategoryIcon } from "@/constants/categoryIcons";
 
 import CategoryBar from "@/components/sections/CategoryBar";
 
@@ -29,14 +31,6 @@ import { useAuthStore } from "@/store/useAuthStore";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 import { InstallAppButton } from "@/components/common/InstallAppButton";
-
-
-
-const iconMap: Record<string, any> = {
-
-  Zap, Droplets, Sparkles, Bug, Wind, PaintBucket, Scissors, Hammer, GraduationCap, Monitor, PawPrint
-
-};
 
 
 
@@ -176,7 +170,7 @@ export function SearchDropdown({
 
                 {filteredServices.map((service) => {
 
-                  const IconComponent = iconMap[service.icon] || Sparkles;
+                  const IconComponent = getCategoryIcon(service.icon);
 
                   return (
 
@@ -1344,13 +1338,13 @@ export default function Navigation() {
 
                                   <h4 className="text-sm font-semibold text-foreground/80 pt-2">
 
-                                    {section.section === "Home & Property" ? t("taxonomy.homeProperty") : section.section === "Lifestyle & Professional" ? t("taxonomy.lifestyle") : section.section}
+                                    {section.section}
 
                                   </h4>
 
                                   {section.items.map((group: any) => {
 
-                                    const localizedGroupName = group.name === "Home Repairs & Maintenance" ? t("taxonomy.repairs") : group.name === "Cleaning & Pest Control" ? t("taxonomy.cleaningPest") : group.name === "Renovations & Improvements" ? t("taxonomy.renovations") : group.name === "Personal Care" ? t("taxonomy.personalCare") : group.name === "Tech & Education" ? t("taxonomy.techEdu") : group.name;
+                                    const localizedGroupName = group.name;
 
                                     return (
 
