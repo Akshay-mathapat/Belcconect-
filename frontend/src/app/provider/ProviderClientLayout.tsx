@@ -29,6 +29,8 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { useTranslation, LOCALES } from "@/lib/i18n";
 import { SITE_NAME } from "@/constants/site";
 import { ProviderSearchDropdown } from "@/components/provider/layout/ProviderSearchDropdown";
+import BookingAlertBanner from "@/components/provider/BookingAlertBanner";
+import { bookingAlertManager } from "@/lib/bookingAlertManager";
 
 export default function ProviderLayout({
   children,
@@ -68,13 +70,36 @@ export default function ProviderLayout({
     return () => unsub();
   }, []);
 
-  // Poll bookings/reviews every 10 seconds for real-time updates
+  // Poll bookings/reviews and listen for incoming bookings
   useEffect(() => {
     if (!currentUser || currentUser.role !== "provider") return;
 
     // Fetch immediately
     fetchProviderBookings();
     fetchProviderServices();
+
+    // Immediate BroadcastChannel listener across tabs
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("cityconnect-bookings-sync");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "REFRESH_BOOKINGS") {
+          fetchProviderBookings();
+          const b = event.data?.booking;
+          if (b && (!event.data.providerId || event.data.providerId === currentUser?.id)) {
+            bookingAlertManager.triggerAlert({
+              bookingId: b.id,
+              customerName: b.customerName || "Customer",
+              serviceName: b.serviceName || "Service",
+              date: b.date,
+              time: b.time,
+              address: b.address,
+              visitingCharge: b.visitingCharge || 250
+            });
+          }
+        }
+      };
+    } catch (e) {}
 
     // Fallback poll: only if socket disconnected, every 60s
     const socket = getSocket();
@@ -88,7 +113,10 @@ export default function ProviderLayout({
       }, 60000);
     }
 
-    return () => { if (interval) clearInterval(interval); };
+    return () => {
+      if (interval) clearInterval(interval);
+      if (bc) bc.close();
+    };
   }, [currentUser, fetchProviderBookings, fetchProviderServices]);
 
   // Close search and popovers on click outside or escape key
@@ -181,6 +209,8 @@ export default function ProviderLayout({
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-background text-foreground flex flex-col relative">
+      {/* Real-time booking alert banner with 10s ringtone */}
+      <BookingAlertBanner />
       
       {/* Backdrop overlay to dismiss search when clicking anywhere */}
       {searchFocused && searchQuery.trim().length > 0 && (

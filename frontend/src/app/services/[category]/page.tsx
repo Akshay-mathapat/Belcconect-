@@ -251,13 +251,20 @@ export default function ServicesCategoryPage() {
                             <span>{pro.jobs} jobs done</span>
                             <span>•</span>
                             <span>{pro.exp} yrs exp</span>
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Mutual Pricing</span>
+                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg text-xs">
+                              Home Visit: ₹250
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-3 mb-4">
+                      <p className="text-sm text-muted-foreground line-clamp-2 mt-3 mb-2">
                         {pro.description || `Experienced professional providing top-quality ${category.name.toLowerCase()} with a focus on reliability and customer satisfaction.`}
+                      </p>
+
+                      <p className="text-xs text-muted-foreground/80 mb-4 flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Fixed ₹250 visiting & diagnostic inspection charge. Additional repair or labor settled directly.
                       </p>
 
                       <div className="flex items-center gap-3">

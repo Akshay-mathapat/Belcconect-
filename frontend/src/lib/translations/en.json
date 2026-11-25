@@ -169,7 +169,15 @@
     "newAddress": "New Address",
     "noAddressProvided": "No address provided",
     "createBookingError": "Failed to create booking",
-    "bookingFailed": "Booking failed. Please check your server and database connection."
+    "bookingFailed": "Booking failed. Please check your server and database connection.",
+    "visitingChargeTitle": "Fixed Visiting & Inspection Charge",
+    "visitingChargeAmount": "₹250",
+    "visitingChargeBadge": "Home Visit: ₹250",
+    "visitingChargeDesc": "A fixed visiting and inspection charge of ₹250 applies upon arrival. Pay the provider directly via Cash or UPI. Additional repair or part costs will be agreed directly with you before starting work.",
+    "directSettlementNotice": "Direct Settlement: Service charges are settled directly between you and the service provider. BelConnect does not collect service payments.",
+    "newBookingReceived": "New Customer Booking Received!",
+    "stopRingtone": "Stop Ringtone",
+    "viewJob": "View Booking"
   },
   "location": {
     "live": "Live location",

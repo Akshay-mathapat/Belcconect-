@@ -224,12 +224,40 @@ function BookingFlow() {
 
       try {
         const syncChannel = new BroadcastChannel("cityconnect-bookings-sync");
-        syncChannel.postMessage({ type: "REFRESH_BOOKINGS" });
+        syncChannel.postMessage({
+          type: "REFRESH_BOOKINGS",
+          booking: data.booking,
+          providerId: data.booking?.providerId || proId,
+          visitingCharge: 250
+        });
         syncChannel.close();
       } catch (e) {}
 
       setIsSubmitting(false);
       setStep(6);
+
+      // Play pleasant confirmation feedback sound
+      try {
+        const audio = new Audio("/sounds/ringtone.wav");
+        audio.volume = 0.5;
+        audio.play().catch(() => {
+          if (typeof window !== "undefined" && (window.AudioContext || (window as any).webkitAudioContext)) {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+            osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.12);
+            osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.24);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+          }
+        });
+      } catch (e) {}
     } catch (e: unknown) {
       console.error("Booking submission error:", e);
       alert((e instanceof Error ? e.message : String(e)) || t("booking.bookingFailed"));
@@ -459,6 +487,20 @@ function BookingFlow() {
                     <span className="text-sm text-muted-foreground">{t("booking.timeSlot")}</span>
                     <span className="text-sm font-semibold text-foreground">{time || t("booking.defaultTimeRange")}</span>
                   </div>
+                  <div className="border-t border-border/60 pt-3 mt-3 flex justify-between items-center">
+                    <div>
+                      <span className="text-sm font-medium text-foreground block">{t("booking.visitingChargeTitle") || "Home Visit & Inspection"}</span>
+                      <span className="text-xs text-muted-foreground">Fixed fee on provider arrival</span>
+                    </div>
+                    <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">₹250</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+                  <p className="font-semibold mb-0.5">Fixed ₹250 Visiting Charge</p>
+                  <p className="text-[11px] leading-relaxed">
+                    Pay ₹250 directly to the service provider after inspection (Cash or UPI). Additional labor or spare parts will be quoted directly before starting work.
+                  </p>
                 </div>
               </div>
               <button onClick={nextStep} className="w-full py-3.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer">{t("booking.proceedToBooking")}</button>
@@ -475,7 +517,7 @@ function BookingFlow() {
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-xs sm:text-sm text-foreground space-y-1">
                   <p className="font-semibold text-amber-900 dark:text-amber-200">
-                    Service charges are decided and settled directly between you and the service provider. BelConnect does not collect service payments.
+                    Fixed Visiting Charge: ₹250 (Pay provider directly on arrival via Cash/UPI). Additional repair charges are settled directly between you and the provider. BelConnect does not take commission.
                   </p>
                 </div>
               </div>
@@ -489,6 +531,10 @@ function BookingFlow() {
                 <div className="flex justify-between items-center text-sm py-1 border-b border-border/50">
                   <span className="text-muted-foreground">Provider</span>
                   <span className="font-semibold text-foreground">{getProviderName(proId)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">Fixed Visit Charge</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">₹250</span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1 border-b border-border/50">
                   <span className="text-muted-foreground">Schedule</span>

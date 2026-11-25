@@ -525,6 +525,48 @@ public class BelConnectCallPlugin extends Plugin {
         }
     }
 
+    public static synchronized void showBookingNotification(Context context, String bookingId, String customerName, String serviceName, String visitingCharge) {
+        if (context == null) return;
+        createNotificationChannel(context);
+
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) return;
+
+        int notificationId = 6000 + Math.abs((bookingId != null ? bookingId : "new_booking").hashCode() % 3000);
+
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("action", "view_booking");
+        intent.putExtra("bookingId", bookingId != null ? bookingId : "");
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        String charge = (visitingCharge != null && !visitingCharge.isEmpty()) ? visitingCharge : "250";
+        String title = "🔔 New Booking Request!";
+        String content = (customerName != null ? customerName : "A customer") + " booked " + 
+                         (serviceName != null ? serviceName : "service") + ". Visit Fee: ₹" + charge;
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, MISSED_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setSubText("BelConnect")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent);
+
+        notificationManager.notify(notificationId, builder.build());
+        Log.i(TAG, "[BOOKING_NOTIF] Displayed booking notification for bookingId=" + bookingId);
+    }
+
     @PluginMethod
     public void getPendingCallAction(PluginCall call) {
         Context context = getContext();

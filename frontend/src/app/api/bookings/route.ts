@@ -4,6 +4,7 @@ import { query } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/jwt";
 import { normalizeIndianPhone } from "@/lib/validations";
 import { throttledExpireStaleBookings, lazyExpireUserBookings } from "@/lib/bookingExpiry";
+import { sendPushToUser } from "@/lib/pushNotifications";
 
 // Helper to map DB row to Frontend Booking type
 function mapRowToBooking(row: any) {
@@ -47,6 +48,7 @@ function mapRowToBooking(row: any) {
     noShowType: row.no_show_type || null,
     noShowReason: row.no_show_reason || null,
     noShowReportedBy: row.no_show_reported_by || null,
+    visitingCharge: 250,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
   };
 }
@@ -542,7 +544,57 @@ snapDestInstructions
       [bookingId]
     );
 
-    return NextResponse.json({ success: true, booking: mapRowToBooking(insertedRes.rows[0]) });
+    const bookingObj = mapRowToBooking(insertedRes.rows[0]);
+
+    const customerDisplayName = insertedRes.rows[0]?.customer_name || "Customer";
+    const providerNotifId = `notif-p-${bookingId}-${Date.now()}`;
+    const customerNotifId = `notif-c-${bookingId}-${Date.now()}`;
+
+    // Create In-App Notification for Service Provider
+    await query(
+      `INSERT INTO notifications (id, user_id, type, title, body, booking_id, is_read, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        providerNotifId,
+        validProviderId,
+        "NEW_BOOKING",
+        "🔔 New Customer Booking!",
+        `${customerDisplayName} booked ${serviceName} for ${date} at ${time || "10:00 AM"}. Fixed visit fee: ₹250.`,
+        bookingId
+      ]
+    ).catch((e) => console.warn("Failed to create provider notification:", e));
+
+    // Create In-App Notification for Customer
+    await query(
+      `INSERT INTO notifications (id, user_id, type, title, body, booking_id, is_read, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        customerNotifId,
+        validCustomerId,
+        "BOOKING_CONFIRMED",
+        "Booking Request Placed",
+        `Your booking for ${serviceName} on ${date} is placed. Fixed visiting fee: ₹250.`,
+        bookingId
+      ]
+    ).catch((e) => console.warn("Failed to create customer notification:", e));
+
+    // Non-blocking Web / FCM Push to Provider
+    sendPushToUser(validProviderId, {
+      title: "🔔 New Customer Booking!",
+      body: `${customerDisplayName} booked ${serviceName} for ${date}. Fixed visit fee: ₹250.`,
+      data: {
+        type: "new_booking",
+        bookingId,
+        serviceName,
+        date,
+        time: time || "10:00 AM",
+        visitingCharge: "250"
+      }
+    }).catch(() => {});
+
+    return NextResponse.json({ success: true, booking: bookingObj });
   } catch (error: any) {
     console.error("Error creating booking:", error);
     return NextResponse.json({ error: "Could not create booking" }, { status: 500 });

@@ -281,6 +281,9 @@ function BookingsManagementContent() {
                       <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${getStatusBadgeStyle(b.status)}`}>
                         {t(`account.statuses.${b.status}`) || b.status}
                       </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        Visit Fee: ₹250
+                      </span>
                     </div>
 
                     <h3 className="font-heading text-base font-bold text-[#1F5F5B] truncate">

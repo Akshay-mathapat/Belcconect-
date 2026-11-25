@@ -2,6 +2,7 @@
 
 import { authFetch, getClientToken } from "@/lib/authFetch";
 import { ProviderLocation } from "@/lib/providerLocationPlugin";
+import { bookingAlertManager } from "@/lib/bookingAlertManager";
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -390,6 +391,24 @@ export const useProviderStore = create<ProviderStoreState>()(
             if (Array.isArray(dbBookings)) {
               const current = get().bookings;
               if (JSON.stringify(current) !== JSON.stringify(dbBookings)) {
+                // If there are newly arrived "Requested" bookings, trigger the 10-second ringtone alert
+                if (current.length > 0) {
+                  const currentIds = new Set(current.map((b) => b.id));
+                  const newRequestedBooking = dbBookings.find(
+                    (b: any) => (b.status === "Requested" || b.status === "Upcoming") && !currentIds.has(b.id)
+                  );
+                  if (newRequestedBooking) {
+                    bookingAlertManager.triggerAlert({
+                      bookingId: newRequestedBooking.id,
+                      customerName: newRequestedBooking.customerName || "Customer",
+                      serviceName: newRequestedBooking.serviceName || "Service",
+                      date: newRequestedBooking.date,
+                      time: newRequestedBooking.time,
+                      address: newRequestedBooking.address,
+                      visitingCharge: newRequestedBooking.visitingCharge || 250
+                    });
+                  }
+                }
                 set({ bookings: dbBookings });
               }
             }

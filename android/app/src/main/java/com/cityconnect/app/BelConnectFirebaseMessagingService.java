@@ -71,6 +71,17 @@ public class BelConnectFirebaseMessagingService extends FirebaseMessagingService
             }
             BelConnectCallPlugin.dismissCall(getApplicationContext(), callId);
             BelConnectCallPlugin.dismissCall(getApplicationContext(), callId, "fcm_ended_or_cancelled");
+        } else if ("new_booking".equals(type) || "booking:new".equals(type)) {
+            Log.i(TAG, "New booking received via FCM: " + bookingId);
+            String customerName = callerName != null ? callerName : data.get("customerName");
+            String charge = data.get("visitingCharge") != null ? data.get("visitingCharge") : "250";
+            BelConnectCallPlugin.showBookingNotification(
+                getApplicationContext(),
+                bookingId,
+                customerName,
+                serviceName,
+                charge
+            );
         }
     }
 

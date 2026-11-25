@@ -663,6 +663,9 @@ export default function AccountPage() {
                               >
                                 {t(`account.statuses.${booking.status}`) || booking.status}
                               </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                Visit Fee: ₹250
+                              </span>
                               <span className="text-xs font-mono font-bold text-muted-foreground">
                                 ID: {booking.id}
                               </span>
