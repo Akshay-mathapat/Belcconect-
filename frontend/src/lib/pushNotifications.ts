@@ -1,3 +1,4 @@
+import "@/lib/suppressWarnings";
 import webpush from "web-push";
 import { initializeApp, getApps, cert, applicationDefault, type App } from "firebase-admin/app";
 import { getMessaging, type Message } from "firebase-admin/messaging";

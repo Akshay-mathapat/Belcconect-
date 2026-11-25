@@ -1,3 +1,4 @@
+import "@/lib/suppressWarnings";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
