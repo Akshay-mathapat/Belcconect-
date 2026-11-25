@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
-def envVersionCode = System.getenv("ANDROID_VERSION_CODE") ? Integer.parseInt(System.getenv("ANDROID_VERSION_CODE")) : 3
-def envVersionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.0.2"
+def envVersionCode = System.getenv("ANDROID_VERSION_CODE") ? Integer.parseInt(System.getenv("ANDROID_VERSION_CODE")) : 4
+def envVersionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.0.3"
 
 android {
     namespace = "com.cityconnect.app"
